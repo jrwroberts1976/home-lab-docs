@@ -6,9 +6,9 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Purpose
 
-The network discovery dashboard provides a current view of devices present on the home LAN and shows how those devices are identified and monitored.
+The network discovery system provides a current inventory of devices on the home LAN and automatically creates a dedicated Grafana dashboard for each discovered MAC address.
 
-Grafana itself does **not** scan the network. The actual discovery takes place on `ids-01`. The discovery results are converted into Prometheus metrics, exposed through Node Exporter, scraped by Prometheus on TestServer, and then queried by Grafana.
+Grafana itself does **not** scan the network. Discovery takes place on `ids-01`, where the results are converted into Prometheus metrics. A separate dashboard-generator service reads that inventory from Prometheus, generates one Grafana JSON dashboard per MAC address, and Grafana file provisioning loads those dashboards into the **Network Hosts** folder.
 
 ## Architecture
 
@@ -19,16 +19,17 @@ Home LAN (192.168.2.0/24)
         v
       ids-01
         |
-        | nmap -sn -PR -n 192.168.2.0/24
+        | nmap -sn -PR -e wlo1 -oX - 192.168.2.0/24
         v
-/usr/local/sbin/homelab-mac-watch
+/usr/local/bin/homelab-network-discovery.py
         |
-        +--> IP / MAC / device state
-        +--> new or changed MAC detection
-        +--> optional alerting via msmtp
+        +--> persistent MAC inventory
+        +--> IP / vendor / hostname
+        +--> new-device state
         |
         v
-/var/lib/prometheus/node-exporter/homelab_mac_watch.prom
+/var/lib/prometheus/node-exporter/
+    homelab_network_discovery.prom
         |
         v
    Node Exporter
@@ -36,107 +37,185 @@ Home LAN (192.168.2.0/24)
         v
 Prometheus on TestServer
         |
-        v
-      Grafana
-        |
-        v
-Network Discovery Dashboard
+        +------------------------------+
+        |                              |
+        v                              v
+Network Discovery              homelab-network-host-
+Dashboard                      dashboards.py
+                                       |
+                                       v
+                              generated-hosts/*.json
+                                       |
+                                       v
+                              Grafana file provider
+                                       |
+                                       v
+                              Network Hosts folder
 ```
 
 ## 1. Network discovery
 
-Discovery runs on `ids-01` using:
+Discovery runs on `ids-01` using Nmap ARP discovery. The current script executes the equivalent of:
 
 ```bash
-nmap -sn -PR -n 192.168.2.0/24
+nmap -sn -PR -e wlo1 -oX - 192.168.2.0/24
 ```
 
-The options mean:
+The important options are:
 
 - `-sn` — host discovery only; this is not a normal full port scan.
 - `-PR` — use ARP discovery on the local Ethernet network.
-- `-n` — disable reverse-DNS lookups.
-- `192.168.2.0/24` — inspect the local IPv4 LAN, effectively addresses `192.168.2.1` through `192.168.2.254`.
+- `-e wlo1` — use the selected local network interface.
+- `-oX -` — return XML to standard output so the Python collector can parse it reliably.
+- `192.168.2.0/24` — inspect the local IPv4 LAN.
 
 ARP discovery is useful because a device on the same IPv4 Ethernet segment normally has to participate in ARP in order to communicate, even if it ignores ICMP echo requests.
 
 ## 2. Information acquired
 
-The discovery process can establish:
+For each discovered device, the collector records:
 
-- Whether a device is currently present on the LAN.
-- Its current IPv4 address.
-- Its MAC address.
-- In some cases, the hardware vendor associated with the MAC OUI.
+- MAC address.
+- Current IPv4 address or addresses.
+- Nmap/OUI vendor information where available.
+- Friendly hostname where one can be resolved.
+- First-seen timestamp.
+- Last-seen timestamp.
+- Whether the device is currently online.
+- Whether it is newly discovered.
 
-The IP-to-MAC relationship is important because DHCP can change an IP address while the interface MAC normally remains the same. This allows the monitoring logic to recognise the same interface after an address change.
+The MAC address is the stable inventory key. DHCP can change a device's IP address while its interface MAC normally remains the same, so an IP change does not automatically create a new logical device.
 
 For example:
 
 ```text
-192.168.2.183 -> 24:b2:b9:30:f8:55
+MAC 24:B2:B9:30:F8:55
+        |
+        +--> today: 192.168.2.183
+        |
+        +--> later: 192.168.2.207
 ```
 
-If the same interface later receives `192.168.2.207`, the MAC address can still be used to recognise it as the same network interface/device.
+Both addresses can still represent the same device because the MAC identity is unchanged.
 
-Vendor identification should not be confused with device-role identification. A MAC OUI may indicate Raspberry Pi, Intel, Apple, Espressif, or another manufacturer, but it does not by itself identify a device as the primary Pi-hole, a Kubernetes node, or another service role. Friendly names and roles require locally maintained inventory or mappings.
+## 3. Friendly names and persistent inventory
 
-## 3. Collector
-
-The discovery logic is wrapped by:
+The live discovery collector is:
 
 ```text
-/usr/local/sbin/homelab-mac-watch
+/usr/local/bin/homelab-network-discovery.py
 ```
 
-A systemd timer runs the collector regularly, approximately once per minute.
-
-Conceptually, the collector performs the following work:
+It maintains persistent state in:
 
 ```text
-systemd timer
-     |
-     v
-homelab-mac-watch
-     |
-     v
-Nmap ARP discovery
-     |
-     +--> known device
-     +--> new/unknown MAC
-     +--> current IP address
-     +--> device presence/state
-     +--> change/alert logic
+/var/lib/homelab-network-discovery/devices.json
 ```
 
-The collector interprets the raw Nmap results and turns them into monitoring data.
+The state is keyed by MAC address and retains information such as `first_seen`, `last_seen`, IP addresses, vendor, hostname, and baseline state.
 
-## 4. Prometheus textfile metrics
+Friendly names are enriched from the ASUS router. The collector connects to the router and reads its custom client list and dnsmasq lease information, allowing a MAC address to acquire a useful local hostname when the router knows it.
 
-The collector writes Prometheus-formatted metrics to:
+If no hostname is known but a vendor is known, the temporary friendly name becomes:
 
 ```text
-/var/lib/prometheus/node-exporter/homelab_mac_watch.prom
+Unknown — <Vendor>
 ```
 
-This is the bridge between the custom discovery logic and the standard monitoring platform.
-
-Instead of requiring Grafana to parse raw Nmap output, the collector produces structured metrics containing discovery state and labels such as IP address, MAC address, and related device information.
-
-Conceptually, a metric may look similar to:
+For example:
 
 ```text
-homelab_network_device_info{ip="192.168.2.183",mac="24:b2:b9:30:f8:55"} 1
+Unknown — Nintendo
 ```
 
-The exact metric names depend on the deployed collector version, but the data-flow principle remains the same.
+The same MAC can later acquire a proper friendly name. Because the inventory is MAC-based, this is treated as an update to the existing device rather than a different device.
 
-## 5. Node Exporter
+A small manual hostname map is also available for devices that need an explicit local override.
 
-Node Exporter runs on `ids-01` and uses its textfile collector to expose the custom `.prom` file alongside normal operating-system metrics.
+## 4. Detecting a new MAC address
+
+After each scan, the collector compares the MAC addresses it has just found with the persistent `devices.json` inventory.
+
+Conceptually:
 
 ```text
-homelab_mac_watch.prom
+MAC seen in scan
+      |
+      v
+Already in devices.json?
+      |
+   +--+--+
+   |     |
+  yes    no
+   |     |
+update   create new inventory record
+state    first_seen = now
+         last_seen  = now
+         IP/vendor/hostname recorded
+             |
+             v
+       mark as new device
+```
+
+When the network is not in baseline-learning mode, a previously unseen MAC is also logged as a `NEW_NETWORK_DEVICE` event.
+
+The collector exposes two useful new-device metrics:
+
+```text
+homelab_network_device_new
+homelab_network_device_new_24h
+```
+
+The short-lived `new` flag identifies a newly discovered non-baseline device for roughly the first ten minutes, while `new_24h` keeps the device identifiable as recently discovered for 24 hours.
+
+Importantly, the dashboard-generation process does **not** need to wait for a human to approve or manually create a Grafana page. Once the new MAC exists in the inventory metric, it becomes eligible for automatic dashboard generation.
+
+## 5. Prometheus textfile metrics
+
+The discovery collector writes Prometheus-formatted metrics to:
+
+```text
+/var/lib/prometheus/node-exporter/homelab_network_discovery.prom
+```
+
+The main inventory metric is:
+
+```text
+homelab_network_device_info
+```
+
+A typical series looks like:
+
+```text
+homelab_network_device_info{
+  mac="D8:3A:DD:5A:51:44",
+  ip="192.168.2.220",
+  vendor="Raspberry Pi Trading",
+  hostname="TestServer"
+} 1
+```
+
+The value is `1` while the device is online and `0` when it is retained in the known inventory but was not seen by the current scan.
+
+Other discovery metrics include:
+
+```text
+homelab_network_scan_success
+homelab_network_last_scan_timestamp_seconds
+homelab_network_devices_online
+homelab_network_devices_known
+homelab_network_device_last_seen_timestamp_seconds
+homelab_network_device_new
+homelab_network_device_new_24h
+homelab_network_learning_mode
+```
+
+## 6. Node Exporter and Prometheus
+
+Node Exporter on `ids-01` uses its textfile collector to expose `homelab_network_discovery.prom` alongside the normal operating-system metrics.
+
+```text
+homelab_network_discovery.prom
         |
         v
    node_exporter
@@ -145,39 +224,215 @@ homelab_mac_watch.prom
 http://ids-01:9100/metrics
 ```
 
-This allows the same exporter to expose normal host telemetry such as CPU, memory, disk, load, and interfaces together with the custom network-discovery metrics.
+Prometheus on TestServer scrapes Node Exporter and stores the resulting time-series data.
 
-## 6. Prometheus
-
-The central Prometheus instance runs on TestServer.
-
-Prometheus periodically scrapes Node Exporter on `ids-01` and stores the resulting time-series data.
-
-The important direction of flow is:
+The direction of flow is:
 
 ```text
 Prometheus --> GET /metrics --> ids-01 Node Exporter
 ```
 
-The collector does not directly push discovery data into Prometheus. Prometheus pulls it from Node Exporter during its normal scrape cycle.
+The discovery collector therefore does not push directly to Grafana or to Prometheus.
 
-## 7. Grafana
+## 7. Grafana network discovery view
 
-Grafana is the presentation layer.
+Grafana queries Prometheus using PromQL and turns the inventory metrics into tables, counts, status indicators, and links to individual devices.
 
-It queries Prometheus using PromQL and turns the results into dashboard panels such as tables, status indicators, and counts.
+Typical questions answered by the discovery dashboard include:
 
-Typical dashboard questions are:
+- How many devices are currently online?
+- How many MAC addresses are known?
+- Which devices are new?
+- What manufacturer/vendor is associated with a MAC?
+- What is the current IP address?
+- When was the device last seen?
+- What friendly hostname is currently known?
 
-- How many devices are currently present?
-- Which MAC addresses have been discovered?
-- What IP address is associated with each device?
-- Has a new or unexpected device appeared?
-- Is the discovery collector still operating correctly?
+## 8. Automatic per-device Grafana page creation
 
-Grafana does not perform active network discovery itself.
+The per-device dashboards are generated independently of the discovery scan by:
 
-## 8. Separation from Suricata and Pi-hole
+```text
+/usr/local/bin/homelab-network-host-dashboards.py
+```
+
+It is run by:
+
+```text
+homelab-network-host-dashboards.timer
+        |
+        v
+homelab-network-host-dashboards.service
+```
+
+The generator queries Prometheus for:
+
+```promql
+homelab_network_device_info
+```
+
+This means the Prometheus inventory is the hand-off point between **device discovery** and **dashboard creation**.
+
+### New-MAC page-creation flow
+
+```text
+1. New device joins the LAN
+           |
+           v
+2. Nmap ARP scan sees a new MAC
+           |
+           v
+3. homelab-network-discovery.py
+   adds the MAC to devices.json
+           |
+           v
+4. homelab_network_device_info{
+     mac="...",
+     ip="...",
+     vendor="...",
+     hostname="..."
+   }
+           |
+           v
+5. Node Exporter exposes the metric
+           |
+           v
+6. Prometheus stores the new series
+           |
+           v
+7. homelab-network-host-dashboards.py
+   sees the new MAC in Prometheus
+           |
+           v
+8. A dedicated Grafana dashboard JSON
+   is generated for that MAC
+           |
+           v
+9. Grafana file provisioning notices
+   the new JSON
+           |
+           v
+10. The page appears automatically in
+    Grafana -> Network Hosts
+```
+
+There is no manual Grafana import step in this flow.
+
+### Generated dashboard files
+
+The generator writes dashboards under:
+
+```text
+/home/james/docker/data/monitoring/grafana/provisioning/
+    network-hosts-json/generated-hosts/
+```
+
+Each known MAC gets its own generated JSON file. Filenames contain a friendly-name slug plus a MAC-derived suffix, for example:
+
+```text
+james-lt-30f855.json
+light-bulb-7c7b80.json
+testserver-5a5144.json
+```
+
+The generated dashboards also use UIDs in the form:
+
+```text
+net-host-<digest>
+```
+
+This prevents the human-readable hostname alone from being the device identity.
+
+### The dashboard follows the MAC, not a fixed IP
+
+A key part of the design is that a generated host dashboard does not permanently hard-code the current DHCP address as its identity.
+
+The generated dashboard contains an IP variable which resolves the current address from Prometheus using the MAC, for example:
+
+```promql
+label_values(
+  homelab_network_device_info{mac="40:ED:00:7C:7B:80"},
+  ip
+)
+```
+
+So the relationship is:
+
+```text
+MAC address
+    |
+    +--> stable device identity
+    |
+    +--> Prometheus looks up current IP
+              |
+              v
+         Grafana panels
+```
+
+If DHCP changes the IP, the same generated host page can continue to follow the device through its MAC-backed inventory record.
+
+### Unknown device becomes a known device
+
+The naming process is also automatic.
+
+For a new MAC where only the OUI vendor is known, discovery may initially publish something such as:
+
+```text
+hostname="Unknown — Nintendo"
+```
+
+Later, the router's custom-client list, dnsmasq lease information, or a manual hostname override may identify the same MAC with a better name.
+
+On a later discovery pass:
+
+```text
+same MAC
+   |
+   +--> hostname updated in devices.json
+   |
+   +--> hostname label updated in Prometheus
+   |
+   +--> dashboard generator sees new friendly name
+   |
+   +--> generated dashboard metadata/title is refreshed
+```
+
+The important point is that **the MAC has not changed**, so the device remains the same logical inventory item even though its displayed name becomes more useful.
+
+### How Grafana picks up generated pages
+
+Grafana has a file-provisioning provider called `network-hosts`:
+
+```yaml
+providers:
+  - name: 'network-hosts'
+    orgId: 1
+    folder: 'Network Hosts'
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/network-hosts-json
+```
+
+The host path containing the generated JSON is mounted into Grafana's provisioning path. Grafana checks that location every 30 seconds.
+
+Therefore, after the dashboard generator creates or updates a JSON file, Grafana automatically imports the change into the **Network Hosts** folder.
+
+### Why the automation is useful
+
+This design means:
+
+- A new MAC can create its own Grafana host page without manual dashboard work.
+- Device identity is based around MAC rather than a transient DHCP address.
+- A changed IP does not require hand-editing a dashboard.
+- Friendly names can improve later without redefining the device.
+- Known devices remain in persistent discovery state even while offline.
+- Grafana provisioning automatically notices generated dashboard files.
+- The same dashboard design is applied consistently to every discovered host.
+
+## 9. Separation from Suricata and Pi-hole
 
 The home lab has multiple sources of network information, but they answer different questions.
 
@@ -195,19 +450,9 @@ Answers:
 
 > What are those devices doing on the network?
 
-Suricata observes mirrored network traffic and produces security and traffic telemetry such as:
+Suricata observes mirrored network traffic and produces security and traffic telemetry such as source IP, destination IP, protocol, signature, alert category, severity, and network activity.
 
-- Source IP.
-- Destination IP.
-- Protocol.
-- Signature.
-- Alert category.
-- Severity.
-- Network activity.
-
-Suricata writes `eve.json`, which is collected separately into Loki for security monitoring.
-
-Suricata is therefore complementary to discovery rather than being the authoritative discovery source.
+Suricata writes `eve.json`, which is collected separately into Loki for security monitoring. It is complementary to discovery rather than being the authoritative discovery source.
 
 ### Pi-hole
 
@@ -221,17 +466,40 @@ Pi-hole provides DNS activity and enforcement visibility, but it is not the auth
 
 | Component | Responsibility |
 |---|---|
-| Nmap | Actively discovers devices on the LAN |
-| ARP | Establishes local IP-to-MAC relationships |
-| `homelab-mac-watch` | Processes, classifies, and records discovery results |
-| systemd timer | Runs discovery regularly |
-| `.prom` textfile | Stores discovery metrics in Prometheus format |
-| Node Exporter | Exposes those metrics over HTTP |
-| Prometheus | Scrapes and stores the time-series data |
-| Grafana | Queries and displays the information |
+| Nmap / ARP | Actively discovers devices on the LAN |
+| `homelab-network-discovery.py` | Parses discovery, maintains MAC inventory, enriches names, and creates Prometheus metrics |
+| `devices.json` | Persistent MAC-keyed device state |
+| `homelab-network-discovery.timer` | Schedules network discovery |
+| `homelab_network_discovery.prom` | Prometheus textfile representation of the inventory |
+| Node Exporter | Exposes custom discovery metrics over HTTP |
+| Prometheus | Scrapes and stores the network inventory time series |
+| `homelab-network-host-dashboards.py` | Generates one Grafana dashboard JSON per discovered/known MAC |
+| `homelab-network-host-dashboards.timer` | Schedules regeneration of per-device dashboards |
+| `generated-hosts/` | Holds generated per-device Grafana JSON files |
+| Grafana `network-hosts` provider | Imports generated JSON into the `Network Hosts` folder |
+| Grafana | Displays discovery and per-device information |
 | Suricata | Observes network traffic and security events separately |
 | Pi-hole | Provides DNS-client, query, and blocking information separately |
 
 ## End-to-end summary
 
-The networking discovery dashboard gets its authoritative device-presence information from a scheduled Nmap ARP discovery of `192.168.2.0/24` on `ids-01`. `homelab-mac-watch` converts the results into Prometheus metrics, Node Exporter exposes them, Prometheus on TestServer stores them, and Grafana displays them.
+The system is split into two automated loops.
+
+**Discovery loop:**
+
+```text
+LAN -> Nmap/ARP -> homelab-network-discovery.py
+    -> Node Exporter -> Prometheus
+```
+
+**Dashboard-generation loop:**
+
+```text
+Prometheus homelab_network_device_info
+    -> homelab-network-host-dashboards.py
+    -> generated-hosts/*.json
+    -> Grafana file provisioning
+    -> Network Hosts
+```
+
+As a result, a new MAC address discovered on the LAN can move from first detection to a dedicated Grafana host page automatically, while subsequent hostname and IP changes continue to be associated with the same MAC-backed inventory identity.
