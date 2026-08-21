@@ -6,7 +6,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Active — priority order
 
-- Docker/WUD BAU check — DNS path is repaired; complete the actual image/update review.
+- Docker/WUD BAU check — DNS path is repaired and verified interactively; await one successful scheduled WUD scan with `0 errors`, then complete the actual image/update review.
 - Project: end-to-end Docker image version control — inventory declared vs running images, detect drift, define pinning/rollback policy, and integrate WUD as an update signal. Tracked in GitHub issue #9.
 - CPU/memory/disk/core services check.
 - Restore and verify Suricata 24-hour collection after the collection timeout.
@@ -27,7 +27,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Completed today
 
-- `ids-01` secondary Pi-hole / WUD DNS incident resolved and verified — `pihole-secondary` had failed to restart because Docker attempted to bind `192.168.2.242:53` before the Wi-Fi address was available. After the address was present, the Pi-hole container was recreated through Compose, restoring its `pihole-secondary_default` network attachment and `unbound#5335` resolution. The stale Compose pin was corrected back from `2026.04.1` to the previously running `2026.07.2`, eliminating the temporary FTL/SQLite schema errors. WUD was then recreated; Docker repopulated its embedded resolver with external servers `192.168.2.48` and `192.168.2.242`, and normal lookups of Docker Hub and GHCR now succeed with no new startup `EAI_AGAIN` errors.
+- `ids-01` secondary Pi-hole / WUD DNS incident resolved and verified interactively — `pihole-secondary` had failed to restart because Docker attempted to bind `192.168.2.242:53` before the Wi-Fi address was available. After the address was present, the Pi-hole container was recreated through Compose, restoring its `pihole-secondary_default` network attachment and `unbound#5335` resolution. The stale Compose pin was corrected back from `2026.04.1` to the previously running `2026.07.2`, eliminating the temporary FTL/SQLite schema errors. WUD was then recreated; Docker repopulated its embedded resolver with external servers `192.168.2.48` and `192.168.2.242`, and normal lookups of Docker Hub and GHCR now succeed with no new startup `EAI_AGAIN` errors. One successful scheduled WUD scan remains as the final BAU verification step.
 - Docker image version-control project raised as GitHub issue #9 after Dashy and Pi-hole maintenance exposed compose-to-runtime version drift and downgrade risk.
 - `k3s-node-01` Grafana APT repository migration — repo changed from `https://packages.grafana.com/oss/deb` to `https://apt.grafana.com`, now uses `signed-by=/etc/apt/keyrings/grafana.asc`, and `apt update` completes cleanly with all packages up to date. The older Grafana key remains in the legacy trusted keyring by choice; it is no longer used by the Grafana repo definition and no warning is produced.
 - TestServer Dashy update — deployment mismatch corrected from stale compose pin `4.5.10` while the running container was `4.5.12`; compose is now pinned to `lissy93/dashy:4.5.13`, the image was pulled and Dashy recreated successfully, container health is `healthy`, config validation passes, and Dashy reports version `4.5.13` up to date. Backup saved as `/home/james/docker/stacks/dashboards/docker-compose.yml.bak-20260821`.
@@ -57,7 +57,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Recommended next item
 
-Finish the Docker/WUD BAU image/update review, then begin the first deliverable for GitHub issue #9: an inventory of Compose-declared versus actually running Docker image versions on TestServer and `ids-01`.
+Confirm the next scheduled WUD scan completes with `0 errors`, finish the Docker/WUD image/update review, then begin the first deliverable for GitHub issue #9: an inventory of Compose-declared versus actually running Docker image versions on TestServer and `ids-01`.
 
 ## Documentation
 
