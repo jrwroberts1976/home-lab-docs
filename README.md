@@ -6,7 +6,6 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Active
 
-- Review/update Dashy `4.5.12 → 4.5.13` on TestServer.
 - Migrate the Grafana APT repository key on `k3s-node-01` out of the legacy `/etc/apt/trusted.gpg` keyring.
 - Docker/WUD BAU check.
 - CPU/memory/disk/core services check.
@@ -28,6 +27,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Completed today
 
+- TestServer Dashy update — deployment mismatch corrected from stale compose pin `4.5.10` while the running container was `4.5.12`; compose is now pinned to `lissy93/dashy:4.5.13`, the image was pulled and Dashy recreated successfully, container health is `healthy`, config validation passes, and Dashy reports version `4.5.13` up to date. Backup saved as `/home/james/docker/stacks/dashboards/docker-compose.yml.bak-20260821`.
 - TestServer deliberate reboot and post-maintenance validation completed successfully; host returned normally on kernel `6.18.39+rpt-rpi-v8`, `systemctl --failed` reported 0 failed units, Homepage, Uptime Kuma and Dashy all reached healthy state, and Dashy health checks returned HTTP 200 with valid configuration.
 - APT/security/reboot BAU completed across `ids-01`, TestServer, `k3s-node-01`, and DietPi; no host currently requires a reboot.
 - TestServer Zeek cleanup — confirmed Zeek is no longer required on this host, purged 10 Zeek-related packages, and freed approximately 321 MB.
@@ -54,7 +54,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Recommended next item
 
-Review Dashy `4.5.13`, then migrate the legacy Grafana APT key on `k3s-node-01` and continue with Docker/WUD and core host-health BAU checks.
+Migrate the legacy Grafana APT key on `k3s-node-01`, then continue with Docker/WUD and core host-health BAU checks.
 
 ## Documentation
 
