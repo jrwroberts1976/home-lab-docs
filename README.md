@@ -6,9 +6,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Active
 
-- Finish APT/security updates + reboot requirements across all hosts.
 - Migrate the Grafana APT repository key on `k3s-node-01` out of the legacy `/etc/apt/trusted.gpg` keyring.
-- Review TestServer's now-unused auto-removable packages left after Zeek removal before running `apt autoremove`.
 - Docker/WUD BAU check.
 - CPU/memory/disk/core services check.
 - Restore and verify Suricata 24-hour collection after the collection timeout.
@@ -29,9 +27,11 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Completed today
 
+- APT/security/reboot BAU completed across `ids-01`, TestServer, `k3s-node-01`, and DietPi; no host currently requires a reboot.
 - TestServer Zeek cleanup — confirmed Zeek is no longer required on this host, purged 10 Zeek-related packages, and freed approximately 321 MB.
+- TestServer Zeek dependency cleanup — `apt autoremove` removed 12 now-unused Zeek dependencies and freed a further 12.7 MB.
 - TestServer package updates — GitHub CLI upgraded `2.97.0 → 2.98.0` and Terraform upgraded `1.15.8 → 1.15.9`; no services, containers, sessions, or VMs require restart.
-- TestServer `needrestart` cleanup — disabled the unsupported processor-microcode hint check via `/etc/needrestart/conf.d/disable-microcode.conf`; subsequent `needrestart` run completed without the microcode warning and retained service/container/session restart checks.
+- TestServer `needrestart` cleanup — disabled the unsupported processor-microcode hint check via `/etc/needrestart/conf.d/raspberry-pi.conf`; subsequent `needrestart` run completed without the microcode warning and retained service/container/session restart checks.
 - DietPi Grafana APT repository removal — removed `/etc/apt/sources.list.d/grafana.list`; subsequent `apt update` completed cleanly, all packages are up to date, and no reboot is required.
 - `ids-01` APT/security check — all packages up to date; no reboot required.
 - `k3s-node-01` APT/security check — all packages up to date; no reboot required; legacy Grafana repository key warning captured as a follow-up task.
@@ -52,7 +52,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Recommended next item
 
-Review TestServer's auto-removable packages, then migrate the legacy Grafana APT key on `k3s-node-01` and continue with Docker/WUD and core host-health BAU checks.
+Migrate the legacy Grafana APT key on `k3s-node-01`, then continue with Docker/WUD and core host-health BAU checks.
 
 ## Documentation
 
