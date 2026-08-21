@@ -2,6 +2,10 @@
 
 This section contains repeatable operational procedures for running and supporting the homelab safely and consistently.
 
+## Current SOPs
+
+- [Log Ingestion and Grafana Alert Email Recovery](log-ingestion-and-grafana-email-recovery.md) — recovery and validation steps for Greenbone, Pi-hole/Unbound, CrowdSec/LAPI Loki ingestion and Grafana SMTP/Docker DNS failures.
+
 SOPs should be task-focused and include where relevant:
 
 - purpose and scope
