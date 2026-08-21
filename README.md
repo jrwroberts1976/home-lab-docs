@@ -7,7 +7,6 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 ### Active
 
 - Finish APT/security updates + reboot requirements across all hosts.
-- Remove the Grafana APT repository from DietPi, then rerun `apt update` and confirm the host is clean.
 - Migrate the Grafana APT repository key on `k3s-node-01` out of the legacy `/etc/apt/trusted.gpg` keyring.
 - Review and apply the 12 pending non-security package updates on TestServer, including Zeek `8.2.1 → 8.2.2`, GitHub CLI `2.97.0 → 2.98.0`, and Terraform `1.15.8 → 1.15.9`.
 - Docker/WUD BAU check.
@@ -30,10 +29,10 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Completed today
 
+- DietPi Grafana APT repository removal — removed `/etc/apt/sources.list.d/grafana.list`; subsequent `apt update` completed cleanly, all packages are up to date, and no reboot is required.
 - `ids-01` APT/security check — all packages up to date; no reboot required.
 - `k3s-node-01` APT/security check — all packages up to date; no reboot required; legacy Grafana repository key warning captured as a follow-up task.
 - TestServer security update check — no security-repository upgrades and no reboot required; 12 standard package updates remain pending review/application.
-- DietPi APT/reboot check — Debian, Debian security, Raspberry Pi and DietPi repositories refreshed and no reboot is required; Grafana APT repository refresh repeatedly failed with a `Packages` size/hash mismatch, so the repository is now scheduled for removal before final patch sign-off.
 - Legacy ASUS `192.168.2.220:9106` Prometheus scrape target reviewed, confirmed unused, removed from the active Prometheus configuration, configuration validated with `promtool`, and absence from active targets verified after reload.
 - Backup / integrity / restore / replica BAU check.
 - Greenbone daily vulnerability review.
@@ -50,7 +49,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Recommended next item
 
-Remove the Grafana APT repository from DietPi and rerun `apt update`, then review the pending TestServer package updates and continue with Docker/WUD and core host-health BAU checks.
+Review and apply the pending TestServer package updates, then migrate the legacy Grafana APT key on `k3s-node-01` and continue with Docker/WUD and core host-health BAU checks.
 
 ## Documentation
 
