@@ -9,6 +9,20 @@ This directory contains repository copies of operational scripts used by the hom
 | `deploy-blocked-mac-alert.sh` | `ids-01` | `/home/james/scripts/deploy-blocked-mac-alert.sh` — creates or updates the Grafana `blocked_mac_detected` alert through the provisioning API. Requires `GRAFANA_TOKEN` in the environment. |
 | `deploy-grafana-email-standard.sh` | Grafana host / management shell | `/home/james/scripts/deploy-grafana-email-standard.sh` — creates the reusable `homelab-email` notification template group and applies its subject/message templates to all Grafana email contact-point integrations. Requires `GRAFANA_TOKEN`. |
 
+## Related operational scripts not copied into this repository
+
+The Engineering Portfolio deployment and maintenance scripts are versioned with their owning application/runtime workflow rather than duplicated here.
+
+| Runtime host | Runtime path | Purpose |
+| --- | --- | --- |
+| `TestServer` | `/home/james/projects/engineering-portfolio/scripts/deploy-production.sh` | Guarded production deployment for `me.jrwroberts.co.uk`; enables maintenance mode, builds/recreates the application, waits for readiness, performs smoke tests and restores service on success. |
+| `TestServer` | `/home/james/docker/stacks/maintenance-page/enable-maintenance.sh` | Validates the expected Nginx Proxy Manager proxy host, starts/continues change control and routes the site to the maintenance container. |
+| `TestServer` | `/home/james/docker/stacks/maintenance-page/disable-maintenance.sh` | Completes change control and restores the normal `engineering-portfolio:80` upstream after validation. |
+
+The validated maintenance Compose/Nginx configuration is source-controlled in the dedicated `jrwroberts1976/homelab-container-version-control` project under `pilot/maintenance-page/`.
+
+Full operating detail is documented in [`engineering-portfolio-deployment.md`](../engineering-portfolio-deployment.md).
+
 ## Related repository assets
 
 The blocked-MAC watcher also has reproducible supporting files:
@@ -33,4 +47,4 @@ The common alert-email format is documented at:
 grafana-alert-email-standard.md
 ```
 
-Secrets are deliberately not stored in this repository. In particular, the ASUS SSH private key and Grafana API token remain external to Git.
+Secrets are deliberately not stored in this repository. In particular, the ASUS SSH private key, Grafana API token and Nginx Proxy Manager token remain external to Git.
