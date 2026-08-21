@@ -4,18 +4,18 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ## Current todo
 
-### Active
+### Active — priority order
 
 - Docker/WUD BAU check.
 - CPU/memory/disk/core services check.
 - Restore and verify Suricata 24-hour collection after the collection timeout.
 - Investigate CrowdSec reporting synchronisation / DNS resolution.
 - Add a Greenbone → Loki ingestion health check.
+- Suricata dashboard improvements.
 - Continue `projects.jrwroberts.co.uk` documentation.
 - Continue the homelab data dictionary.
 - Tapo → Grafana proof of concept.
 - Jenkins tests/docs.
-- Suricata dashboard improvements.
 - Portfolio/contact form.
 - Maintenance-page / NPM-token work.
 
@@ -54,7 +54,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Recommended next item
 
-Continue with the Docker/WUD BAU check, then core host-health BAU checks.
+Continue with the Docker/WUD BAU check, then the core host-health BAU check before returning to the security visibility follow-ups.
 
 ## Documentation
 
