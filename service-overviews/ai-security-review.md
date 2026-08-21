@@ -48,6 +48,13 @@ This provides security-relevant network IDS events for AI review.
 
 The DNS collector queries Loki for Pi-hole query and blocking records, including gravity-blocked and blocked-domain events. This evidence is used to distinguish observed DNS activity from confirmed blocking activity and to avoid claiming certainty when the source is unknown.
 
+The secondary Pi-hole and its Unbound resolver on `ids-01` now use Docker's `journald` logging driver. Alloy reads them by stable container name rather than hard-coded Docker container-ID JSON paths. This removes a container-recreation and file-permission failure mode while preserving the existing Loki jobs:
+
+```logql
+{job="pihole",host="ids-01"}
+{job="unbound",host="ids-01"}
+```
+
 ### Authentication / SSH
 
 The authentication collector analyses failed and successful login activity, including:
@@ -70,7 +77,38 @@ The CrowdSec collector queries three streams:
 {job="crowdsec-bouncer",host="ids-01"}
 ```
 
-These streams provide CrowdSec engine, Local API and firewall-bouncer evidence to the review. All three sources must be readable by Alloy and present in Loki for this evidence to be complete.
+These streams provide CrowdSec engine, Local API and firewall-bouncer evidence to the review. All three sources must be present in Loki for this evidence to be complete.
+
+On 21 August 2026 the CrowdSec agent and Local API ingestion path was migrated away from direct reads of `/var/log/crowdsec.log` and `/var/log/crowdsec_api.log`.
+
+CrowdSec now has:
+
+```yaml
+common:
+  log_media: syslog
+```
+
+in:
+
+```text
+/etc/crowdsec/config.yaml
+```
+
+Alloy reads the CrowdSec systemd journal and keeps `job="crowdsec"` as the base label. Observed Local API HTTP access lines using `/v1/` paths are relabelled to preserve the existing `job="crowdsec-api"` contract expected by the security reader and dashboards.
+
+Fresh post-restart `GET /v1/decisions/stream` traffic from the firewall bouncer was verified in Loki under `job="crowdsec-api"`. Some heartbeat traffic may remain in the generic `crowdsec` stream; this is classification noise rather than missing evidence.
+
+The firewall bouncer remains deliberately separate and file-based at:
+
+```text
+/var/log/crowdsec-firewall-bouncer.log
+```
+
+with:
+
+```text
+job="crowdsec-bouncer"
+```
 
 ### Syslog
 
@@ -196,11 +234,21 @@ curl -sG 'http://192.168.2.242:3100/loki/api/v1/query_range' \
   --data-urlencode 'direction=backward'
 ```
 
+To verify CrowdSec/LAPI evidence after logging changes:
+
+```logql
+{job="crowdsec",host="ids-01"}
+{job="crowdsec-api",host="ids-01"}
+{job="crowdsec-bouncer",host="ids-01"}
+```
+
+Use a narrow time range after the change so historical file-ingested data is not mistaken for proof that the live journal path is working.
+
 ## Data-quality principle
 
 The AI review is only as complete as the evidence available to its collectors. A configured collector does not prove that its underlying log stream is healthy. Loki ingestion permissions, source freshness and Prometheus collector health should therefore be monitored independently.
 
-For example, if `crowdsec-api` cannot be read by Alloy, the security reader can still execute but its CrowdSec API evidence will be incomplete.
+For example, if `crowdsec-api` is stale or absent in Loki, the security reader can still execute but its CrowdSec API evidence will be incomplete.
 
 ## Related components
 
@@ -208,8 +256,15 @@ For example, if `crowdsec-api` cannot be read by Alloy, the security reader can 
 /usr/local/bin/homelab-security-reader.py
 /usr/local/sbin/homelab-greenbone-ai-review
 /etc/alloy/config.alloy
+/etc/crowdsec/config.yaml
+/var/log/crowdsec-firewall-bouncer.log
 /var/lib/homelab-greenbone/reports/
+/home/james/docker/stacks/pihole-secondary/compose.yml
 Loki :3100
 Prometheus
 Grafana
 ```
+
+## Related SOP
+
+- [Log Ingestion and Grafana Alert Email Recovery](../sop/log-ingestion-and-grafana-email-recovery.md)
