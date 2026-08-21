@@ -1,8 +1,6 @@
-# Daily Homelab Actions Log
+# Daily Homelab Actions — 21 August 2026
 
 Operational follow-up notes from the automated daily homelab security and recovery emails.
-
-## 21 August 2026
 
 ### Daily Security Brief Review
 
