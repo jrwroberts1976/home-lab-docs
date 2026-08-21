@@ -2,6 +2,40 @@
 
 Technical documentation for the `jrwroberts1976` home lab, including infrastructure, monitoring, networking, security, automation, backups, and hosted services.
 
+## Current todo
+
+### Active
+
+- Review the stale/unverified ASUS `192.168.2.220:9106` Prometheus target.
+- Backups + integrity/replica BAU check.
+- APT/security updates + reboot requirements.
+- Docker/WUD BAU check.
+- Pi-hole/DNS health + block enforcement check.
+- Suricata meaningful overnight alerts.
+- CPU/memory/disk/core services check.
+- Fix the **High CPU Usage** Grafana alert rule error.
+- Continue `projects.jrwroberts.co.uk` documentation.
+- Continue the homelab data dictionary.
+- Tapo → Grafana proof of concept.
+- Jenkins tests/docs.
+- Suricata dashboard improvements.
+- Portfolio/contact form.
+- Maintenance-page / NPM-token work.
+
+### Completed
+
+- Blocked-MAC monitoring — completed, pending real trigger.
+- Standardised Grafana alert emails.
+- ASUS router monitoring path documented.
+- Network discovery source/path documented.
+- Important Scripts page created.
+- Scripts/config/systemd assets saved to `home-lab-docs`.
+- All recent documentation changes merged to `main`.
+
+### Recommended next item
+
+Fix the **High CPU Usage** Grafana alert rule. The email formatting is now standardised, but the rule itself still has the reduce/evaluation problem.
+
 ## Documentation
 
 - [Network Discovery Dashboard](network-discovery-dashboard.md) — LAN device discovery, persistent MAC inventory, friendly-name enrichment, Prometheus metrics, and automatic per-device Grafana dashboard creation.
