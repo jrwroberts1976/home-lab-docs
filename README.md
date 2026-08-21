@@ -6,7 +6,6 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Active
 
-- Review the stale/unverified ASUS `192.168.2.220:9106` Prometheus target.
 - APT/security updates + reboot requirements.
 - Docker/WUD BAU check.
 - CPU/memory/disk/core services check.
@@ -28,6 +27,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Completed today
 
+- Legacy ASUS `192.168.2.220:9106` Prometheus scrape target reviewed, confirmed unused, removed from the active Prometheus configuration, configuration validated with `promtool`, and absence from active targets verified after reload.
 - Backup / integrity / restore / replica BAU check.
 - Greenbone daily vulnerability review.
 - Pi-hole security-event review.
@@ -43,12 +43,12 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Recommended next item
 
-Review the stale/unverified ASUS `192.168.2.220:9106` Prometheus target, then continue with APT/security updates and the remaining BAU checks.
+Check APT/security updates and reboot requirements, then continue with Docker/WUD and core host-health BAU checks.
 
 ## Documentation
 
 - [Network Discovery Dashboard](network-discovery-dashboard.md) — LAN device discovery, persistent MAC inventory, friendly-name enrichment, Prometheus metrics, and automatic per-device Grafana dashboard creation.
-- [ASUS Router Monitoring](asus-router-monitoring.md) — confirmed router-health collector path on TestServer, systemd service ownership, Node Exporter textfile metrics, and the unresolved/legacy `:9106` scrape endpoint.
+- [ASUS Router Monitoring](asus-router-monitoring.md) — confirmed router-health collector path on TestServer, systemd service ownership, Node Exporter textfile metrics, and retirement of the legacy `192.168.2.220:9106` scrape target.
 - [Important Scripts](important-scripts.md) — operationally important scripts with an explicit Server / Host field, paths, purpose, inputs, outputs, and how each script is started.
 - [Blocked MAC Monitoring](blocked-mac-monitoring.md) — reusable ASUS-router log watcher on ids-01, watched-MAC configuration, systemd timer, Prometheus metrics, Grafana alerting, and test procedure.
 - [Grafana Alert Email Standard](grafana-alert-email-standard.md) — common homelab alert email subject/body format, reusable notification templates, and deployment procedure.
