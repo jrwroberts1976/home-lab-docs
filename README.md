@@ -1,6 +1,69 @@
 # Home Lab Documentation
 
-Technical documentation for the `jrwroberts1976` home lab, including infrastructure, monitoring, networking, security, automation, backups, and hosted services.
+Homelab SOPs, Service Continuity Plans (SCPs), and Service Overview documentation for operating, recovering and understanding the platform.
+
+This repository is the operational documentation source for the `jrwroberts1976` home lab. It covers infrastructure, monitoring, networking, security, automation, backups, hosted services, recovery procedures and day-to-day support.
+
+## Documentation model
+
+The repository is organised around three primary document types:
+
+### Standard Operating Procedures (SOPs)
+
+Repeatable operational procedures for running and supporting the homelab. SOPs answer **how do I do this safely and consistently?**
+
+Typical content includes:
+
+- deployments and maintenance procedures
+- patching and upgrade steps
+- alert handling and verification
+- operational checks
+- configuration changes
+- monitoring and troubleshooting procedures
+
+### Service Continuity Plans (SCPs)
+
+Recovery and continuity documentation for restoring services after failure or disruption. SCPs answer **how do I recover this service and prove it is healthy again?**
+
+Typical content includes:
+
+- recovery prerequisites
+- dependencies and recovery order
+- backup and restore procedures
+- rebuild steps
+- recovery validation
+- rollback and fallback options
+- recovery evidence and known limitations
+
+### Service Overviews
+
+High-level documentation explaining what each service is, why it exists, how it fits into the platform, and what controls protect it. Service Overviews answer **what is this service and how is it operated?**
+
+Each Service Overview should cover where relevant:
+
+- purpose and scope
+- architecture and components
+- service owner
+- users and consumers
+- dependencies
+- availability expectations
+- monitoring and alerting
+- backup and recovery requirements
+- security controls
+- change and maintenance considerations
+- links to related SOPs and SCPs
+
+Implementation-specific engineering projects such as `jenkins-gradle-delivery-lab` and `homelab-container-version-control` remain authoritative in their own repositories. This repository documents how those projects are operated, supported and recovered as part of the homelab service estate.
+
+Initial indexes are maintained under:
+
+```text
+sop/
+scp/
+service-overviews/
+```
+
+Existing operational documents remain valid and will be progressively classified into these sections without breaking established links.
 
 ## Current todo
 
@@ -16,6 +79,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 - Tapo → Grafana proof of concept.
 - Jenkins tests/docs.
 - Portfolio/contact form.
+- Engineering Portfolio README — replace the default Astro starter README with a project-specific README covering the site's purpose, architecture, deployment workflow and project links.
 
 ### Complete / pending verification
 
