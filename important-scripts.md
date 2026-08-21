@@ -164,6 +164,173 @@ ASUS routers
 
 This collector provides router-health telemetry only. It is not the source of LAN client MAC addresses or hostnames; those come from `homelab-network-discovery.py` on `ids-01`.
 
+---
+
+## `/usr/local/bin/watch-blocked-macs.py`
+
+**Server / Host:** `ids-01`
+
+**Repository copy:** [`scripts/watch-blocked-macs.py`](scripts/watch-blocked-macs.py)
+
+**Purpose:** Watch the main ASUS router syslog for any MAC addresses that are deliberately blocked or otherwise being monitored, and expose the latest detection time as Prometheus metrics.
+
+This exists because a device blocked by the Wi-Fi access list may never remain on the LAN long enough to be seen by the normal Nmap-based network-discovery scan, while the ASUS router can still record DHCP, authentication or association activity for that MAC.
+
+### Watched MAC configuration
+
+The watcher reads:
+
+```text
+/etc/homelab/blocked-macs.txt
+```
+
+Format:
+
+```text
+# MAC                  Friendly name
+BE:BA:54:D7:EC:6F     Unknown iPhone
+```
+
+One MAC can be added per line, so the watcher is reusable and does not require editing the Python script whenever another address needs monitoring.
+
+### Router input
+
+The watcher SSHes from `ids-01` to the main ASUS router at `192.168.2.1` using:
+
+```text
+/var/lib/homelab-network-discovery/asus_network_discovery
+```
+
+It searches:
+
+```text
+/tmp/syslog.log
+```
+
+for each configured MAC address.
+
+Relevant events can include:
+
+```text
+DHCPDISCOVER
+DHCPOFFER
+DHCPREQUEST
+DHCPACK
+AUTH
+ASSOC
+DEAUTH
+DISASSOC
+```
+
+The watcher uses the latest matching router-log line for each configured MAC.
+
+### Baseline behaviour
+
+On the first run, an existing historical router-log match is stored as the baseline and does **not** count as a fresh detection. This prevents old log entries from immediately triggering an alert when the watcher is first deployed.
+
+A later matching log line that differs from the stored baseline is recorded as a new detection.
+
+### Persistent state
+
+State is stored at:
+
+```text
+/var/lib/homelab-network-discovery/watched_macs_state.json
+```
+
+For each configured MAC this retains the latest matched log line, latest detection timestamp, event type, IP address and friendly name.
+
+### Local logging
+
+A fresh match is also sent to the local system log with tag:
+
+```text
+watched-mac
+```
+
+and message prefix:
+
+```text
+WATCHED_MAC_DETECTED
+```
+
+Failures to query the router are logged with:
+
+```text
+WATCHED_MAC_CHECK_FAILED
+```
+
+### Prometheus output
+
+The watcher writes:
+
+```text
+/var/lib/prometheus/node-exporter/watched_macs.prom
+```
+
+Metrics:
+
+```text
+homelab_watched_mac_watcher_up
+homelab_watched_mac_last_seen_timestamp_seconds
+```
+
+`homelab_watched_mac_watcher_up` is `1` when the most recent router-log query succeeded.
+
+`homelab_watched_mac_last_seen_timestamp_seconds` carries labels for:
+
+```text
+mac
+name
+router
+ip
+event
+```
+
+A value of `0` means no fresh detection has occurred since the watcher baseline was created.
+
+The confirmed initial metric for the currently watched MAC was:
+
+```text
+homelab_watched_mac_last_seen_timestamp_seconds{mac="BE:BA:54:D7:EC:6F",name="Unknown iPhone",router="192.168.2.1",ip="",event=""} 0
+```
+
+### Scheduler
+
+The watcher is intended to run as a systemd oneshot service:
+
+```text
+/etc/systemd/system/watch-blocked-macs.service
+```
+
+with:
+
+```text
+ExecStart=/usr/local/bin/watch-blocked-macs.py
+```
+
+and a recurring timer:
+
+```text
+/etc/systemd/system/watch-blocked-macs.timer
+```
+
+configured to run approximately once per minute.
+
+### Alert path
+
+```text
+ASUS router /tmp/syslog.log
+  -> watch-blocked-macs.py on ids-01
+  -> watched_macs_state.json
+  -> watched_macs.prom
+  -> Node Exporter textfile collector
+  -> Prometheus
+  -> Grafana alert
+```
+
+A Grafana alert can detect a recent event using the timestamp metric, for example by testing whether the last-seen timestamp is within a short window such as five minutes.
+
 ## Maintenance rule
 
 When adding another operational script to this page, always record at least:
