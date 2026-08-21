@@ -6,7 +6,6 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Active
 
-- Complete TestServer post-reboot validation by confirming Dashy transitions from `health: starting` to `healthy`; Homepage and Uptime Kuma are already healthy, all systemd units are clean, and overall load is falling after startup.
 - Review/update Dashy `4.5.12 → 4.5.13` on TestServer.
 - Migrate the Grafana APT repository key on `k3s-node-01` out of the legacy `/etc/apt/trusted.gpg` keyring.
 - Docker/WUD BAU check.
@@ -29,7 +28,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Completed today
 
-- TestServer deliberate reboot completed successfully as a post-maintenance validation step; host returned normally on kernel `6.18.39+rpt-rpi-v8`, `systemctl --failed` reported 0 failed units, Homepage recovered to healthy, Uptime Kuma recovered to healthy, and Dashy is serving HTTP 200 with valid configuration while Docker health remains in `starting` pending final confirmation.
+- TestServer deliberate reboot and post-maintenance validation completed successfully; host returned normally on kernel `6.18.39+rpt-rpi-v8`, `systemctl --failed` reported 0 failed units, Homepage, Uptime Kuma and Dashy all reached healthy state, and Dashy health checks returned HTTP 200 with valid configuration.
 - APT/security/reboot BAU completed across `ids-01`, TestServer, `k3s-node-01`, and DietPi; no host currently requires a reboot.
 - TestServer Zeek cleanup — confirmed Zeek is no longer required on this host, purged 10 Zeek-related packages, and freed approximately 321 MB.
 - TestServer Zeek dependency cleanup — `apt autoremove` removed 12 now-unused Zeek dependencies and freed a further 12.7 MB.
@@ -55,7 +54,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Recommended next item
 
-Confirm Dashy reaches healthy after the TestServer reboot, then review Dashy `4.5.13`, migrate the legacy Grafana APT key on `k3s-node-01`, and continue with Docker/WUD and core host-health BAU checks.
+Review Dashy `4.5.13`, then migrate the legacy Grafana APT key on `k3s-node-01` and continue with Docker/WUD and core host-health BAU checks.
 
 ## Documentation
 
