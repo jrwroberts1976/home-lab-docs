@@ -79,6 +79,7 @@ Existing operational documents remain valid and will be progressively classified
 - Tapo → Grafana proof of concept.
 - Jenkins tests/docs.
 - Portfolio/contact form.
+- Engineering Portfolio README — replace the default Astro starter README with a project-specific README covering the site's purpose, architecture, deployment workflow and project links.
 
 ### Complete / pending verification
 
