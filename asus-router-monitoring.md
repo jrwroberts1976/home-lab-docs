@@ -127,23 +127,33 @@ and writes:
 
 The existing network-discovery documentation records that MAC discovery is based on Nmap ARP discovery and that friendly names are enriched from the ASUS router client list and dnsmasq lease information.
 
-## Port 9106 finding
+## Legacy port 9106 scrape — retired
 
-Prometheus was observed with a target named `asus-router` pointing at:
+Prometheus previously contained a standalone scrape job named `asus-router` pointing at:
 
 ```text
 192.168.2.220:9106
 ```
 
-That target was `down` with a TCP timeout. Checks on TestServer showed:
+The target was verified as dead:
 
-- nothing listening on TCP port `9106`;
-- no Docker container exposing `9106`;
-- the router textfile metrics were nevertheless present and actively refreshing.
+- direct access to `http://192.168.2.220:9106/metrics` timed out;
+- Prometheus reported `up{job="asus-router"} = 0`;
+- repository/config searches found no dashboard, alert, or monitoring dependency on the `asus-router` job beyond the Prometheus configuration and backup copies;
+- the working ASUS health metrics continued to come from the TestServer textfile collector path documented above.
 
-This means the working textfile-based router-health path does not depend on the observed `:9106` endpoint.
+On 21 August 2026 the legacy `asus-router` scrape block was removed from the live Prometheus configuration. Before reload, `promtool check config` reported the configuration and rule files as valid. Prometheus was then reloaded, and verification showed:
 
-The `asus-router` scrape job on `:9106` should therefore be treated as **legacy or otherwise unverified** until its original purpose is confirmed. Do not remove it solely on the basis of this note; first inspect the active Prometheus configuration and any historical documentation.
+- no `asus-router` entry in `/api/v1/status/config`;
+- no active target with `job="asus-router"` in `/api/v1/targets`.
+
+An old `up{job="asus-router"}` sample briefly remained queryable after reload as stale historical series data; it was not an active scrape target.
+
+The pre-change Prometheus configuration was retained as:
+
+```text
+/home/james/docker/data/monitoring/prometheus/prometheus.yml.bak-20260821
+```
 
 ## Troubleshooting
 
@@ -171,6 +181,15 @@ Confirm where the output filename is configured:
 grep -n "asus_router_health.prom" /home/james/scripts/asus-router-temp.sh
 ```
 
+Confirm the retired scrape job has not reappeared:
+
+```bash
+curl -s http://localhost:9090/api/v1/targets \
+| jq '.data.activeTargets[] | select(.labels.job=="asus-router")'
+```
+
+Healthy result: no output.
+
 ## Data-dictionary entry
 
 | Field | Value |
@@ -185,4 +204,4 @@ grep -n "asus_router_health.prom" /home/james/scripts/asus-router-temp.sh
 | Key labels | `router`, `ip` |
 | MAC/hostname source | Not provided by this collector |
 | Related inventory collector | `/usr/local/bin/homelab-network-discovery.py` on `ids-01` |
-| `:9106` status | Down during verification; legacy/unverified path |
+| Legacy `:9106` status | Confirmed unused and removed from active Prometheus configuration on 2026-08-21 |
