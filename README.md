@@ -27,6 +27,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 ### Completed today
 
 - Core host-health BAU — no separate repeat SSH sweep required today; TestServer post-reboot service/container validation, all-host APT/security/reboot checks, and the existing Prometheus/Grafana host-health monitoring already cover the intended BAU verification.
+- Homelab Hardware Health dashboard documented — Loki-backed kernel/system log monitoring covers aggregate hardware health, disk/filesystem faults, CPU/memory/PCIe errors, thermal/panic events, trends and raw fault evidence with a default 24-hour view.
 - `ids-01` secondary Pi-hole / WUD DNS incident resolved and verified interactively — `pihole-secondary` had failed to restart because Docker attempted to bind `192.168.2.242:53` before the Wi-Fi address was available. After the address was present, the Pi-hole container was recreated through Compose, restoring its `pihole-secondary_default` network attachment and `unbound#5335` resolution. The stale Compose pin was corrected back from `2026.04.1` to the previously running `2026.07.2`, eliminating the temporary FTL/SQLite schema errors. WUD was then recreated; Docker repopulated its embedded resolver with external servers `192.168.2.48` and `192.168.2.242`, and normal lookups of Docker Hub and GHCR now succeed with no new startup `EAI_AGAIN` errors. One successful scheduled WUD scan remains as the final BAU verification step.
 - Docker image version-control project raised as GitHub issue #9 after Dashy and Pi-hole maintenance exposed compose-to-runtime version drift and downgrade risk.
 - `k3s-node-01` Grafana APT repository migration — repo changed from `https://packages.grafana.com/oss/deb` to `https://apt.grafana.com`, now uses `signed-by=/etc/apt/keyrings/grafana.asc`, and `apt update` completes cleanly with all packages up to date. The older Grafana key remains in the legacy trusted keyring by choice; it is no longer used by the Grafana repo definition and no warning is produced.
@@ -62,11 +63,12 @@ Continue with the Docker image version-control project inventory or, for BAU/sec
 ## Documentation
 
 - [Network Discovery Dashboard](network-discovery-dashboard.md) — LAN device discovery, persistent MAC inventory, friendly-name enrichment, Prometheus metrics, and automatic per-device Grafana dashboard creation.
+- [Homelab Hardware Health Dashboard](hardware-health-dashboard.md) — Loki-backed kernel and hardware fault monitoring for storage, filesystem, CPU/memory/PCIe, thermal/panic events and raw evidence.
 - [ASUS Router Monitoring](asus-router-monitoring.md) — confirmed router-health collector path on TestServer, systemd service ownership, Node Exporter textfile metrics, and retirement of the legacy `192.168.2.220:9106` scrape target.
 - [Important Scripts](important-scripts.md) — operationally important scripts with an explicit Server / Host field, paths, purpose, inputs, outputs, and how each script is started.
 - [Blocked MAC Monitoring](blocked-mac-monitoring.md) — reusable ASUS-router log watcher on ids-01, watched-MAC configuration, systemd timer, Prometheus metrics, Grafana alerting, and test procedure.
 - [Grafana Alert Email Standard](grafana-alert-email-standard.md) — common homelab alert email subject/body format, reusable notification templates, and deployment procedure.
-- [Daily Homelab Actions Log](daily-actions-log.md) — dated follow-up notes from the automated daily homelab security and recovery emails.
+- [Daily Homelab Actions](daily-actions/README.md) — dated operational follow-up notes, with each day stored in its own `YYYY-MM-DD` folder.
 
 ## Operational assets
 
