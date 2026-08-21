@@ -1,0 +1,6 @@
+[Unit]
+Description=Watch ASUS router logs for blocked MAC addresses
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/watch-blocked-macs.py
