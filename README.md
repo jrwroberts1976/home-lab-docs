@@ -7,7 +7,6 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 ### Active — priority order
 
 - Project: end-to-end Docker image version control — inventory declared vs running images, detect drift, define pinning/rollback policy, and integrate WUD as an update signal. Tracked in GitHub issue #9.
-- CPU/memory/disk/core services check.
 - Restore and verify Suricata 24-hour collection after the collection timeout.
 - Investigate CrowdSec reporting synchronisation / DNS resolution.
 - Add a Greenbone → Loki ingestion health check.
@@ -27,6 +26,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Completed today
 
+- Core host-health BAU — no separate repeat SSH sweep required today; TestServer post-reboot service/container validation, all-host APT/security/reboot checks, and the existing Prometheus/Grafana host-health monitoring already cover the intended BAU verification.
 - `ids-01` secondary Pi-hole / WUD DNS incident resolved and verified interactively — `pihole-secondary` had failed to restart because Docker attempted to bind `192.168.2.242:53` before the Wi-Fi address was available. After the address was present, the Pi-hole container was recreated through Compose, restoring its `pihole-secondary_default` network attachment and `unbound#5335` resolution. The stale Compose pin was corrected back from `2026.04.1` to the previously running `2026.07.2`, eliminating the temporary FTL/SQLite schema errors. WUD was then recreated; Docker repopulated its embedded resolver with external servers `192.168.2.48` and `192.168.2.242`, and normal lookups of Docker Hub and GHCR now succeed with no new startup `EAI_AGAIN` errors. One successful scheduled WUD scan remains as the final BAU verification step.
 - Docker image version-control project raised as GitHub issue #9 after Dashy and Pi-hole maintenance exposed compose-to-runtime version drift and downgrade risk.
 - `k3s-node-01` Grafana APT repository migration — repo changed from `https://packages.grafana.com/oss/deb` to `https://apt.grafana.com`, now uses `signed-by=/etc/apt/keyrings/grafana.asc`, and `apt update` completes cleanly with all packages up to date. The older Grafana key remains in the legacy trusted keyring by choice; it is no longer used by the Grafana repo definition and no warning is produced.
@@ -57,7 +57,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Recommended next item
 
-Begin the first deliverable for GitHub issue #9: an inventory of Compose-declared versus actually running Docker image versions on TestServer and `ids-01`. The Docker/WUD BAU check remains in pending verification until the next scheduled scan completes with `0 errors`.
+Continue with the Docker image version-control project inventory or, for BAU/security work, restore and verify the Suricata 24-hour collection. The Docker/WUD BAU check remains in pending verification until the next scheduled scan completes with `0 errors`.
 
 ## Documentation
 
