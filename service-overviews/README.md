@@ -2,6 +2,10 @@
 
 This section explains the services that make up the homelab, how they fit together, and how they are operated and protected.
 
+## Current service overviews
+
+- [AI Security Review](ai-security-review.md) — documents `homelab-security-reader.py`, its Loki and Prometheus evidence sources, the Greenbone AI review path, and ingestion-health requirements.
+
 Each Service Overview should cover where relevant:
 
 - purpose and scope
