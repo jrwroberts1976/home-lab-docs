@@ -6,7 +6,6 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Active — priority order
 
-- Docker/WUD BAU check — DNS path is repaired and verified interactively; await one successful scheduled WUD scan with `0 errors`, then complete the actual image/update review.
 - Project: end-to-end Docker image version control — inventory declared vs running images, detect drift, define pinning/rollback policy, and integrate WUD as an update signal. Tracked in GitHub issue #9.
 - CPU/memory/disk/core services check.
 - Restore and verify Suricata 24-hour collection after the collection timeout.
@@ -22,6 +21,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Complete / pending verification
 
+- Docker/WUD BAU check — DNS path repaired and verified interactively; pending one successful scheduled WUD scan with `0 errors`, then complete the image/update review.
 - **High CPU Usage Grafana alert rule** — reduce/threshold structure fixed and live; pending verification on the next real trigger.
 - Blocked-MAC monitoring — completed, pending real trigger.
 
@@ -57,7 +57,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Recommended next item
 
-Confirm the next scheduled WUD scan completes with `0 errors`, finish the Docker/WUD image/update review, then begin the first deliverable for GitHub issue #9: an inventory of Compose-declared versus actually running Docker image versions on TestServer and `ids-01`.
+Begin the first deliverable for GitHub issue #9: an inventory of Compose-declared versus actually running Docker image versions on TestServer and `ids-01`. The Docker/WUD BAU check remains in pending verification until the next scheduled scan completes with `0 errors`.
 
 ## Documentation
 
