@@ -89,7 +89,7 @@ if [[ "$EMAIL_COUNT" -eq 0 ]]; then
 fi
 
 while IFS= read -r CP; do
-  UID=$(jq -r '.uid' <<<"$CP")
+  CP_UID=$(jq -r '.uid' <<<"$CP")
   NAME=$(jq -r '.name' <<<"$CP")
 
   UPDATE_JSON=$(jq \
@@ -99,14 +99,14 @@ while IFS= read -r CP; do
      | .settings.subject = $subject
      | .settings.message = $message' <<<"$CP")
 
-  echo "Updating email contact point: ${NAME} (${UID})"
+  echo "Updating email contact point: ${NAME} (${CP_UID})"
   curl -fsS \
     -X PUT \
     -H "Authorization: Bearer ${GRAFANA_TOKEN}" \
     -H "Content-Type: application/json" \
     -H "X-Disable-Provenance: true" \
     -d "$UPDATE_JSON" \
-    "${GRAFANA_URL}/api/v1/provisioning/contact-points/${UID}" \
+    "${GRAFANA_URL}/api/v1/provisioning/contact-points/${CP_UID}" \
     | jq
   echo
 done < <(jq -c '.[] | select(.type == "email")' <<<"$CONTACT_POINTS")
