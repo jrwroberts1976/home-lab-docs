@@ -104,7 +104,6 @@ while IFS= read -r CP; do
     -X PUT \
     -H "Authorization: Bearer ${GRAFANA_TOKEN}" \
     -H "Content-Type: application/json" \
-    -H "X-Disable-Provenance: true" \
     -d "$UPDATE_JSON" \
     "${GRAFANA_URL}/api/v1/provisioning/contact-points/${CP_UID}" \
     | jq
