@@ -7,13 +7,12 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 ### Active
 
 - Review the stale/unverified ASUS `192.168.2.220:9106` Prometheus target.
-- Backups + integrity/replica BAU check.
 - APT/security updates + reboot requirements.
 - Docker/WUD BAU check.
-- Pi-hole/DNS health + block enforcement check.
-- Suricata meaningful overnight alerts.
 - CPU/memory/disk/core services check.
-- Fix the **High CPU Usage** Grafana alert rule error.
+- Restore and verify Suricata 24-hour collection after the collection timeout.
+- Investigate CrowdSec reporting synchronisation / DNS resolution.
+- Add a Greenbone → Loki ingestion health check.
 - Continue `projects.jrwroberts.co.uk` documentation.
 - Continue the homelab data dictionary.
 - Tapo → Grafana proof of concept.
@@ -22,19 +21,29 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 - Portfolio/contact form.
 - Maintenance-page / NPM-token work.
 
-### Completed
+### Complete / pending verification
 
+- **High CPU Usage Grafana alert rule** — reduce/threshold structure fixed and live; pending verification on the next real trigger.
 - Blocked-MAC monitoring — completed, pending real trigger.
+
+### Completed today
+
+- Backup / integrity / restore / replica BAU check.
+- Greenbone daily vulnerability review.
+- Pi-hole security-event review.
+- Linux Host Down incident reviewed and resolved.
+- Pi-hole Block Health incident reviewed and resolved.
 - Standardised Grafana alert emails.
 - ASUS router monitoring path documented.
 - Network discovery source/path documented.
 - Important Scripts page created.
 - Scripts/config/systemd assets saved to `home-lab-docs`.
-- All recent documentation changes merged to `main`.
+- Daily actions reorganised into dated folders.
+- Recent documentation changes merged to `main`.
 
 ### Recommended next item
 
-Fix the **High CPU Usage** Grafana alert rule. The email formatting is now standardised, but the rule itself still has the reduce/evaluation problem.
+Review the stale/unverified ASUS `192.168.2.220:9106` Prometheus target, then continue with APT/security updates and the remaining BAU checks.
 
 ## Documentation
 
