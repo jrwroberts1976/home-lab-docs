@@ -6,6 +6,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Active
 
+- Perform a deliberate TestServer reboot as a post-maintenance validation step, then verify the host and core services return cleanly.
 - Migrate the Grafana APT repository key on `k3s-node-01` out of the legacy `/etc/apt/trusted.gpg` keyring.
 - Docker/WUD BAU check.
 - CPU/memory/disk/core services check.
@@ -52,7 +53,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Recommended next item
 
-Migrate the legacy Grafana APT key on `k3s-node-01`, then continue with Docker/WUD and core host-health BAU checks.
+Complete the deliberate TestServer reboot and post-reboot validation, then migrate the legacy Grafana APT key on `k3s-node-01` and continue with Docker/WUD and core host-health BAU checks.
 
 ## Documentation
 
