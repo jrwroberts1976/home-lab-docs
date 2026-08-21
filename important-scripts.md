@@ -6,6 +6,8 @@ This page records home-lab scripts that are operationally important enough to kn
 
 **Server / Host:** `ids-01`
 
+**Repository copy:** [`scripts/homelab-network-discovery.py`](scripts/homelab-network-discovery.py)
+
 **Purpose:** Discover devices on the home LAN, keep a persistent inventory keyed by MAC address, enrich device names from the ASUS router, and expose the inventory as Prometheus metrics.
 
 ### Discovery input
@@ -168,6 +170,7 @@ When adding another operational script to this page, always record at least:
 
 - **Server / Host**
 - script path
+- repository copy, where one exists
 - purpose
 - inputs or upstream data source
 - output file, metric endpoint or log destination
