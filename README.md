@@ -6,7 +6,9 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Active
 
-- APT/security updates + reboot requirements.
+- Finish APT/security updates + reboot requirements across all hosts.
+- Migrate the Grafana APT repository key on `k3s-node-01` out of the legacy `/etc/apt/trusted.gpg` keyring.
+- Review and apply the 12 pending non-security package updates on TestServer, including Zeek `8.2.1 → 8.2.2`, GitHub CLI `2.97.0 → 2.98.0`, and Terraform `1.15.8 → 1.15.9`.
 - Docker/WUD BAU check.
 - CPU/memory/disk/core services check.
 - Restore and verify Suricata 24-hour collection after the collection timeout.
@@ -27,6 +29,9 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Completed today
 
+- `ids-01` APT/security check — all packages up to date; no reboot required.
+- `k3s-node-01` APT/security check — all packages up to date; no reboot required; legacy Grafana repository key warning captured as a follow-up task.
+- TestServer security update check — no security-repository upgrades and no reboot required; 12 standard package updates remain pending review/application.
 - Legacy ASUS `192.168.2.220:9106` Prometheus scrape target reviewed, confirmed unused, removed from the active Prometheus configuration, configuration validated with `promtool`, and absence from active targets verified after reload.
 - Backup / integrity / restore / replica BAU check.
 - Greenbone daily vulnerability review.
@@ -43,7 +48,7 @@ Technical documentation for the `jrwroberts1976` home lab, including infrastruct
 
 ### Recommended next item
 
-Check APT/security updates and reboot requirements, then continue with Docker/WUD and core host-health BAU checks.
+Complete the DietPi APT/security/reboot check, then review the pending TestServer package updates and continue with Docker/WUD and core host-health BAU checks.
 
 ## Documentation
 
