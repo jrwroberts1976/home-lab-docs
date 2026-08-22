@@ -45,7 +45,11 @@ rows.sort(key=lambda row: (
 ))
 for age,m,ts in rows:
     when=datetime.datetime.fromtimestamp(ts).astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
-    print(f"age={age:6.1f}s event={when} host={m.get('host','?')} category={m.get('category','?')} client={m.get('client','?')} domain={m.get('domain','?')}")
+    host=m.get("host","?")
+    category=m.get("category","?")
+    client=m.get("client","?")
+    domain=m.get("domain","?")
+    print(f"age={age:6.1f}s event={when} host={host} category={category} client={client} domain={domain}")
 ' "$NOW"
 
 printf '\n## Series count by host/category\n'
@@ -58,7 +62,10 @@ if not r:
 else:
     for x in sorted(r, key=lambda y:(y["metric"].get("host",""),y["metric"].get("category",""))):
         m=x["metric"]
-        print(f"host={m.get('host','?')} category={m.get('category','?')} active_series={x['value'][1]}")
+        host=m.get("host","?")
+        category=m.get("category","?")
+        value=x["value"][1]
+        print(f"host={host} category={category} active_series={value}")
 '
 
 printf '\n## Newest event age by host/category\n'
@@ -71,7 +78,10 @@ if not r:
 else:
     for x in sorted(r, key=lambda y:(y["metric"].get("host",""),y["metric"].get("category",""))):
         m=x["metric"]
-        print(f"host={m.get('host','?')} category={m.get('category','?')} newest_age_seconds={float(x['value'][1]):.1f}")
+        host=m.get("host","?")
+        category=m.get("category","?")
+        age=float(x["value"][1])
+        print(f"host={host} category={category} newest_age_seconds={age:.1f}")
 '
 
 printf '\nInterpretation:\n'
