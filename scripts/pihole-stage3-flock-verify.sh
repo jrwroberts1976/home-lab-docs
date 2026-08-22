@@ -8,8 +8,18 @@ LOCKFILE="/run/lock/pihole-query-metrics.lock"
 
 case "$ROLE" in
   ids01|dietpi) ;;
-  *) echo "Usage: $0 {ids01|dietpi}" >&2; exit 2 ;;
+  *) echo "Usage: sudo $0 {ids01|dietpi}" >&2; exit 2 ;;
 esac
+
+if [[ $EUID -ne 0 ]]; then
+  echo "ERROR: run this verifier as root: sudo $0 $ROLE" >&2
+  exit 2
+fi
+
+RUN_OUT="$(mktemp /tmp/pihole-flock-verify-run.XXXXXX)"
+RUN_ERR="$(mktemp /tmp/pihole-flock-verify-run.XXXXXX)"
+cleanup(){ rm -f "$RUN_OUT" "$RUN_ERR"; }
+trap cleanup EXIT
 
 fail=0
 ok(){ echo "PASS: $*"; }
@@ -33,21 +43,22 @@ else
     || bad "root cron is not using locked wrapper"
 fi
 
-# Functional run.
-if sudo "$WRAPPER" >/tmp/pihole-flock-verify-run.out 2>/tmp/pihole-flock-verify-run.err; then
+# Functional run. Unique temp files avoid stale ownership collisions from
+# earlier verifier runs.
+if "$WRAPPER" >"$RUN_OUT" 2>"$RUN_ERR"; then
   ok "wrapper executes collector successfully"
 else
   bad "wrapper functional run failed"
-  cat /tmp/pihole-flock-verify-run.err >&2 || true
+  cat "$RUN_ERR" >&2 || true
 fi
 
-# Concurrency proof: hold the lock ourselves and confirm the wrapper exits cleanly
-# instead of starting a second collector.
+# Concurrency proof: hold the lock ourselves and confirm the wrapper exits
+# cleanly instead of starting a second collector.
 exec 9>"$LOCKFILE"
 if flock -n 9; then
   start="$(date +%s)"
   set +e
-  output="$(sudo "$WRAPPER" 2>&1)"
+  output="$("$WRAPPER" 2>&1)"
   rc=$?
   set -e
   elapsed=$(( $(date +%s) - start ))
