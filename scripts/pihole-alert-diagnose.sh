@@ -36,9 +36,16 @@ for x in r:
     ts=float(x["value"][1])
     age=now-ts
     rows.append((age,m,ts))
-for age,m,ts in sorted(rows):
+rows.sort(key=lambda row: (
+    row[0],
+    row[1].get("host",""),
+    row[1].get("category",""),
+    row[1].get("client",""),
+    row[1].get("domain","")
+))
+for age,m,ts in rows:
     when=datetime.datetime.fromtimestamp(ts).astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
-    print(f"age={age:6.1f}s event={when} host={m.get(chr(104)+chr(111)+chr(115)+chr(116), chr(63))} category={m.get(chr(99)+chr(97)+chr(116)+chr(101)+chr(103)+chr(111)+chr(114)+chr(121), chr(63))} client={m.get(chr(99)+chr(108)+chr(105)+chr(101)+chr(110)+chr(116), chr(63))} domain={m.get(chr(100)+chr(111)+chr(109)+chr(97)+chr(105)+chr(110), chr(63))}")
+    print(f"age={age:6.1f}s event={when} host={m.get('host','?')} category={m.get('category','?')} client={m.get('client','?')} domain={m.get('domain','?')}")
 ' "$NOW"
 
 printf '\n## Series count by host/category\n'
@@ -51,7 +58,7 @@ if not r:
 else:
     for x in sorted(r, key=lambda y:(y["metric"].get("host",""),y["metric"].get("category",""))):
         m=x["metric"]
-        print(f"host={m.get(chr(104)+chr(111)+chr(115)+chr(116), chr(63))} category={m.get(chr(99)+chr(97)+chr(116)+chr(101)+chr(103)+chr(111)+chr(114)+chr(121), chr(63))} active_series={x[chr(118)+chr(97)+chr(108)+chr(117)+chr(101)][1]}")
+        print(f"host={m.get('host','?')} category={m.get('category','?')} active_series={x['value'][1]}")
 '
 
 printf '\n## Newest event age by host/category\n'
@@ -64,7 +71,7 @@ if not r:
 else:
     for x in sorted(r, key=lambda y:(y["metric"].get("host",""),y["metric"].get("category",""))):
         m=x["metric"]
-        print(f"host={m.get(chr(104)+chr(111)+chr(115)+chr(116), chr(63))} category={m.get(chr(99)+chr(97)+chr(116)+chr(101)+chr(103)+chr(111)+chr(114)+chr(121), chr(63))} newest_age_seconds={float(x[chr(118)+chr(97)+chr(108)+chr(117)+chr(101)][1]):.1f}")
+        print(f"host={m.get('host','?')} category={m.get('category','?')} newest_age_seconds={float(x['value'][1]):.1f}")
 '
 
 printf '\nInterpretation:\n'
