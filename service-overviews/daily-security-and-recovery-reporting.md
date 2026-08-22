@@ -2,136 +2,194 @@
 
 ## Purpose
 
-This page documents where the daily homelab security/recovery emails are generated, how they are scheduled, and which components should be reviewed when changing the report logic.
+This page documents where the daily homelab security/recovery emails are generated, how they are scheduled, their evidence flow, and which components should be changed when improving report quality.
 
 The two key emails are:
 
-- **Homelab Daily Security & Recovery Brief**
+- **Homelab Daily Security & Recovery Brief / management report**
 - **Homelab Engineering Security Runbook**
 
-## Current generator components
+The live execution paths below were confirmed on `ids-01` on 22 August 2026.
 
-### Core report-generation logic
+## Management report — confirmed execution chain
 
-The main report-generation logic is implemented in:
+The management report runs daily at **08:30**:
+
+```text
+homelab-secops-management-report.timer
+    -> homelab-secops-management-report.service
+    -> /usr/local/sbin/homelab-secops-management-report
+    -> /usr/local/sbin/homelab-secops-report
+    -> refresh evidence
+         -> /usr/local/sbin/homelab-secops-greenbone-evidence
+         -> /usr/local/sbin/homelab-secops-network-inventory
+         -> /usr/local/sbin/homelab-secops-pihole-evidence
+    -> /usr/local/lib/homelab-secops-report/generate_report.py
+    -> /var/lib/homelab-secops-report/reports/latest.md
+    -> /usr/local/lib/homelab-secops-report/generate_management_report.py
+    -> OpenAI Responses API
+    -> /var/lib/homelab-secops-report/management/latest.md
+```
+
+The systemd service loads the OpenAI API environment from:
+
+```text
+/etc/homelab-openai/api-key
+```
+
+and currently sets:
+
+```text
+OPENAI_MANAGEMENT_MODEL=gpt-5.6-terra
+```
+
+The management generator uses the technical report at:
+
+```text
+/var/lib/homelab-secops-report/reports/latest.md
+```
+
+as its authoritative source. Its prompt explicitly requires the generated management report to preserve the technical report's overall posture and `GOOD`, `ATTENTION`, and `ACTION REQUIRED` states.
+
+### Consequence
+
+Incorrect underlying classification should normally be fixed in the technical report/evidence path first, particularly:
+
+```text
+/usr/local/lib/homelab-secops-report/generate_report.py
+```
+
+The management prompt should not be used to silently reinterpret or override incorrect technical evidence.
+
+## Engineering Security Runbook — confirmed execution chain
+
+The engineering runbook email is sent daily at **07:45**:
+
+```text
+homelab-greenbone-engineering-email.timer
+    -> homelab-greenbone-engineering-email.service
+    -> /usr/local/sbin/homelab-greenbone-engineering-email
+    -> reads /var/lib/homelab-greenbone/reports/latest.md
+    -> extracts from "## Priority Summary"
+       up to "## Network IDS — Suricata"
+    -> converts Markdown to HTML
+    -> sends through msmtp
+```
+
+The email sender is therefore **not the engineering analysis generator**. It formats and sends an already-generated section of the Greenbone security report.
+
+The subject is generated as:
+
+```text
+Homelab Engineering Security Runbook - <date>
+```
+
+SMTP configuration is read from:
+
+```text
+/etc/homelab-greenbone/msmtprc
+/etc/homelab-greenbone/smtp.env
+```
+
+## Greenbone AI review — confirmed upstream path
+
+The Greenbone AI review runs daily at **07:30**, with up to five minutes of randomized delay:
+
+```text
+homelab-greenbone-ai-review.timer
+    -> homelab-greenbone-ai-review.service
+    -> /usr/local/sbin/homelab-greenbone-ai-review
+```
+
+`/usr/local/bin/homelab-security-reader.py` directly references:
+
+```text
+/var/lib/homelab-greenbone/reports/latest.md
+```
+
+and contains the security/operational-risk prompt logic. It is therefore a primary component to inspect when changing the engineering runbook's classification and priority logic.
+
+The engineering email runs after the AI review service, providing the intended sequence:
+
+```text
+07:30 Greenbone AI review
+    -> generate/update Greenbone latest.md
+07:45 engineering email
+    -> extract Priority Summary
+    -> email runbook
+```
+
+## Two report-generation brains
+
+The main logic requiring review is now narrowed to two components:
+
+### Technical SecOps / management source of truth
+
+```text
+/usr/local/lib/homelab-secops-report/generate_report.py
+```
+
+This controls the technical report that the management generator is required to trust.
+
+### Engineering runbook / Greenbone interpretation
 
 ```text
 /usr/local/bin/homelab-security-reader.py
 ```
 
-Relevant sections found during discovery include text around:
+This controls security/operational interpretation feeding the Greenbone report and engineering runbook.
+
+## Management generator
+
+The management transformation is implemented in:
 
 ```text
-You are preparing the daily security and operational risk report
-# Daily Security & Operational Risk Report
+/usr/local/lib/homelab-secops-report/generate_management_report.py
 ```
 
-This script should be treated as the primary candidate for changing how evidence is interpreted and how GREEN / AMBER / RED or engineering priorities are derived.
+It calls the OpenAI Responses API and writes the management report. Important existing prompt rules include:
 
-## Management brief path
+- use only facts from the supplied technical report;
+- do not invent, infer, exaggerate, downgrade, or alter findings;
+- preserve the overall security posture exactly;
+- preserve `GOOD`, `ATTENTION`, and `ACTION REQUIRED` states exactly;
+- distinguish active findings, accepted risks, pending remediation, and evidence limitations;
+- successful backup/replication is not proof of tested restoration;
+- DNS requests must not be presented as deliberate user activity without evidence.
 
-The daily management-style brief is associated with:
+This is good separation of responsibilities, but it means the technical source must classify missing and degraded evidence correctly.
 
-```text
-homelab-secops-management-report.timer
-homelab-secops-management-report.service
-```
+## Current reporting problems identified on 22 August 2026
 
-Observed schedule on 22 August 2026:
+The reports were found capable of understating operational risk by treating the absence of compromise as too close to overall operational health.
 
-```text
-08:30 BST daily
-```
+Examples identified during the review:
 
-The service definition should be inspected with:
-
-```bash
-systemctl cat homelab-secops-management-report.service
-systemctl cat homelab-secops-management-report.timer
-```
-
-Recent execution evidence can be checked with:
-
-```bash
-journalctl -u homelab-secops-management-report.service --since "24 hours ago" --no-pager -l
-```
-
-## Engineering runbook path
-
-The engineering runbook email is associated with:
-
-```text
-homelab-greenbone-engineering-email.timer
-homelab-greenbone-engineering-email.service
-```
-
-The timer description is:
-
-```text
-Daily engineering security runbook email
-```
-
-The service description is:
-
-```text
-Email engineering security runbook
-```
-
-Inspect with:
-
-```bash
-systemctl cat homelab-greenbone-engineering-email.service
-systemctl cat homelab-greenbone-engineering-email.timer
-```
-
-Recent execution evidence can be checked with:
-
-```bash
-journalctl -u homelab-greenbone-engineering-email.service --since "24 hours ago" --no-pager -l
-```
-
-## Related daily security components
-
-The host also contains these related units:
-
-```text
-security-review.timer
-security-review.service
-homelab-greenbone-ai-review.timer
-homelab-greenbone-email.timer
-homelab-secops-report.timer
-homelab-secops-report.service
-```
-
-These may contribute source evidence or generate related reports. They should not be modified until their role in the data flow is confirmed.
-
-## Current reporting problem identified on 22 August 2026
-
-The daily reports can understate operational risk by treating the absence of compromise as equivalent to overall operational health.
-
-Examples found during the 22 August review included:
-
-- backup job results reported as unavailable without becoming engineering actions;
-- off-host replica health reported as unknown but not promoted into the work queue;
-- backup storage health reported as unknown but not treated as degraded visibility;
+- backup job results were reported as unavailable without becoming engineering actions;
+- off-host replica health was `UNKNOWN` but was not promoted into the work queue;
+- backup storage health was `UNKNOWN` but was not treated as degraded visibility;
 - a failed Pi-hole blocklist collector existed while high-level reporting still described Pi-hole collection as available;
-- a transient CrowdSec local API refusal was correctly identified as an engineering P2;
-- a non-applicable OpenIPMI service failure added noise to the host failure state.
+- a transient CrowdSec local API refusal was correctly identified as an engineering P2 and was subsequently verified as recovered;
+- the Pi-hole blocklist collector on `ids-01` was writing to the wrong node-exporter textfile directory and has now been corrected;
+- a non-applicable OpenIPMI service produced failed-unit noise and has now been disabled/masked on `ids-01`;
+- after remediation, `ids-01` had zero failed systemd units.
 
 ## Reporting rules to implement
 
 Future report-generation logic should follow these principles:
 
 1. **UNKNOWN is not HEALTHY.** Missing or unavailable evidence must be represented explicitly.
-2. **No compromise does not mean no incident.** Security posture and operational resilience must be scored separately.
-3. **Freshness matters.** A timer or service existing is not enough; collector output must be fresh and successfully scraped.
-4. **Failed units must be classified.** Actionable service failures should affect the report; intentionally masked/non-applicable services should not.
-5. **Backup status must distinguish PASS / FAIL / UNKNOWN.** Unknown backup, replica or storage state should produce at least a planned engineering action unless intentionally suppressed.
-6. **Overall status should be derived from the worst meaningful unresolved condition**, not solely from security-compromise evidence.
+2. **No compromise does not mean no operational problem.** Security posture and operational resilience must be assessed separately.
+3. **Freshness matters.** A timer or service existing is not sufficient; collector output must be fresh and successfully exposed/scraped.
+4. **Failed units must be classified.** Actionable failures should affect the report; intentionally masked or non-applicable services should not.
+5. **Backup status must distinguish PASS / FAIL / UNKNOWN.** Unknown backup, replica, restore, or storage state should create an evidence limitation and normally at least a planned engineering action.
+6. **Monitoring integrity is itself a control.** A failed collector can invalidate apparently healthy downstream results.
+7. **Overall status should reflect the worst meaningful unresolved condition**, not solely compromise or vulnerability evidence.
+8. **Evidence limitations must be visible.** Missing data must not silently disappear from priority/action sections.
 
 ## Recommended report dimensions
 
-The management brief should independently assess:
+The management report should independently assess:
 
 - Security posture
 - DNS / policy enforcement
@@ -143,10 +201,46 @@ The engineering runbook should classify findings as:
 
 - **P1** — active outage, compromise, or critical protection/recovery failure
 - **P2** — degraded resilience/control requiring investigation today
-- **P3** — improvement, monitoring gap, or recovery risk requiring planned work
+- **P3** — improvement, monitoring gap, evidence limitation, or recovery risk requiring planned work
 - **HEALTHY** — positively verified control with sufficient current evidence
 
-## Discovery commands
+`HEALTHY` must require affirmative and sufficiently fresh evidence; it must not be inferred merely because no failure was observed.
+
+## Useful inspection commands
+
+### Management path
+
+```bash
+systemctl cat homelab-secops-management-report.service
+systemctl cat homelab-secops-management-report.timer
+sudo sed -n '1,320p' /usr/local/sbin/homelab-secops-management-report
+sudo sed -n '1,320p' /usr/local/sbin/homelab-secops-report
+sudo sed -n '1,360p' /usr/local/lib/homelab-secops-report/generate_management_report.py
+```
+
+### Engineering path
+
+```bash
+systemctl cat homelab-greenbone-ai-review.service
+systemctl cat homelab-greenbone-ai-review.timer
+systemctl cat homelab-greenbone-engineering-email.service
+systemctl cat homelab-greenbone-engineering-email.timer
+sudo sed -n '1,320p' /usr/local/sbin/homelab-greenbone-engineering-email
+```
+
+### Locate report readers/writers
+
+```bash
+sudo grep -Rni \
+  '/var/lib/homelab-greenbone/reports/latest.md' \
+  /usr/local/bin \
+  /usr/local/sbin \
+  /usr/local/lib \
+  /etc/systemd/system \
+  2>/dev/null
+```
+
+## Discovery script
 
 A reusable discovery script is stored in the docs repository:
 
@@ -154,7 +248,7 @@ A reusable discovery script is stored in the docs repository:
 scripts/find-daily-brief-generators.sh
 ```
 
-Run on ids-01 with:
+Run on `ids-01` with:
 
 ```bash
 cd ~/projects/home-lab-docs
@@ -162,34 +256,13 @@ git pull
 sudo bash scripts/find-daily-brief-generators.sh
 ```
 
-The script searches for:
+## Next engineering work
 
-- exact and likely report titles;
-- systemd services and timers;
-- cron references;
-- mail-sending logic;
-- likely evidence-source references.
-
-## Next investigation
-
-Before modifying report logic, capture the exact execution chain for each report:
-
-```bash
-systemctl cat homelab-secops-management-report.service
-systemctl cat homelab-secops-management-report.timer
-systemctl cat homelab-greenbone-engineering-email.service
-systemctl cat homelab-greenbone-engineering-email.timer
-```
-
-Then inspect the invoked scripts and trace their inputs back to `/usr/local/bin/homelab-security-reader.py` or any intermediate files.
-
-The final documented flow should be expressed as:
+Before changing tomorrow's reports, inspect and document the classification logic in:
 
 ```text
-collector/evidence sources
-    -> security review / aggregation
-    -> homelab-security-reader.py
-    -> management brief generator
-    -> engineering runbook generator
-    -> email sender
+/usr/local/lib/homelab-secops-report/generate_report.py
+/usr/local/bin/homelab-security-reader.py
 ```
+
+The objective is not simply to make the reports more pessimistic. The objective is to make them evidence-correct: verified healthy controls remain green, genuine failures become actions, and missing/stale evidence is represented explicitly rather than being interpreted as health.
