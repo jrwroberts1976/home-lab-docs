@@ -48,7 +48,7 @@ Architecture decision: do not mount the live Pi-hole SQLite database over NFS fo
 
 ## Backup incident — TestServer Restic backup failure
 
-**Status:** RECOVERY IN PROGRESS
+**Status:** RECOVERED — MONITORING ADDED AND TESTED
 
 ### Detection
 
@@ -96,11 +96,77 @@ After recreation:
 - TestServer successfully connected to `https://192.168.2.242:8000/` over TLS.
 - An unauthenticated curl returned HTTP 401, confirming the REST server was reachable and enforcing authentication.
 - Restic successfully opened repository `0b1d890a` and listed the latest TestServer snapshot `fb4d01ba` from 21 August 2026 03:33:54.
+- `homelab-backup-testserver.service` was manually rerun at 06:22 BST and completed successfully at 06:23:53 BST with exit status 0.
+- Grafana subsequently sent `Backup Failed` RESOLVED at approximately 06:43 BST.
 
-### Outstanding actions
+### Restic service health monitoring added
 
-- [ ] Manually rerun `homelab-backup-testserver.service` and confirm a new successful snapshot is created.
-- [ ] Confirm `homelab_backup_success` returns to `1` and the Grafana `Backup Failed` alert resolves.
+A dedicated Restic REST-server health collector was installed on ids-01. It checks:
+
+- Docker container running state.
+- Docker port 8000 publication.
+- TCP/8000 listening state.
+- Local HTTPS reachability; HTTP 401 is accepted as healthy because it proves TLS/service availability and authentication enforcement.
+- Overall service health.
+
+The collector writes Prometheus textfile metrics including:
+
+```text
+homelab_restic_server_up
+homelab_restic_server_container_up
+homelab_restic_server_port_published
+homelab_restic_server_port_listening
+homelab_restic_server_https_reachable
+homelab_restic_server_health_timestamp_seconds
+```
+
+`prometheus-node-exporter` on ids-01 was running without a textfile collector directory configured. `/etc/default/prometheus-node-exporter` was updated to use:
+
+```text
+--collector.textfile.directory=/var/lib/node_exporter/textfile_collector
+```
+
+After restarting node-exporter, the Restic metrics became visible on port 9100 and in Prometheus. `homelab_restic_server_up{host="ids-01",service="restic-server"}` returned `1`.
+
+The collector is scheduled every minute with:
+
+```text
+restic-server-health.timer
+restic-server-health.service
+```
+
+### Grafana alerts added
+
+Two critical backup-infrastructure alerts were deployed:
+
+1. **Restic Server Down** (`restic_server_down`)
+   - Detects `homelab_restic_server_up < 1`.
+   - `for: 2m`.
+   - Intended to detect an actual Restic container/port/HTTPS service failure before scheduled backups run.
+
+2. **Restic Health Check Stale** (`restic_health_check_stale`)
+   - Detects a health timestamp older than five minutes or missing health data.
+   - `for: 2m`.
+   - `noDataState: Alerting` so loss of the collector itself is actionable.
+
+### Controlled stale-alert test
+
+At 06:37:13 BST, `restic-server-health.timer` was deliberately stopped while the Restic server itself remained online. The health metric aged naturally past the 300-second stale threshold.
+
+Grafana successfully sent:
+
+```text
+⚠️ [FIRING] Restic Health Check Stale — ids-01
+```
+
+at 06:44:59 BST, proving the collector → node-exporter → Prometheus → Grafana → Gmail alert path.
+
+The timer and service were restarted at 06:46:50 BST. The service exited `0/SUCCESS`, rewrote `/var/lib/node_exporter/textfile_collector/homelab_restic_server_health.prom`, and node-exporter exposed the refreshed timestamp. Final RESOLVED-email confirmation remains to be checked.
+
+### Remaining follow-up
+
+- [ ] Confirm the `Restic Health Check Stale` RESOLVED email after the controlled test.
+- [ ] Perform a controlled test of `Restic Server Down` when convenient, without risking a scheduled backup window.
 - [ ] Investigate why `restic-server` was cleanly stopped despite `restart: unless-stopped`.
 - [ ] Investigate why Docker retained the configured port binding while the live `NetworkSettings.Ports` mapping was empty until container recreation.
 - [ ] Review recurring Docker `Error streaming logs: invalid character '\x00'` messages separately; do not conflate them with this backup failure unless evidence links them.
