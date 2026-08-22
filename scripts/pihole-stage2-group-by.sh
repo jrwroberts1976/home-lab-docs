@@ -53,8 +53,6 @@ for j,x in enumerate(block):
         break
 if insert is None:
     raise SystemExit("ERROR: repeat_interval not found in Pi-hole route")
-# Preserve each alert instance as its own notification group. Grafana's special
-# group_by value '...' disables label grouping and groups by all labels.
 block[insert:insert]=[
     "        group_by:\n",
     "          - '...'\n",
@@ -66,12 +64,14 @@ PY
 echo "Target: $FILE"
 echo ""
 echo "Proposed diff:"
-diff -u "$FILE" "$TMP" || true
-
+DIFF="$(diff -u "$FILE" "$TMP" || true)"
+printf '%s\n' "$DIFF"
 echo ""
+
 # Safety: require exactly two added YAML lines and no removals.
-ADDED="$(diff -u "$FILE" "$TMP" | grep '^+' | grep -v '^+++' | wc -l | tr -d ' ')"
-REMOVED="$(diff -u "$FILE" "$TMP" | grep '^-' | grep -v '^---' | wc -l | tr -d ' ')"
+# Use awk rather than grep pipelines so a zero-match count does not trip set -e.
+ADDED="$(printf '%s\n' "$DIFF" | awk '/^\+/ && !/^\+\+\+/ {c++} END {print c+0}')"
+REMOVED="$(printf '%s\n' "$DIFF" | awk '/^-/ && !/^---/ {c++} END {print c+0}')"
 if [[ "$ADDED" != "2" || "$REMOVED" != "0" ]]; then
   echo "ERROR: unexpected diff (added=$ADDED removed=$REMOVED); refusing." >&2
   exit 1
