@@ -74,7 +74,14 @@ last_run="$(cat "$STATE_DIR/last_run_success" 2>/dev/null || echo 0)"
 
 if command -v curl >/dev/null 2>&1 && curl -fsS http://localhost:9100/metrics >/dev/null 2>&1; then
   NODE_METRICS="$(curl -fsS http://localhost:9100/metrics)"
-  printf '%s\n' "$NODE_METRICS" | grep -q 'homelab_pihole_collector_last_success_timestamp_seconds' && ok "node-exporter exposes Stage 4 metrics" || bad "node-exporter does not expose Stage 4 metrics"
+  # Use a here-string rather than a pipe. With `set -o pipefail`, `grep -q`
+  # can make the producer exit on SIGPIPE after an early match, creating a
+  # false-negative even though the metric is present.
+  if grep -q 'homelab_pihole_collector_last_success_timestamp_seconds' <<<"$NODE_METRICS"; then
+    ok "node-exporter exposes Stage 4 metrics"
+  else
+    bad "node-exporter does not expose Stage 4 metrics"
+  fi
 else
   echo "INFO: localhost:9100 unavailable here; skip direct node-exporter check"
 fi
