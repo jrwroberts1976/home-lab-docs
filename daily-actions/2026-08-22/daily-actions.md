@@ -2,39 +2,86 @@
 
 Planned follow-up work carried forward from 21 August 2026.
 
-## Priority 1 — Pi-hole policy alert latency improvement
+## Priority 1 — Fix daily security and engineering report truth
 
-**Status:** COMPLETE
+**Status:** OPEN — HIGHEST PRIORITY
 
-- [x] Record and back up the current Grafana alert and notification-policy configuration.
-- [x] Change the Pi-hole policy-category notification `group_interval` from `5m` to `30s`.
-- [x] Reload/restart Grafana and verify provisioning is clean.
-- [x] Run timestamped end-to-end tests through Pi-hole 1 / DietPi.
-- [x] Keep the existing 300-second policy-event lookback while tuning.
-- [x] Add a Pi-hole route-local `group_by: ['...']` so distinct alert instances are not folded into the broad parent notification group.
-- [x] Confirm duplicate/repeated FIRING emails are no longer occurring for the same distinct alert instance.
+The two report-generation components below are now the primary engineering priority because the Daily Security & Recovery Brief and Engineering Security Runbook can understate operational risk when evidence is missing, stale or incorrectly classified.
 
-Final controlled DietPi gambling test:
+### Primary targets
 
-- DNS request: 06:08:18 BST
-- Pi-hole event: 06:09:00 BST — 42 seconds
-- Prometheus visible: 06:09:25 BST — 67 seconds total
-- Grafana local notifier: 06:09:48.9 BST — approximately 91 seconds total
-- Matching Gmail alert: 06:09:50 BST — approximately 92 seconds end-to-end
-- Result: improved from the 21 August baseline of 3m04s to approximately 1m32s.
+1. `/usr/local/lib/homelab-secops-report/generate_report.py`
+   - Controls the authoritative technical report that feeds the management brief.
+   - Review how evidence is collected, classified and converted into operational states.
+   - Ensure missing, stale or unavailable evidence cannot silently become healthy.
+   - Separate security-compromise status from operational resilience and monitoring integrity.
 
-Architecture decision: do not mount the live Pi-hole SQLite database over NFS for Grafana. Keep database reads local to each Pi-hole node and export the required metrics.
+2. `/usr/local/bin/homelab-security-reader.py`
+   - Drives the Greenbone engineering security review/runbook evidence and AI interpretation.
+   - Review priority classification and handling of UNKNOWN, stale and incomplete evidence.
+   - Ensure engineering P1/P2/P3 findings reflect genuine unresolved operational risk.
+
+### Required reporting rules
+
+- **UNKNOWN is not HEALTHY.** Missing or unavailable evidence must be represented explicitly.
+- **No compromise does not mean no incident.** Security posture and operational resilience must be scored separately.
+- **Freshness matters.** A timer or service existing is not enough; collector output must be fresh and successfully scraped.
+- **Failed units must be classified.** Actionable service failures should affect the report; intentionally masked/non-applicable services should not.
+- **Backup status must distinguish PASS / FAIL / UNKNOWN.** Unknown backup, replica or storage state should produce at least a planned engineering action unless intentionally suppressed.
+- **Overall status should be derived from the worst meaningful unresolved condition**, not solely from security-compromise evidence.
+- **Monitoring failures are operational findings.** A broken collector or stale metric path must not be hidden by a healthy high-level service state.
+
+### Validation targets
+
+The revised generators must correctly represent the conditions discovered during the 22 August review:
+
+- Pi-hole blocklist collector path failure must be visible when present.
+- Stale or unavailable backup/replica/storage evidence must become an explicit engineering finding.
+- CrowdSec transient API failures must be classified according to whether they remain unresolved.
+- Non-applicable services such as masked OpenIPMI must not create false host failures.
+- A clean security posture must not automatically produce an overall GREEN when recovery or monitoring evidence is degraded.
+
+### Report architecture confirmed
+
+```text
+08:30
+homelab-secops-management-report.timer
+  -> homelab-secops-management-report.service
+  -> /usr/local/sbin/homelab-secops-management-report
+  -> /usr/local/sbin/homelab-secops-report
+  -> /usr/local/lib/homelab-secops-report/generate_management_report.py
+  -> management/latest.md
+```
+
+```text
+07:30
+homelab-greenbone-ai-review.timer
+  -> homelab-greenbone-ai-review.service
+  -> /usr/local/sbin/homelab-greenbone-ai-review
+  -> /usr/local/bin/homelab-security-reader.py
+  -> /var/lib/homelab-greenbone/reports/latest.md
+
+07:45
+homelab-greenbone-engineering-email.timer
+  -> homelab-greenbone-engineering-email.service
+  -> extracts Priority Summary from latest.md
+  -> emails Engineering Security Runbook
+```
+
+The email sender scripts are not the primary targets; fix the report-generation/classification logic at the two components above first.
 
 ## Priority 2 — Pi-hole collector hardening
 
-**Status:** OPEN
+**Status:** COMPLETE
 
-- [ ] Add `flock` or equivalent single-instance protection to both query collectors.
-- [ ] Finish and verify efficient generic subdomain/category enrichment on DietPi.
-- [ ] Do not restore the expensive wildcard SQLite join approach.
-- [ ] Confirm both collectors continue to run within their scheduling interval without overlap.
+- [x] Add `flock` single-instance protection to both query collectors.
+- [x] Verify efficient generic subdomain/category enrichment on DietPi.
+- [x] Do not restore the expensive wildcard SQLite join approach.
+- [x] Confirm both collectors continue to run within their scheduling interval without overlap.
+- [x] Add Stage 4 flock monitoring metrics.
+- [x] Add stale collector Grafana alert.
 
-## Priority 3 — Documentation
+## Priority 3 — Documentation and recovery evidence
 
 **Status:** IN PROGRESS
 
@@ -43,6 +90,8 @@ Architecture decision: do not mount the live Pi-hole SQLite database over NFS fo
 - [x] Add a dedicated Nebula Sync service overview.
 - [x] Record the Nebula Sync false-alert root cause and monitoring fix below.
 - [x] Keep `home-lab-docs` as the authoritative operational record for this work.
+- [x] Create ids-01 host recovery inventory and SCP.
+- [ ] Create host recovery inventory and SCP for the other hosts.
 
 ## Pi-hole configuration sync monitoring — false alert resolved
 
@@ -244,3 +293,9 @@ A controlled stale-health test successfully produced the expected Grafana/Gmail 
 - [x] Nebula Sync service confirmed healthy and false monitoring alert root cause corrected.
 - [x] NFS-mounted live SQLite access rejected for the monitoring architecture.
 - [x] Pi-hole Policy Alert Latency Improvement Runbook created in `home-lab-docs`.
+- [x] Stage 3 flock single-instance protection deployed and verified on ids-01 and DietPi.
+- [x] Stage 4 flock monitoring deployed and verified on ids-01 and DietPi.
+- [x] Pi-hole Query Collector Stale Grafana alert deployed.
+- [x] ids-01 blocklist metrics path corrected and Prometheus verification completed.
+- [x] Non-applicable OpenIPMI service investigated and masked; `systemctl --failed` now clean on ids-01.
+- [x] Daily Security & Recovery / Engineering Security Runbook generation chain located and documented.
