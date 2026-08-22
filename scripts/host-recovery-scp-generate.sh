@@ -3,12 +3,16 @@ set -euo pipefail
 
 INV_DIR="${1:-}"
 if [[ -z "$INV_DIR" || ! -d "$INV_DIR" ]]; then
-  echo "Usage: $0 /path/to/host-recovery-<host>-<timestamp>" >&2
+  echo "Usage: $0 /path/to/host-recovery-<host>-<timestamp> [output-file]" >&2
   exit 2
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 HOST="$(basename "$INV_DIR" | sed -E 's/^host-recovery-//; s/-[0-9]{8}-[0-9]{6}$//')"
-OUT="${2:-$INV_DIR/SCP-Host-Recovery-${HOST}.md}"
+INV_BASENAME="$(basename "$INV_DIR")"
+OUT="${2:-$REPO_ROOT/scp/SCP-Host-Recovery-${HOST}.md}"
+mkdir -p "$(dirname "$OUT")"
 
 read_first(){ local f="$1"; [[ -f "$INV_DIR/$f" ]] && sed -n '1,40p' "$INV_DIR/$f" || true; }
 count_lines(){ local f="$1"; [[ -f "$INV_DIR/$f" ]] && grep -cv '^#' "$INV_DIR/$f" || echo 0; }
@@ -29,9 +33,9 @@ cat > "$OUT" <<EOF
 
 This Service Continuity Procedure (SCP) describes how to rebuild **$HOST** after complete host loss, storage failure, unrecoverable OS corruption, or replacement hardware deployment.
 
-It was generated from the host recovery inventory at:
+It was generated from the host recovery inventory bundle:
 
-\`$INV_DIR\`
+\`$INV_BASENAME\`
 
 The inventory is evidence of the known-good host configuration. It is **not a backup**. Application data, databases, keys and secrets must be restored from Restic or other protected storage.
 
