@@ -422,3 +422,56 @@ Before changing tomorrow's reports, inspect and document the classification logi
 ```
 
 The objective is not simply to make the reports more pessimistic. The objective is to make them evidence-correct: verified healthy controls remain green, genuine failures become actions, and missing/stale evidence is represented explicitly rather than being interpreted as health.
+
+## Management interpretation model
+
+The management report must distinguish between detected security activity and evidence of a successful compromise.
+
+Every material item should be interpreted using the following categories:
+
+1. **Confirmed compromise**
+   - Successful unauthorised access
+   - Confirmed malware or ransomware
+   - Successful exploitation
+   - Confirmed data compromise
+   - Another explicitly confirmed security breach
+
+2. **Security incident / investigation**
+   - Significant or unusual detected activity requiring investigation
+   - Successful compromise has not been established
+
+3. **Detected security activity**
+   - Failed authentication attempts
+   - IDS alerts
+   - Blocked DNS requests
+   - Other attempted or observed security activity
+
+4. **Security controls enforcing**
+   - CrowdSec blocking activity
+   - Pi-hole security-policy enforcement
+   - Other controls demonstrably preventing or blocking activity
+
+5. **Assurance / evidence limitation**
+   - Missing monitoring evidence
+   - Missing patch-success timestamps
+   - Lack of automated test-restore verification
+   - Other limitations affecting what the environment can prove
+
+6. **Routine operational maintenance**
+   - Available container image updates
+   - Normal patching activity
+   - Other changes that are not independently evidence of a security vulnerability
+
+### Interpretation rules
+
+- A detected security event is **not automatically evidence of successful compromise**.
+- Failed SSH attempts do not establish successful SSH access.
+- Suricata alerts indicate detected network/security activity unless the underlying evidence establishes successful compromise.
+- Blocked Pi-hole requests demonstrate policy enforcement; they do not establish deliberate user behaviour or successful access.
+- CrowdSec blocking demonstrates active threat-prevention enforcement.
+- WUD image-update availability is not, by itself, evidence of a vulnerability.
+- Successful backup or replication is not proof that restoration has been tested.
+- `ATTENTION` should not be described as a security incident unless the source evidence explicitly establishes one.
+- The management report must preserve the authoritative technical report's overall posture and individual control states.
+
+The purpose of this model is to prevent routine security telemetry and assurance gaps from being incorrectly presented to management as confirmed compromise.
