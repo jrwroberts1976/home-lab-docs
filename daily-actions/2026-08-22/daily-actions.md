@@ -6,19 +6,15 @@ Planned follow-up work carried forward from 21 August 2026.
 
 **Status:** COMPLETE
 
-Start from the Pi-hole Policy Alert Latency Improvement Runbook.
-
 - [x] Record and back up the current Grafana alert and notification-policy configuration.
-- [x] Change only the Pi-hole policy-category notification `group_interval` from `5m` to `30s`.
+- [x] Change the Pi-hole policy-category notification `group_interval` from `5m` to `30s`.
 - [x] Reload/restart Grafana and verify provisioning is clean.
-- [x] Run timestamped end-to-end tests through Pi-hole 1 / DietPi and validate alert-instance behaviour from ids-01 test traffic.
-- [x] Record DNS test time, Pi-hole event time, Prometheus visibility time, Grafana notifier time, and Grafana email receipt time.
-- [x] Compare the result with the measured 21 August baseline of 3 minutes 4 seconds.
+- [x] Run timestamped end-to-end tests through Pi-hole 1 / DietPi.
 - [x] Keep the existing 300-second policy-event lookback while tuning.
-- [x] Add a Pi-hole route-local `group_by: ['...']` so distinct client/category/domain/host alert instances are not folded into the broad parent notification group.
+- [x] Add a Pi-hole route-local `group_by: ['...']` so distinct alert instances are not folded into the broad parent notification group.
 - [x] Confirm duplicate/repeated FIRING emails are no longer occurring for the same distinct alert instance.
 
-Final controlled DietPi gambling test on 22 August:
+Final controlled DietPi gambling test:
 
 - DNS request: 06:08:18 BST
 - Pi-hole event: 06:09:00 BST — 42 seconds
@@ -44,72 +40,163 @@ Architecture decision: do not mount the live Pi-hole SQLite database over NFS fo
 
 - [ ] Update the Pi-hole Policy Alert Latency Improvement Runbook with the post-change measurements.
 - [x] Record the final accepted alert timings and rollback configuration in the daily operational log.
+- [x] Add a dedicated Nebula Sync service overview.
+- [x] Record the Nebula Sync false-alert root cause and monitoring fix below.
 - [x] Keep `home-lab-docs` as the authoritative operational record for this work.
+
+## Pi-hole configuration sync monitoring — false alert resolved
+
+**Status:** FIXED
+
+### Symptom
+
+Grafana fired `Pi-hole Configuration Sync Unhealthy` for `ids-01`. Prometheus initially reported:
+
+```text
+homelab_pihole_sync_up = 1
+homelab_pihole_sync_last_result_success = 0
+homelab_pihole_sync_last_success_timestamp_seconds = 0
+homelab_pihole_sync_age_seconds = -1
+```
+
+This appeared to indicate that the Nebula Sync container was healthy but no successful Pi-hole configuration sync had been observed.
+
+### Service verification
+
+The `nebula-sync` container was checked directly and was healthy. Its logs showed successful selective synchronisation every 15 minutes, repeatedly ending with:
+
+```text
+Sync completed
+```
+
+Current deployment details confirmed:
+
+```text
+container: nebula-sync
+image: ghcr.io/lovelaze/nebula-sync:v0.11.2
+stack: /home/james/docker/stacks/nebula-sync
+schedule: */15 * * * *
+mode: selective
+replicas: 1
+```
+
+The service itself was therefore not the cause of the alert.
+
+### Collector investigation
+
+The custom metrics collector was identified as:
+
+```text
+/usr/local/bin/nebula-sync-metrics.sh
+```
+
+with:
+
+```text
+nebula-sync-metrics.service
+nebula-sync-metrics.timer
+```
+
+The timer runs the collector approximately every minute.
+
+The collector correctly detected the healthy container and correctly parsed recent `Sync completed` messages. Its fresh output contained:
+
+```text
+homelab_pihole_sync_up 1
+homelab_pihole_sync_last_result_success 1
+homelab_pihole_sync_last_success_timestamp_seconds 1787377500
+homelab_pihole_sync_age_seconds 732
+```
+
+### Root cause
+
+Two different node-exporter textfile directories existed on ids-01.
+
+The Nebula Sync collector was writing fresh metrics to:
+
+```text
+/var/lib/prometheus/node-exporter/nebula_sync.prom
+```
+
+However, `prometheus-node-exporter` had been explicitly configured to read:
+
+```text
+--collector.textfile.directory=/var/lib/node_exporter/textfile_collector
+```
+
+A stale `nebula_sync.prom` from 20 August remained in that active directory. Node-exporter therefore exposed the stale failure values while the fresh healthy values were being written to a directory it was not scraping.
+
+This was a monitoring-path/configuration error, not a Nebula Sync replication failure.
+
+### Fix
+
+A backup of the collector was created:
+
+```text
+/usr/local/bin/nebula-sync-metrics.sh.bak-20260822
+```
+
+The collector output path was changed from:
+
+```text
+/var/lib/prometheus/node-exporter/nebula_sync.prom
+```
+
+to the authoritative node-exporter textfile directory:
+
+```text
+/var/lib/node_exporter/textfile_collector/nebula_sync.prom
+```
+
+The collector was then run manually. Node-exporter immediately exposed the corrected values and Prometheus returned:
+
+```text
+homelab_pihole_sync_up = 1
+homelab_pihole_sync_last_result_success = 1
+homelab_pihole_sync_last_success_timestamp_seconds = 1787377500
+homelab_pihole_sync_last_failure_timestamp_seconds = 1787309943
+homelab_pihole_sync_age_seconds = 732
+```
+
+The obsolete `/var/lib/prometheus/node-exporter/nebula_sync.prom` file was removed so there is now one authoritative metrics path.
+
+### Result
+
+- Nebula Sync confirmed healthy.
+- Successful 15-minute replication confirmed from live logs.
+- Metrics collector confirmed healthy.
+- node-exporter now reads the fresh collector output.
+- Prometheus now receives correct Pi-hole sync health values.
+- Root cause of the false Grafana warning removed.
+- DNS/Pi-hole alert inbox was cleared after review to provide a clean baseline for new alerts.
 
 ## Backup incident — TestServer Restic backup failure
 
 **Status:** RECOVERED — MONITORING ADDED AND TESTED
 
-### Detection
+### Detection and root cause
 
-Grafana repeatedly fired `Backup Failed` during the morning of 22 August. Prometheus metrics isolated the failure to TestServer / `main` (`192.168.2.220`):
+The scheduled TestServer backup failed at 03:30:58 BST because Restic could not reach its REST repository at `192.168.2.242:8000`. On ids-01 the `restic-server` container was stopped and nothing was listening on TCP/8000.
 
-- `homelab_backup_success = 0`
-- `homelab_backup_last_success_timestamp = 0`
-- latest snapshot label reported `snapshot="none"`
-- DietPi, ids-01 and k3s-node-01 backup success metrics remained healthy.
+After starting the existing container, Docker showed a configured port binding but an empty live `NetworkSettings.Ports` map, so TCP/8000 remained unreachable.
 
-The TestServer systemd unit `homelab-backup-testserver.service` had failed after its scheduled 03:30:58 BST run. The backup wrapper ran for about 15 minutes before returning exit status 1.
+### Recovery
 
-### Root cause
-
-`/home/homelab-backup/logs/testserver-backup.log` showed Restic repeatedly failing to reach its REST repository:
-
-```text
-rest:https://192.168.2.242:8000/testserver/
-dial tcp 192.168.2.242:8000: connect: connection refused
-Fatal: unable to open config file
-Restic backup failed with status 1
-```
-
-On ids-01, the `restic-server` container (`restic/rest-server:0.14.0`) was stopped and nothing was listening on TCP/8000. The container had `restart: unless-stopped`, and its logs showed clean shutdowns rather than an obvious crash.
-
-After starting the existing container, Docker showed a configured `8000/tcp` HostConfig binding but an empty live `NetworkSettings.Ports` map. The container therefore appeared running but TCP/8000 was still not reachable from TestServer.
-
-### Recovery performed
-
-The Restic compose stack was recreated on ids-01 from:
-
-```text
-/home/james/docker/stacks/restic-server/docker-compose.yml
-```
-
-using:
-
-```bash
-docker compose down
-docker compose up -d --force-recreate
-```
+The Restic compose stack at `/home/james/docker/stacks/restic-server` was recreated with `docker compose down` followed by `docker compose up -d --force-recreate`.
 
 After recreation:
 
-- TestServer successfully connected to `https://192.168.2.242:8000/` over TLS.
-- An unauthenticated curl returned HTTP 401, confirming the REST server was reachable and enforcing authentication.
-- Restic successfully opened repository `0b1d890a` and listed the latest TestServer snapshot `fb4d01ba` from 21 August 2026 03:33:54.
-- `homelab-backup-testserver.service` was manually rerun at 06:22 BST and completed successfully at 06:23:53 BST with exit status 0.
-- Grafana subsequently sent `Backup Failed` RESOLVED at approximately 06:43 BST.
+- TestServer connected successfully over TLS.
+- An unauthenticated curl returned HTTP 401, confirming service availability and authentication enforcement.
+- Restic successfully opened repository `0b1d890a`.
+- The TestServer backup service was manually rerun and completed at 06:23:53 BST with `status=0/SUCCESS`.
+- Grafana subsequently reported the backup failure as resolved.
 
-### Restic service health monitoring added
+### Restic monitoring added
 
-A dedicated Restic REST-server health collector was installed on ids-01. It checks:
+A dedicated Restic REST-server health collector now checks container state, Docker port publication, TCP/8000 listening state, HTTPS reachability and overall service health.
 
-- Docker container running state.
-- Docker port 8000 publication.
-- TCP/8000 listening state.
-- Local HTTPS reachability; HTTP 401 is accepted as healthy because it proves TLS/service availability and authentication enforcement.
-- Overall service health.
-
-The collector writes Prometheus textfile metrics including:
+It exports:
 
 ```text
 homelab_restic_server_up
@@ -120,56 +207,22 @@ homelab_restic_server_https_reachable
 homelab_restic_server_health_timestamp_seconds
 ```
 
-`prometheus-node-exporter` on ids-01 was running without a textfile collector directory configured. `/etc/default/prometheus-node-exporter` was updated to use:
+The collector runs every minute through `restic-server-health.timer` and writes into `/var/lib/node_exporter/textfile_collector`.
 
-```text
---collector.textfile.directory=/var/lib/node_exporter/textfile_collector
-```
+Two Grafana alerts were deployed:
 
-After restarting node-exporter, the Restic metrics became visible on port 9100 and in Prometheus. `homelab_restic_server_up{host="ids-01",service="restic-server"}` returned `1`.
+1. `Restic Server Down` — critical, `for: 2m`.
+2. `Restic Health Check Stale` — critical, `for: 2m`, no-data alerts enabled.
 
-The collector is scheduled every minute with:
+A controlled stale-health test successfully produced the expected Grafana/Gmail alert. The health timer was subsequently restarted and the collector returned to normal operation.
 
-```text
-restic-server-health.timer
-restic-server-health.service
-```
+### Remaining Restic follow-up
 
-### Grafana alerts added
-
-Two critical backup-infrastructure alerts were deployed:
-
-1. **Restic Server Down** (`restic_server_down`)
-   - Detects `homelab_restic_server_up < 1`.
-   - `for: 2m`.
-   - Intended to detect an actual Restic container/port/HTTPS service failure before scheduled backups run.
-
-2. **Restic Health Check Stale** (`restic_health_check_stale`)
-   - Detects a health timestamp older than five minutes or missing health data.
-   - `for: 2m`.
-   - `noDataState: Alerting` so loss of the collector itself is actionable.
-
-### Controlled stale-alert test
-
-At 06:37:13 BST, `restic-server-health.timer` was deliberately stopped while the Restic server itself remained online. The health metric aged naturally past the 300-second stale threshold.
-
-Grafana successfully sent:
-
-```text
-⚠️ [FIRING] Restic Health Check Stale — ids-01
-```
-
-at 06:44:59 BST, proving the collector → node-exporter → Prometheus → Grafana → Gmail alert path.
-
-The timer and service were restarted at 06:46:50 BST. The service exited `0/SUCCESS`, rewrote `/var/lib/node_exporter/textfile_collector/homelab_restic_server_health.prom`, and node-exporter exposed the refreshed timestamp. Final RESOLVED-email confirmation remains to be checked.
-
-### Remaining follow-up
-
-- [ ] Confirm the `Restic Health Check Stale` RESOLVED email after the controlled test.
-- [ ] Perform a controlled test of `Restic Server Down` when convenient, without risking a scheduled backup window.
+- [ ] Confirm the next scheduled TestServer backup completes normally.
+- [ ] Perform a controlled `Restic Server Down` alert test when convenient and away from a scheduled backup window.
 - [ ] Investigate why `restic-server` was cleanly stopped despite `restart: unless-stopped`.
-- [ ] Investigate why Docker retained the configured port binding while the live `NetworkSettings.Ports` mapping was empty until container recreation.
-- [ ] Review recurring Docker `Error streaming logs: invalid character '\x00'` messages separately; do not conflate them with this backup failure unless evidence links them.
+- [ ] Investigate the temporary Docker port-binding inconsistency seen before container recreation.
+- [ ] Review recurring Docker `Error streaming logs: invalid character '\x00'` messages separately.
 
 ## Additional work if time permits
 
@@ -178,14 +231,16 @@ The timer and service were restarted at 06:46:50 BST. The service exited `0/SUCC
 - [ ] CrowdSec freshness/tidy review.
 - [ ] Continue Suricata dashboard/filter/end-to-end validation.
 
-## Closed from 21 August 2026
+## Closed / completed
 
+- [x] k3s-node-01 recovery and stability work — complete; do not carry forward as an outstanding recovery task.
 - [x] Pi-hole policy-category metrics proven through both Pi-hole nodes.
-- [x] DietPi automatic collection confirmed via cron.
-- [x] ids-01 automatic collection confirmed via systemd timer.
+- [x] DietPi automatic collection confirmed.
+- [x] ids-01 automatic collection confirmed.
 - [x] Policy-event lookback widened from 120 seconds to 300 seconds.
 - [x] DNS → Pi-hole → collector → Prometheus → Grafana → Gmail path proven.
-- [x] Controlled Pi-hole 1 latency test measured at 3 minutes 4 seconds.
-- [x] Grafana Pi-hole notification `group_interval: 5m` identified as a major delay source.
+- [x] Pi-hole alert latency reduced from 3m04s baseline to approximately 1m32s in the final controlled test.
+- [x] Duplicate Pi-hole notification behaviour corrected with route-local grouping.
+- [x] Nebula Sync service confirmed healthy and false monitoring alert root cause corrected.
 - [x] NFS-mounted live SQLite access rejected for the monitoring architecture.
 - [x] Pi-hole Policy Alert Latency Improvement Runbook created in `home-lab-docs`.
