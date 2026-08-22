@@ -25,7 +25,7 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-for cmd in flock awk grep mv mkdir chmod date hostname; do
+for cmd in flock awk grep mv mkdir chmod date hostname sed tr pgrep head cp cat; do
   command -v "$cmd" >/dev/null 2>&1 || { echo "ERROR: missing command: $cmd" >&2; exit 1; }
 done
 
@@ -47,7 +47,16 @@ for pid in $(pgrep -f 'prometheus-node-exporter|node_exporter' 2>/dev/null || tr
 done
 
 if [[ -z "$TEXTFILE_DIR" && -r /etc/default/prometheus-node-exporter ]]; then
-  TEXTFILE_DIR="$(sed -n 's/.*--collector\.textfile\.directory=\([^ "'"']*\).*/\1/p' /etc/default/prometheus-node-exporter | head -1)"
+  args="$(grep -E '^[[:space:]]*ARGS=' /etc/default/prometheus-node-exporter | tail -1 | cut -d= -f2-)"
+  args="${args%\"}"
+  args="${args#\"}"
+  args="${args%\'}"
+  args="${args#\'}"
+  case "$args" in
+    *--collector.textfile.directory=*)
+      TEXTFILE_DIR="$(printf '%s\n' "$args" | sed -n 's/.*--collector\.textfile\.directory=\([^ ]*\).*/\1/p' | head -1)"
+      ;;
+  esac
 fi
 
 if [[ -z "$TEXTFILE_DIR" ]]; then
@@ -149,12 +158,12 @@ chmod 0755 "$WRAPPER"
 "$WRAPPER"
 
 echo "Stage 4 flock monitoring deployed."
-echo "Host label:        $HOST_LABEL"
-echo "Collector:         $COLLECTOR"
-echo "Wrapper:           $WRAPPER"
-echo "Wrapper backup:    $BACKUP"
-echo "Textfile directory:$TEXTFILE_DIR"
-echo "Metrics file:      $OUT"
+echo "Host label:         $HOST_LABEL"
+echo "Collector:          $COLLECTOR"
+echo "Wrapper:            $WRAPPER"
+echo "Wrapper backup:     $BACKUP"
+echo "Textfile directory: $TEXTFILE_DIR"
+echo "Metrics file:       $OUT"
 echo
 echo "Current metrics:"
 cat "$OUT"
