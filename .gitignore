@@ -1,0 +1,4 @@
+# Raw host recovery inventories contain sensitive operational evidence.
+# Keep only generated/sanitised SCP documentation in Git.
+host-recovery-*/
+host-recovery-*.tar.gz
