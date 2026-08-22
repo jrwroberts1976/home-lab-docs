@@ -11,6 +11,68 @@ The two key emails are:
 
 The live execution paths below were confirmed on `ids-01` on 22 August 2026.
 
+## Reporting architecture
+
+The two emails share security evidence but have separate reporting paths.
+
+### Daily Security & Recovery Brief
+
+```text
+Security telemetry
+       |
+       +--> Prometheus
+       +--> Loki / Alloy
+       +--> Suricata
+       +--> CrowdSec
+       +--> Pi-hole
+       +--> Greenbone
+       |
+       v
+Technical security evidence
+       |
+       v
+/usr/local/lib/homelab-secops-report/generate_report.py
+       |
+       v
+/var/lib/homelab-secops-report/reports/latest.md
+       |
+       v
+/usr/local/lib/homelab-secops-report/generate_management_report.py
+       |
+       v
+OpenAI Responses API
+       |
+       v
+/var/lib/homelab-secops-report/management/latest.md
+       |
+       v
+Daily Security & Recovery Brief
+```
+
+The management brief is therefore an **interpretation of the authoritative technical SecOps report**, not a replacement for it.
+
+### Engineering Security Runbook
+
+```text
+Greenbone
+       |
+       v
+Greenbone AI security review
+       |
+       v
+/var/lib/homelab-greenbone/reports/latest.md
+       |
+       v
+/usr/local/sbin/homelab-greenbone-engineering-email
+       |
+       v
+Homelab Engineering Security Runbook
+```
+
+The Engineering Security Runbook is a separate engineering-focused report derived from the Greenbone reporting path.
+
+A detected security event is not automatically evidence of a successful compromise.
+
 ## Management report — confirmed execution chain
 
 The management report runs daily at **08:30**:
@@ -159,6 +221,100 @@ It calls the OpenAI Responses API and writes the management report. Important ex
 
 This is good separation of responsibilities, but it means the technical source must classify missing and degraded evidence correctly.
 
+## Network security interpretation
+
+The technical report now separates four different concepts:
+
+### Confirmed compromise
+
+Examples include:
+
+- successful unauthorised authentication;
+- confirmed malware execution;
+- confirmed ransomware activity;
+- confirmed exploitation;
+- confirmed unauthorised access.
+
+These require incident-level attention.
+
+A failed SSH login is not a successful compromise.
+
+A Suricata alert is not automatically successful exploitation.
+
+A blocked Pi-hole request is not evidence that the requested activity succeeded.
+
+### Security activity detected
+
+Examples include:
+
+- Suricata alerts;
+- failed SSH attempts;
+- blocked DNS requests;
+- CrowdSec detections;
+- other security-policy events.
+
+These are important evidence and may require investigation, but they must not automatically be described as compromise.
+
+### Security controls enforcing
+
+Examples include:
+
+- CrowdSec blocking activity;
+- Pi-hole blocking policy requests;
+- successful block tests;
+- healthy DNS enforcement;
+- active IDS collection.
+
+A block is evidence that the control operated. It is not evidence that the attempted activity succeeded.
+
+### Assurance gaps
+
+Examples include:
+
+- missing monitoring evidence;
+- unhealthy Prometheus targets;
+- missing patch timestamps;
+- incomplete backup verification;
+- lack of automated test restores;
+- incomplete end-to-end Loki/Alloy assurance.
+
+These reduce confidence in what the monitoring system can prove. They are not themselves evidence of compromise.
+
+## Current reporting state — 22 August 2026
+
+The technical report's Network Security Situation currently distinguishes:
+
+- **Confirmed Compromise** — no successful SSH sessions in the current security-review evidence and no identified confirmed malware/ransomware or successful exploitation event;
+- **Security Activity Detected** — 12 Suricata alerts, 10 failed SSH attempts and 19 security/policy-related DNS blocks;
+- **Security Controls Enforcing** — 25 CrowdSec blocking actions, Pi-hole enforcement health **HEALTHY — 2/2 nodes**, and Pi-hole block tests **10/10 passing**;
+- **Assurance Gaps** — monitoring and backup/recovery assurance limitations remain visible.
+
+The report therefore explains an AMBER posture as an assurance condition rather than evidence of a successful attack.
+
+## Pi-hole reporting
+
+Both Pi-hole nodes are represented in the enforcement-health evidence.
+
+Current successful state:
+
+```text
+Pi-hole enforcement health: HEALTHY — 2/2 nodes
+Pi-hole block tests: 10/10 passing
+```
+
+The two nodes are:
+
+- `dietpi`
+- `ids-01`
+
+The Pi-hole block tests cover the configured security categories.
+
+A healthy enforcement result means that the configured blocking controls are operating.
+
+It does not mean that there were no attempted policy violations.
+
+Conversely, a blocked DNS request does not establish that a user deliberately attempted to bypass policy.
+
 ## Current reporting problems identified on 22 August 2026
 
 The reports were found capable of understating operational risk by treating the absence of compromise as too close to overall operational health.
@@ -266,3 +422,56 @@ Before changing tomorrow's reports, inspect and document the classification logi
 ```
 
 The objective is not simply to make the reports more pessimistic. The objective is to make them evidence-correct: verified healthy controls remain green, genuine failures become actions, and missing/stale evidence is represented explicitly rather than being interpreted as health.
+
+## Management interpretation model
+
+The management report must distinguish between detected security activity and evidence of a successful compromise.
+
+Every material item should be interpreted using the following categories:
+
+1. **Confirmed compromise**
+   - Successful unauthorised access
+   - Confirmed malware or ransomware
+   - Successful exploitation
+   - Confirmed data compromise
+   - Another explicitly confirmed security breach
+
+2. **Security incident / investigation**
+   - Significant or unusual detected activity requiring investigation
+   - Successful compromise has not been established
+
+3. **Detected security activity**
+   - Failed authentication attempts
+   - IDS alerts
+   - Blocked DNS requests
+   - Other attempted or observed security activity
+
+4. **Security controls enforcing**
+   - CrowdSec blocking activity
+   - Pi-hole security-policy enforcement
+   - Other controls demonstrably preventing or blocking activity
+
+5. **Assurance / evidence limitation**
+   - Missing monitoring evidence
+   - Missing patch-success timestamps
+   - Lack of automated test-restore verification
+   - Other limitations affecting what the environment can prove
+
+6. **Routine operational maintenance**
+   - Available container image updates
+   - Normal patching activity
+   - Other changes that are not independently evidence of a security vulnerability
+
+### Interpretation rules
+
+- A detected security event is **not automatically evidence of successful compromise**.
+- Failed SSH attempts do not establish successful SSH access.
+- Suricata alerts indicate detected network/security activity unless the underlying evidence establishes successful compromise.
+- Blocked Pi-hole requests demonstrate policy enforcement; they do not establish deliberate user behaviour or successful access.
+- CrowdSec blocking demonstrates active threat-prevention enforcement.
+- WUD image-update availability is not, by itself, evidence of a vulnerability.
+- Successful backup or replication is not proof that restoration has been tested.
+- `ATTENTION` should not be described as a security incident unless the source evidence explicitly establishes one.
+- The management report must preserve the authoritative technical report's overall posture and individual control states.
+
+The purpose of this model is to prevent routine security telemetry and assurance gaps from being incorrectly presented to management as confirmed compromise.
