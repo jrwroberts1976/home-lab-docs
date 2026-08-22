@@ -3,7 +3,7 @@ set -euo pipefail
 
 GRAFANA_URL="${GRAFANA_URL:-http://localhost:3001}"
 PROM_DS_UID="${PROM_DS_UID:-PBFA97CFB590B2093}"
-UID="pihole_collector_stale"
+RULE_UID="pihole_collector_stale"
 TITLE="Pi-hole Query Collector Stale"
 
 if [[ -z "${GRAFANA_TOKEN:-}" ]]; then
@@ -20,7 +20,7 @@ done
 EXPR='(time() - homelab_pihole_collector_last_success_timestamp_seconds{collector="pihole-query-metrics"}) > bool 300'
 
 RULE_JSON="$(jq -n \
-  --arg uid "$UID" \
+  --arg uid "$RULE_UID" \
   --arg title "$TITLE" \
   --arg expr "$EXPR" \
   --arg ds "$PROM_DS_UID" '
@@ -80,13 +80,16 @@ RULE_JSON="$(jq -n \
     labels:{severity:"warning",category:"dns",component:"pihole-query-collector",service:"pihole"}
   }')"
 
-code="$(curl -s -o /tmp/${UID}.json -w '%{http_code}' \
+TMP_RESPONSE="$(mktemp)"
+trap 'rm -f "$TMP_RESPONSE"' EXIT
+
+code="$(curl -s -o "$TMP_RESPONSE" -w '%{http_code}' \
   -H "Authorization: Bearer ${GRAFANA_TOKEN}" \
-  "${GRAFANA_URL}/api/v1/provisioning/alert-rules/${UID}")"
+  "${GRAFANA_URL}/api/v1/provisioning/alert-rules/${RULE_UID}")"
 
 if [[ "$code" == "200" ]]; then
   method=PUT
-  url="${GRAFANA_URL}/api/v1/provisioning/alert-rules/${UID}"
+  url="${GRAFANA_URL}/api/v1/provisioning/alert-rules/${RULE_UID}"
   echo "Updating: $TITLE"
 else
   method=POST
