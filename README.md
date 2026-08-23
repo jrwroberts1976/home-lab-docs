@@ -69,6 +69,7 @@ Existing operational documents remain valid and will be progressively classified
 
 ### Active — priority order
 
+- Remove synthetic Pi-hole enforcement-probe traffic from raw seven-day client/category Prometheus totals while retaining all five active DNS block tests.
 - Project: end-to-end Docker image version control — continue Stage 0 inventory of declared vs running images, drift/floating/unmanaged classification, and secret-location inventory. Delivery is now tracked in `jrwroberts1976/homelab-container-version-control` issue #1; the original home-lab-docs issue #9 remains the initiating record.
 - Restore and verify Suricata 24-hour collection after the collection timeout.
 - Investigate CrowdSec reporting synchronisation / DNS resolution.
@@ -89,6 +90,8 @@ Existing operational documents remain valid and will be progressively classified
 
 ### Completed today
 
+- ids-01 service estate audited and cleaned — zero failed units; unused Docker Alloy removed in favour of the active systemd collector; obsolete SecOps timer and legacy secondary Pi-hole metrics units archived; active collectors revalidated.
+- Daily Security & Recovery Brief enhanced with combined primary and secondary Pi-hole Adult and Malware/Phishing totals by client IP, fresh evidence collection before email delivery, synthetic-probe exclusion and evidence-correct explanatory wording.
 - Engineering Portfolio guarded deployment workflow validated end-to-end — the deployment script now distinguishes Docker `running` from application readiness, retries `/healthz` for up to approximately 60 seconds, fails early on Docker `unhealthy`, and runs the container-version-control project route as part of smoke testing. The corrected script was merged to the Engineering Portfolio `main` branch and a subsequent production deployment completed successfully.
 - Engineering Portfolio maintenance-mode path coverage fixed and proven persistent — the maintenance Nginx configuration now uses `try_files $uri $uri/ /index.html;`, is bind-mounted read-only through the maintenance Compose stack, survives forced container recreation, passes `nginx -t`, and returned HTTP 200 for `/`, `/about/`, `/projects/`, `/projects/container-version-control/`, and a deliberately nonexistent path while maintenance mode was active.
 - The validated maintenance-page Compose/Nginx pattern has been brought under `jrwroberts1976/homelab-container-version-control` as a production pilot artifact rather than remaining an undocumented TestServer-only change.
@@ -135,6 +138,8 @@ Continue Stage 0 of the Docker image version-control project: inventory the Test
 - [Important Scripts](important-scripts.md) — operationally important scripts with an explicit Server / Host field, paths, purpose, inputs, outputs, and how each script is started.
 - [Blocked MAC Monitoring](blocked-mac-monitoring.md) — reusable ASUS-router log watcher on ids-01, watched-MAC configuration, systemd timer, Prometheus metrics, Grafana alerting, and test procedure.
 - [Grafana Alert Email Standard](grafana-alert-email-standard.md) — common homelab alert email subject/body format, reusable notification templates, and deployment procedure.
+- [Daily Security & Recovery Reporting](service-overviews/daily-security-and-recovery-reporting.md) — report-generation chains, dual-Pi-hole evidence aggregation, recovery/Loki assurance and combined email behaviour.
+- [ids-01 Service and Timer Inventory](service-overviews/ids-01-service-inventory.md) — active service ownership, schedules, retired duplicate collectors and validation commands.
 - [Daily Homelab Actions](daily-actions/README.md) — dated operational follow-up notes, with each day stored in its own `YYYY-MM-DD` folder.
 
 ## Operational assets
