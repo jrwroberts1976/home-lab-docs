@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily Pi-hole update availability check
+
+[Timer]
+OnBootSec=10min
+OnCalendar=*-*-* 06:30:00
+RandomizedDelaySec=15min
+Persistent=true
+Unit=pihole-update-metrics.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,15 @@
+[Unit]
+Description=Export Pi-hole security and policy evidence
+After=pihole-FTL.service
+Requires=pihole-FTL.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/export-pihole-security-events
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadOnlyPaths=/etc/pihole
+ReadWritePaths=/var/lib/homelab-secops

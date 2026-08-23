@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DB="/etc/pihole/pihole-FTL.db"
+OUTPUT="/var/lib/homelab-secops/pihole-security-events.tsv"
+TMP="${OUTPUT}.tmp"
+
+if [[ ! -r "${DB}" ]]; then
+    echo "ERROR: Pi-hole database unavailable: ${DB}" >&2
+    exit 1
+fi
+
+pihole-FTL sqlite3 -separator $'\t' "${DB}" "
+SELECT
+    MIN(timestamp),
+    MAX(timestamp),
+    client,
+    domain,
+    COUNT(*),
+    CASE list_id
+        WHEN -4 THEN 'NSFW'
+        WHEN -5 THEN 'Gambling'
+        WHEN -6 THEN 'DoH/VPN/Tor/Proxy Bypass'
+        WHEN -7 THEN 'Threat Intelligence'
+        ELSE 'Other'
+    END,
+    list_id
+FROM queries
+WHERE timestamp >= strftime('%s','now','-24 hours')
+  AND status = 1
+  AND list_id IN (-4,-5,-6,-7)
+GROUP BY client, domain, list_id
+ORDER BY COUNT(*) DESC;
+" > "${TMP}"
+
+chmod 0644 "${TMP}"
+mv "${TMP}" "${OUTPUT}"
+
+echo "${OUTPUT}"

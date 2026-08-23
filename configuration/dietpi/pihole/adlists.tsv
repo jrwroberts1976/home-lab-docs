@@ -1,0 +1,6 @@
+id	address	enabled	comment
+1	https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts	1	Migrated from /etc/pihole/adlists.list
+2	https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/nsfw.txt	1	HaGeZi NSFW
+3	https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/gambling.txt	1	HaGeZi Gambling
+4	https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/doh-vpn-proxy-bypass.txt	1	HaGeZi DoH VPN Tor Proxy Bypass
+5	https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/tif.medium.txt	1	HaGeZi Threat Intelligence Medium

@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily curated software inventory collection
+
+[Timer]
+OnBootSec=5min
+OnCalendar=*-*-* 06:10:00
+RandomizedDelaySec=15min
+Persistent=true
+Unit=homelab-software-metrics.service
+
+[Install]
+WantedBy=timers.target

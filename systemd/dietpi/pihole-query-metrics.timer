@@ -1,0 +1,12 @@
+[Unit]
+Description=Update Pi-hole blocked query metrics every 5 minutes
+After=network-online.target
+Wants=network-online.target
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=Monthly Homelab Archive to DietPi 4TB
+
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=homelab-vault
+ExecStart=/usr/local/sbin/homelab-monthly-archive

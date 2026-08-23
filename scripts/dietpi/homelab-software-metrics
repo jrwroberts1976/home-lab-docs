@@ -1,0 +1,276 @@
+#!/usr/bin/env bash
+
+# Curated, low-cardinality software inventory for Prometheus node_exporter.
+# The target host label is supplied by Prometheus file service discovery.
+
+set -u
+
+metric_dir="${SOFTWARE_METRIC_DIR:-/var/lib/prometheus/node-exporter}"
+metric_file="${metric_dir}/homelab_software.prom"
+now="$(date +%s)"
+collector_success=1
+
+if [[ ! -d "$metric_dir" || ! -w "$metric_dir" ]]; then
+    echo "Metric directory is not writable: $metric_dir" >&2
+    exit 1
+fi
+
+tmp_file="$(mktemp "${metric_file}.tmp.XXXXXX")" || exit 1
+trap 'rm -f "$tmp_file"' EXIT
+
+escape_label()
+{
+    local value="${1:-}"
+    value="${value//\\/\\\\}"
+    value="${value//\"/\\\"}"
+    value="${value//$'\n'/\\n}"
+    printf '%s' "$value"
+}
+
+service_state()
+{
+    local unit="${1:-}"
+    local load_state=""
+    local active_state=""
+
+    if [[ -z "$unit" || "$unit" == "none" ]] || ! command -v systemctl >/dev/null 2>&1; then
+        printf 'not-applicable'
+        return
+    fi
+
+    load_state="$(systemctl show "$unit" -p LoadState --value 2>/dev/null || true)"
+    if [[ "$load_state" != "loaded" ]]; then
+        printf 'not-found'
+        return
+    fi
+
+    active_state="$(systemctl show "$unit" -p ActiveState --value 2>/dev/null || true)"
+    case "$active_state" in
+        active|inactive|failed|activating|deactivating)
+            printf '%s' "$active_state"
+            ;;
+        *)
+            printf 'unknown'
+            ;;
+    esac
+}
+
+emit_software()
+{
+    local software="$1"
+    local display_name="$2"
+    local version="$3"
+    local candidate="$4"
+    local source="$5"
+    local update_available="$6"
+    local update_method="$7"
+    local state="$8"
+
+    printf 'homelab_software_info{software="%s",display_name="%s",version="%s",candidate="%s",source="%s",update_available="%s",update_method="%s",service_state="%s"} 1\n' \
+        "$(escape_label "$software")" \
+        "$(escape_label "$display_name")" \
+        "$(escape_label "$version")" \
+        "$(escape_label "$candidate")" \
+        "$(escape_label "$source")" \
+        "$(escape_label "$update_available")" \
+        "$(escape_label "$update_method")" \
+        "$(escape_label "$state")" >> "$tmp_file"
+}
+
+declare -A emitted=()
+
+collect_apt_package()
+{
+    local software="$1"
+    local display_name="$2"
+    local package_name="$3"
+    local service_unit="$4"
+    local installed=""
+    local package_status=""
+    local candidate="unknown"
+    local update_available="unknown"
+
+    # dpkg-query retains versions for packages in the residual-config (rc)
+    # state. Only treat a package as installed when dpkg explicitly says so.
+    # Without this guard, removed packages can appear as false APT updates.
+    [[ -z "${emitted[$software]:-}" ]] || return
+    package_status="$(dpkg-query -W -f='${db:Status-Status}' "$package_name" 2>/dev/null || true)"
+    [[ "$package_status" == "installed" ]] || return
+
+    installed="$(dpkg-query -W -f='${Version}' "$package_name" 2>/dev/null || true)"
+    [[ -n "$installed" ]] || return
+
+    candidate="$(apt-cache policy "$package_name" 2>/dev/null | awk '/Candidate:/ {print $2; exit}')"
+    if [[ -z "$candidate" || "$candidate" == "(none)" ]]; then
+        candidate="unknown"
+    elif dpkg --compare-versions "$candidate" gt "$installed"; then
+        update_available="true"
+    else
+        update_available="false"
+    fi
+
+    emit_software \
+        "$software" "$display_name" "$installed" "$candidate" \
+        "apt" "$update_available" "apt" "$(service_state "$service_unit")"
+    emitted["$software"]=1
+}
+
+collect_manual()
+{
+    local software="$1"
+    local display_name="$2"
+    local version="$3"
+    local service_unit="$4"
+
+    [[ -n "$version" ]] || return
+    [[ -z "${emitted[$software]:-}" ]] || return
+
+    emit_software \
+        "$software" "$display_name" "$version" "unknown" \
+        "manual" "unknown" "manual" "$(service_state "$service_unit")"
+    emitted["$software"]=1
+}
+
+{
+    echo '# HELP homelab_software_info Curated installed software and update metadata.'
+    echo '# TYPE homelab_software_info gauge'
+    echo '# HELP homelab_software_inventory_timestamp_seconds Unix timestamp of the software inventory collection.'
+    echo '# TYPE homelab_software_inventory_timestamp_seconds gauge'
+    echo '# HELP homelab_software_inventory_success Whether the software inventory collector completed successfully.'
+    echo '# TYPE homelab_software_inventory_success gauge'
+    echo '# HELP homelab_installed_packages_total Number of installed dpkg packages.'
+    echo '# TYPE homelab_installed_packages_total gauge'
+    echo '# HELP homelab_manual_packages_total Number of packages marked as manually installed.'
+    echo '# TYPE homelab_manual_packages_total gauge'
+
+    if [[ -r /etc/os-release ]]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release
+        printf '# HELP homelab_os_info Operating-system information.\n'
+        printf '# TYPE homelab_os_info gauge\n'
+        printf 'homelab_os_info{name="%s",version_id="%s",pretty_name="%s",kernel="%s",architecture="%s"} 1\n' \
+            "$(escape_label "${ID:-unknown}")" \
+            "$(escape_label "${VERSION_ID:-unknown}")" \
+            "$(escape_label "${PRETTY_NAME:-unknown}")" \
+            "$(escape_label "$(uname -r)")" \
+            "$(escape_label "$(dpkg --print-architecture 2>/dev/null || uname -m)")"
+    fi
+} > "$tmp_file"
+
+apt_inventory=(
+    'docker|Docker Engine|docker-ce|docker.service'
+    'docker|Docker Engine|docker.io|docker.service'
+    'docker-compose|Docker Compose plugin|docker-compose-plugin|none'
+    'docker-compose|Docker Compose|docker-compose-v2|none'
+    'docker-compose|Docker Compose|docker-compose|none'
+    'containerd|containerd|containerd.io|containerd.service'
+    'containerd|containerd|containerd|containerd.service'
+    'node-exporter|Prometheus Node Exporter|prometheus-node-exporter|prometheus-node-exporter.service'
+    'unbound|Unbound DNS resolver|unbound|unbound.service'
+    'alloy|Grafana Alloy|alloy|alloy.service'
+    'crowdsec|CrowdSec|crowdsec|crowdsec.service'
+    'suricata|Suricata|suricata|suricata.service'
+    'trivy|Trivy|trivy|none'
+    'openssh-server|OpenSSH server|openssh-server|ssh.service'
+    'nginx|NGINX|nginx|nginx.service'
+    'apache2|Apache HTTP Server|apache2|apache2.service'
+    'apache2|Apache HTTP Server binaries|apache2-bin|apache2.service'
+    'mariadb|MariaDB server|mariadb-server|mariadb.service'
+    'certbot|Certbot|certbot|certbot.timer'
+)
+
+for entry in "${apt_inventory[@]}"; do
+    IFS='|' read -r software display_name package_name service_unit <<< "$entry"
+    collect_apt_package "$software" "$display_name" "$package_name" "$service_unit"
+done
+
+if command -v k3s >/dev/null 2>&1; then
+    version="$(k3s --version 2>/dev/null | awk 'NR == 1 {print $3}')"
+    collect_manual 'k3s' 'K3s' "$version" 'k3s.service'
+fi
+
+if command -v alloy >/dev/null 2>&1; then
+    version="$(alloy --version 2>/dev/null | sed -n '1{s/.*version[[:space:]]\+\([^,[:space:]]*\).*/\1/p}')"
+    collect_manual 'alloy' 'Grafana Alloy' "$version" 'alloy.service'
+fi
+
+if command -v trivy >/dev/null 2>&1; then
+    version="$(trivy --version 2>/dev/null | awk -F': ' '/^Version:/ {print $2; exit}')"
+    collect_manual 'trivy' 'Trivy' "$version" 'none'
+fi
+
+if command -v helm >/dev/null 2>&1; then
+    version="$(helm version --short 2>/dev/null | sed 's/+.*//')"
+    collect_manual 'helm' 'Helm' "$version" 'none'
+fi
+
+if [[ -x /opt/AdGuardHome/AdGuardHome ]]; then
+    version="$(/opt/AdGuardHome/AdGuardHome --version 2>/dev/null | awk '{print $NF; exit}')"
+    collect_manual 'adguardhome' 'AdGuard Home' "$version" 'AdGuardHome.service'
+fi
+
+if command -v zeek >/dev/null 2>&1; then
+    version="$(zeek --version 2>/dev/null | awk '{print $NF; exit}')"
+    collect_manual 'zeek' 'Zeek' "$version" 'zeek.service'
+fi
+
+snmp_exporter_binary=""
+if command -v snmp_exporter >/dev/null 2>&1; then
+    snmp_exporter_binary="$(command -v snmp_exporter)"
+elif [[ -x /opt/snmp_exporter-0.30.1.linux-arm64/snmp_exporter ]]; then
+    snmp_exporter_binary="/opt/snmp_exporter-0.30.1.linux-arm64/snmp_exporter"
+fi
+if [[ -n "$snmp_exporter_binary" ]]; then
+    version="$($snmp_exporter_binary --version 2>&1 | awk '/version/ {print $3; exit}')"
+    collect_manual 'snmp-exporter' 'Prometheus SNMP Exporter' "$version" 'snmp_exporter.service'
+fi
+
+if [[ -r /etc/pihole/versions ]]; then
+    # Pi-hole maintains this local shell-format version cache.
+    # shellcheck disable=SC1091
+    . /etc/pihole/versions
+    for component in core web ftl; do
+        case "$component" in
+            core)
+                installed="${CORE_VERSION:-unknown}"
+                latest="${GITHUB_CORE_VERSION:-${CORE_LATEST:-unknown}}"
+                display_name='Pi-hole Core'
+                ;;
+            web)
+                installed="${WEB_VERSION:-unknown}"
+                latest="${GITHUB_WEB_VERSION:-${WEB_LATEST:-unknown}}"
+                display_name='Pi-hole Web'
+                ;;
+            ftl)
+                installed="${FTL_VERSION:-unknown}"
+                latest="${GITHUB_FTL_VERSION:-${FTL_LATEST:-unknown}}"
+                display_name='Pi-hole FTL'
+                ;;
+        esac
+
+        update_available='unknown'
+        if [[ "$latest" != "unknown" && "$latest" != "null" && -n "$latest" ]]; then
+            if [[ "$installed" == "$latest" ]]; then
+                update_available='false'
+            else
+                update_available='true'
+            fi
+        fi
+
+        emit_software \
+            "pihole-$component" "$display_name" "$installed" "$latest" \
+            'pihole' "$update_available" 'pihole' "$(service_state 'pihole-FTL.service')"
+    done
+fi
+
+installed_packages="$(dpkg-query -W -f='${db:Status-Status}\n' 2>/dev/null | awk '$1 == "installed" {count++} END {print count + 0}')"
+manual_packages="$(apt-mark showmanual 2>/dev/null | wc -l | tr -d ' ')"
+
+printf 'homelab_installed_packages_total %s\n' "$installed_packages" >> "$tmp_file"
+printf 'homelab_manual_packages_total %s\n' "$manual_packages" >> "$tmp_file"
+printf 'homelab_software_inventory_timestamp_seconds %s\n' "$now" >> "$tmp_file"
+printf 'homelab_software_inventory_success %s\n' "$collector_success" >> "$tmp_file"
+
+chmod 0644 "$tmp_file"
+mv -f "$tmp_file" "$metric_file"
+trap - EXIT
