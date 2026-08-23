@@ -432,6 +432,19 @@ The replacement Pi-hole blocklist collector writes successfully to:
 
 The audit concluded with zero failed systemd units. See [ids-01 Service and Timer Inventory](ids-01-service-inventory.md).
 
+### CrowdSec blocking statement
+
+The daily email now includes separate, evidence-correct CrowdSec figures:
+
+- unique IP addresses receiving locally generated blocking decisions on TestServer;
+- unique IP addresses receiving locally generated blocking decisions on ids-01;
+- unique source IP addresses whose traffic TestServer actually blocked;
+- total TestServer packets blocked during the rolling 24-hour window.
+
+TestServer evidence is collected every five minutes and scraped through Node Exporter. The email queries Prometheus and rejects this evidence if the collector timestamp is more than 15 minutes old.
+
+The wording explicitly explains that actual block totals can include enforcement from subscribed community intelligence. Community-supplied entries are not described as direct locally observed attacks, and blocked traffic is not described as successful access.
+
 ### Remaining limitation
 
 The email excludes synthetic enforcement probes correctly, but the raw seven-day Pi-hole Prometheus client/category metrics still include those probes under `192.168.2.242`. That metric pollution should be corrected without removing the five active enforcement tests.
