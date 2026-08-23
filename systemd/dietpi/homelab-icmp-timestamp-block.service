@@ -1,0 +1,12 @@
+[Unit]
+Description=Block ICMP Timestamp Requests
+After=network-pre.target
+Before=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/homelab-block-icmp-timestamp
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

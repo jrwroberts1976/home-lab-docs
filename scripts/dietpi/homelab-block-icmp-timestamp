@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+iptables -C INPUT \
+    -p icmp \
+    --icmp-type timestamp-request \
+    -j DROP \
+    >/dev/null 2>&1 ||
+iptables -I INPUT 1 \
+    -p icmp \
+    --icmp-type timestamp-request \
+    -j DROP

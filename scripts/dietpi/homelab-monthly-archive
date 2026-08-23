@@ -1,0 +1,41 @@
+#!/bin/bash
+set -euo pipefail
+
+DATE=$(date +%Y-%m-%d)
+
+SOURCE="homelab-backup@192.168.2.195:/home/homelab-backup/replica/ids-01"
+
+SSH_KEY="/var/lib/homelab-vault/.ssh/homelab-vault-ed25519"
+
+DEST="/mnt/backup/monthly/${DATE}/ids-01"
+
+LOG="/mnt/backup/reports/monthly-archive.log"
+
+mkdir -p "$DEST"
+
+{
+echo "=========================================="
+echo "Monthly archive started $(date -Is)"
+echo "=========================================="
+
+echo "Checking source replica..."
+
+ssh -i "${SSH_KEY}" -o BatchMode=yes \
+homelab-backup@192.168.2.195 \
+"test -d /home/homelab-backup/replica/ids-01"
+
+echo "Source replica available"
+
+rsync -aHAX --delete \
+  -e "ssh -i ${SSH_KEY} -o BatchMode=yes" \
+  "$SOURCE/" \
+  "$DEST/"
+
+echo
+echo "Archive size:"
+du -sh "$DEST"
+
+echo
+echo "Monthly archive completed $(date -Is)"
+
+} >> "$LOG" 2>&1

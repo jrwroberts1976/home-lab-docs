@@ -1,0 +1,10 @@
+[Unit]
+Description=Homelab Restic Backup - DietPi
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=HOME=/home/homelab-backup
+Environment=XDG_CACHE_HOME=/var/cache/restic-dietpi
+ExecStart=/home/homelab-backup/scripts/backup-dietpi.sh

@@ -1,0 +1,24 @@
+#!/bin/bash
+
+set -euo pipefail
+
+source /etc/restic/dietpi.env
+
+echo "Starting DietPi Restic backup"
+
+restic backup \
+    /etc \
+    /home \
+    /usr/local \
+    /var/lib
+
+echo "Applying retention policy"
+
+restic forget \
+    --keep-daily 7 \
+    --keep-weekly 4 \
+    --keep-monthly 12 \
+    --keep-yearly 5 \
+    --prune
+
+echo "DietPi Restic backup completed successfully"

@@ -1,0 +1,8 @@
+[Unit]
+Description=Export Pi-hole update availability to Prometheus
+Wants=network-online.target
+After=network-online.target pihole-FTL.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/pihole-update-metrics

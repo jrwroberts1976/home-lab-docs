@@ -1,0 +1,33 @@
+[Unit]
+Description=Pi-hole blocked DNS email collector
+Documentation=https://docs.pi-hole.net/
+After=network-online.target pihole-FTL.service
+Wants=network-online.target
+Requires=pihole-FTL.service
+
+[Service]
+Type=simple
+User=pihole-alert
+Group=pihole-alert
+SupplementaryGroups=pihole
+EnvironmentFile=/etc/pihole-block-alert/email.env
+ExecStart=/usr/bin/python3 /usr/local/lib/pihole-block-alert/alert_service.py
+Restart=on-failure
+RestartSec=10
+UMask=0027
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadOnlyPaths=/var/log/pihole
+ReadWritePaths=/var/lib/pihole-block-alert
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

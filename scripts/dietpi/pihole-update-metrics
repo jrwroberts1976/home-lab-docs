@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+set -u
+
+metric_dir="/var/lib/prometheus/node-exporter"
+metric_file="${metric_dir}/pihole_updates.prom"
+tmp_file="$(mktemp "${metric_file}.tmp.XXXXXX")"
+now="$(date +%s)"
+checker_ok=1
+metric_lines=""
+
+trap 'rm -f "$tmp_file"' EXIT
+
+if ! /usr/local/bin/pihole updatechecker >/dev/null 2>&1; then
+    checker_ok=0
+fi
+
+if [[ -r /etc/pihole/versions ]]; then
+    . /etc/pihole/versions
+else
+    checker_ok=0
+fi
+
+CORE_VERSION="${CORE_VERSION:-unknown}"
+WEB_VERSION="${WEB_VERSION:-unknown}"
+FTL_VERSION="${FTL_VERSION:-unknown}"
+GITHUB_CORE_VERSION="${GITHUB_CORE_VERSION:-unknown}"
+GITHUB_WEB_VERSION="${GITHUB_WEB_VERSION:-unknown}"
+GITHUB_FTL_VERSION="${GITHUB_FTL_VERSION:-unknown}"
+
+invalid_version() {
+    case "$1" in
+        ""|null|N/A|unknown) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+escape_label() {
+    local value="$1"
+    value="${value//\\/\\\\}"
+    value="${value//\"/\\\"}"
+    printf '%s' "$value"
+}
+
+add_component() {
+    local component="$1"
+    local installed="$2"
+    local latest="$3"
+    local available=0
+    local line
+
+    if invalid_version "$installed" || invalid_version "$latest"; then
+        checker_ok=0
+    elif [[ "$installed" != "$latest" ]]; then
+        available=1
+    fi
+
+    printf -v line \
+      'homelab_pihole_update_available{component="%s",installed="%s",latest="%s"} %d' \
+      "$component" "$(escape_label "$installed")" \
+      "$(escape_label "$latest")" "$available"
+
+    metric_lines+="${line}"$'\n'
+}
+
+add_component core "$CORE_VERSION" "$GITHUB_CORE_VERSION"
+add_component web "$WEB_VERSION" "$GITHUB_WEB_VERSION"
+add_component ftl "$FTL_VERSION" "$GITHUB_FTL_VERSION"
+
+{
+    printf '%s\n' \
+      '# HELP homelab_pihole_update_available Whether a Pi-hole component update is available.' \
+      '# TYPE homelab_pihole_update_available gauge'
+    printf '%s' "$metric_lines"
+    printf '%s\n' \
+      '# HELP homelab_pihole_update_check_success Whether the latest version check succeeded.' \
+      '# TYPE homelab_pihole_update_check_success gauge'
+    printf 'homelab_pihole_update_check_success %d\n' "$checker_ok"
+    printf '%s\n' \
+      '# HELP homelab_pihole_update_check_timestamp_seconds Unix time of the last update check attempt.' \
+      '# TYPE homelab_pihole_update_check_timestamp_seconds gauge'
+    printf 'homelab_pihole_update_check_timestamp_seconds %s\n' "$now"
+} > "$tmp_file"
+
+chmod 0644 "$tmp_file"
+mv -f "$tmp_file" "$metric_file"
+trap - EXIT

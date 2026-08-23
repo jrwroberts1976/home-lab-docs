@@ -1,0 +1,43 @@
+#!/bin/bash
+set -euo pipefail
+
+MONTHLY="/mnt/backup/monthly"
+YEARLY="/mnt/backup/yearly"
+
+LOG="/mnt/backup/reports/retention.log"
+
+{
+echo "=========================================="
+echo "Retention started $(date -Is)"
+echo "=========================================="
+
+echo
+echo "Monthly archives:"
+find "$MONTHLY" \
+  -mindepth 1 \
+  -maxdepth 1 \
+  -type d \
+  -printf "%f\n" | sort
+
+echo
+echo "Would remove monthly archives older than 365 days:"
+find "$MONTHLY" \
+  -mindepth 1 \
+  -maxdepth 1 \
+  -type d \
+  -mtime +365 \
+  -print
+
+echo
+echo "Would remove yearly archives older than 1825 days:"
+find "$YEARLY" \
+  -mindepth 1 \
+  -maxdepth 1 \
+  -type d \
+  -mtime +1825 \
+  -print
+
+echo
+echo "Retention check completed $(date -Is)"
+
+} >> "$LOG" 2>&1

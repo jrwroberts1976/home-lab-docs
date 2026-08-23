@@ -1,0 +1,8 @@
+[Unit]
+Description=Monthly Homelab Archive Retention
+
+After=homelab-monthly-archive.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/homelab-monthly-retention
