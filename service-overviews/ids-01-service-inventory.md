@@ -130,6 +130,41 @@ curl -fsS http://127.0.0.1:9100/metrics |
   grep -E '^pihole_|^homelab_pihole_'
 ```
 
+## TestServer CrowdSec activity evidence
+
+TestServer runs the CrowdSec engine in the `crowdsec` Docker container and the firewall bouncer as `crowdsec-firewall-bouncer.service` on the host. Local API, Central API and bouncer authentication were verified successfully on 23 August 2026.
+
+A five-minute TestServer collector now exports rolling 24-hour evidence:
+
+```text
+crowdsec-activity-metrics.timer
+  -> crowdsec-activity-metrics.service
+  -> /usr/local/bin/crowdsec-activity-metrics.sh
+  -> /home/james/docker/data/monitoring/node-exporter/textfile/crowdsec_activity.prom
+  -> Node Exporter on 192.168.2.220:9100
+  -> Prometheus on ids-01
+  -> Daily Security & Recovery Brief
+```
+
+Metrics:
+
+- `homelab_crowdsec_local_decision_ips_24h{host="main"}`;
+- `homelab_crowdsec_blocked_source_ips_24h{host="main"}`;
+- `homelab_crowdsec_blocked_packets_24h{host="main"}`;
+- `homelab_crowdsec_activity_check_timestamp_seconds{host="main"}`.
+
+Initial verified values were 9 locally generated IP decisions, 42 unique blocked source IPs and 391 blocked packets. These are rolling values rather than fixed incident totals.
+
+The email also queries local decisions from the ids-01 CrowdSec engine. TestServer Prometheus evidence is considered stale after 15 minutes.
+
+The report distinguishes locally generated decisions from actual firewall enforcement: blocked-source and packet totals can include both local decisions and subscribed community threat intelligence. A blocked packet proves enforcement, not successful access or compromise.
+
+Repository recovery assets:
+
+- [CrowdSec activity exporter](../scripts/crowdsec-activity-metrics.sh)
+- [CrowdSec activity service](../systemd/crowdsec-activity-metrics.service)
+- [CrowdSec activity timer](../systemd/crowdsec-activity-metrics.timer)
+
 ## Remaining engineering work
 
 1. Prevent active Pi-hole enforcement probes from distorting raw seven-day client/category metrics for `192.168.2.242`, while retaining all five active blocking tests.
