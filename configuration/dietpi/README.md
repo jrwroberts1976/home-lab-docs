@@ -41,3 +41,5 @@ The following must never be committed:
 Review source and configuration differences before installing anything. Install scripts and units with root ownership, preserve executable modes and run syntax and systemd validation before enabling or restarting services.
 
 Environment files must be created separately with protected permissions.
+
+See [DietPi recovery validation](RECOVERY.md) for the tested reconstruction order, validation gates and 24 August 2026 rehearsal evidence.
