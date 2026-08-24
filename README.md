@@ -131,6 +131,8 @@ Continue Stage 0 of the Docker image version-control project: inventory the Test
 
 ## Documentation
 
+- [Grafana Alerting](service-overviews/grafana-alerting.md) — central alert evaluation and validated SMTP delivery through a Docker Compose secret.
+
 - [Engineering Portfolio Deployment and Maintenance](engineering-portfolio-deployment.md) — guarded production deployment, readiness checks, Nginx Proxy Manager maintenance switching, persistent all-path maintenance fallback, validation evidence and version-control ownership.
 - [Network Discovery Dashboard](network-discovery-dashboard.md) — LAN device discovery, persistent MAC inventory, friendly-name enrichment, Prometheus metrics, and automatic per-device Grafana dashboard creation.
 - [Homelab Hardware Health Dashboard](hardware-health-dashboard.md) — Loki-backed kernel and hardware fault monitoring for storage, filesystem, CPU/memory/PCIe, thermal/panic events and raw evidence.

@@ -4,6 +4,8 @@ This section explains the services that make up the homelab, how they fit togeth
 
 ## Current service overviews
 
+- [Grafana Alerting](grafana-alerting.md) — central alert evaluation, Git-managed rules, Compose SMTP-secret delivery and notification validation.
+
 - [AI Security Review](ai-security-review.md) — documents `homelab-security-reader.py`, its Loki and Prometheus evidence sources, the Greenbone AI review path, and ingestion-health requirements.
 - [Daily Security & Recovery Reporting](daily-security-and-recovery-reporting.md) — documents the technical, management and email reporting chains, evidence interpretation rules, dual-Pi-hole event aggregation and report schedules.
 - [ids-01 Service and Timer Inventory](ids-01-service-inventory.md) — records active services and timers, systemd/Docker ownership boundaries, retired duplicate collectors and outstanding cleanup work.
