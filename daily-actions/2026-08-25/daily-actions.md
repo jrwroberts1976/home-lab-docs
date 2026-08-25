@@ -288,3 +288,46 @@ The Stage 2 SOPS and age foundation for `k3s-node-01` was completed on 25 August
 ### Remaining control
 
 The recovery identity on `/mnt/backup` is a protected online copy. A tested detached offline identity copy remains required before the Stage 2 recovery control is complete.
+
+## TestServer SOPS and age foundation
+
+The Stage 2 SOPS and age foundation for `TestServer` was completed on 25 August 2026.
+
+### Secret inventory
+
+- Added encrypted recovery sources for Cloudflare DDNS, DuckDNS, AutoKuma, Nginx Proxy Manager deployment automation and archived contact credentials.
+- Recorded every active, non-secret, archived and retired variable in `docker-env/secrets/testserver/README.md`.
+- Confirmed that LibreSpeed `PASSWORD` is an unused image default rather than an operator-managed credential.
+
+### Identity and recovery validation
+
+- Installed Debian `age` 1.2.1 and checksum-verified SOPS 3.13.3 for ARM64.
+- Created a TestServer-specific operational age identity outside Git.
+- Used the shared public recovery recipient while keeping the private recovery identity on protected DietPi backup storage.
+- Verified all five encrypted sources independently with both approved identities.
+- Confirmed that no private identity or plaintext credential was committed.
+
+### Plaintext retirement
+
+- Removed unused CrowdSec, retired Watchtower and retired TestServer Grafana `.env` files.
+- Removed the archived plaintext contact file after encrypted recovery validation.
+- Removed an obsolete DuckDNS environment-file duplicate after confirming it matched the active Compose secret.
+- Kept active Cloudflare DDNS, DuckDNS and AutoKuma file-backed Compose secrets unchanged.
+- Kept the protected Nginx Proxy Manager host file because deployment and maintenance scripts consume it directly.
+
+### Runtime validation
+
+- All affected Compose projects validated after plaintext retirement.
+- Every running container retained the same container ID.
+- No container or service was recreated, restarted or changed.
+
+### Source-control closure
+
+- Initial encrypted-source commit: `8dec2bd`; merge: `4e5190f`.
+- Contact recovery-source commit: `c46ae02`; merge: `fd2c0e8`.
+- Variable-register closure commit: `3d2e4b8`; final `docker-env/main`: `e152e15`.
+- All temporary TestServer branches were deleted locally and remotely.
+
+### Remaining control
+
+The shared recovery identity remains protected online on DietPi backup storage. A detached offline copy and full recovery rehearsal remain outstanding after the remaining `ids-01` SOPS work.
