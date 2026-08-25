@@ -331,3 +331,47 @@ The Stage 2 SOPS and age foundation for `TestServer` was completed on 25 August 
 ### Remaining control
 
 The shared recovery identity remains protected online on DietPi backup storage. A detached offline copy and full recovery rehearsal remain outstanding after the remaining `ids-01` SOPS work.
+
+## ids-01 SOPS and protected credential delivery
+
+The Stage 2 SOPS and age foundation for `ids-01` was completed on 25 August 2026.
+
+### SOPS foundation
+
+- Installed Debian `age` 1.2.1 and checksum-verified SOPS 3.13.3 for AMD64.
+- Created a host-specific operational age identity outside Git.
+- Reused only the shared public recovery recipient held by DietPi.
+- Added ten SOPS-encrypted recovery sources for Docker, systemd, Pi-hole, Greenbone, OpenAI and Restic credentials.
+- Verified all ten encrypted sources independently with the ids-01 and protected recovery identities.
+- Kept all private identities and plaintext credential values outside Git.
+
+### Secondary Pi-hole migration
+
+- Created a protected file for the secondary Pi-hole web/API password with mode `0400`.
+- Replaced direct Compose environment delivery with a read-only Compose secret.
+- Added an entrypoint wrapper that reads the secret before executing Pi-hole `start.sh`.
+- Recreated only `pihole-secondary`; its sibling Unbound container was unchanged.
+- Confirmed healthy runtime state, DNS resolution and authenticated API access.
+- Removed `PIHOLE_PASSWORD` from the live stack `.env` file.
+- Recorded the non-secret Compose desired state and recovery procedure in Git.
+
+### Grafana API token closure
+
+- Identified the valid Grafana API token and repaired the stale protected token file.
+- Confirmed the protected token authenticates successfully with HTTP 200.
+- Updated four Grafana automation scripts to use `GRAFANA_TOKEN_FILE` by default while retaining explicit environment override support.
+- Removed the obsolete token declaration from the monitoring `.env` file.
+- Permanently removed two obsolete plaintext token backups after validating SOPS recovery.
+- Confirmed Grafana remained running without recreation or restart.
+- Stored non-secret recovery copies of the four token consumers in Git.
+
+### Source-control closure
+
+- SOPS implementation commit: `b2aab9d`; merge commit: `43cf236`.
+- Pi-hole Compose-secret implementation commit: `7939e18`; merge commit: `ea491f0`.
+- Grafana token-consumer implementation commit: `773694b`; merge commit: `9372d66`.
+- All associated feature branches were removed after their merge commits reached `main`.
+
+### Remaining recovery control
+
+The recovery age identity on DietPi backup storage remains protected online recovery material. A validated detached offline copy and full recovery rehearsal remain outstanding.
