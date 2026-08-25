@@ -73,4 +73,4 @@ See [the encrypted-source register and controlled restoration procedure](secrets
 
 Both the DietPi operational identity and protected recovery identity were validated on 25 August 2026. Restoration must use protected temporary storage, validate names and counts, install with documented ownership and modes, and remove all plaintext temporary material.
 
-The recovery identity on `/mnt/backup` is an online protected copy and does not replace the required detached offline copy.
+The recovery identity on `/mnt/backup` is the online protected copy. The passphrase-encrypted detached copy and independent TestServer recovery rehearsal were validated on 25 August 2026.

@@ -147,3 +147,8 @@ Continue Stage 0 of the Docker image version-control project: inventory the Test
 ## Operational assets
 
 - [Scripts and deployment assets](scripts/README.md) — repository copies of the operational scripts, their runtime hosts and paths, supporting systemd units, config files, and Grafana alert deployment tooling.
+
+## Secret recovery
+
+- [SOPS and age service overview](service-overviews/sops-and-age-secret-recovery.md)
+- [SOPS and age secret recovery how-to](sop/sops-age-secret-recovery-how-to.md)

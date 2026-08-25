@@ -202,3 +202,7 @@ The offline passphrase must remain stored separately from the removable medium. 
 - ids-01 Pi-hole Compose-secret merge: `ea491f0`
 - ids-01 Grafana token closure merge: `9372d66`
 - ids-01 daily-action merge: `7c047b5`
+
+## Related procedure
+
+See the [SOPS and age secret recovery how-to](../sop/sops-age-secret-recovery-how-to.md) for the controlled operational steps.
