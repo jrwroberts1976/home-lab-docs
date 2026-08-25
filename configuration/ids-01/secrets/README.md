@@ -21,3 +21,10 @@ The existing `grafana-api-token` host file is invalid and must be replaced with 
 
 Never commit decrypted output or an age private identity.
 A detached offline recovery-identity copy remains outstanding.
+
+## ids-01 credential-delivery closure
+
+- The Grafana API token is delivered through `/home/james/docker/secrets/grafana-api-token`; four consumers default to that protected file.
+- The previous monitoring `.env` token declaration and two obsolete plaintext backups were removed.
+- The secondary Pi-hole password is delivered through a read-only Compose secret and an entrypoint wrapper.
+- Both protected values retain independently validated SOPS recovery sources.
