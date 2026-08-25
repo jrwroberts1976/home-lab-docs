@@ -436,3 +436,37 @@ The shared recovery identity now has protected online and detached offline copie
 - Added protected file delivery and encrypted recovery to the Docker Platform.
 - Merged engineering-portfolio pull request `#7` at `8febcb0`.
 - Kept the SOPS and age BAU documentation follow-up open as home-lab-docs issue `#18`.
+
+## Daily report assurance-policy correction
+
+### Issue
+
+The daily security email used inconsistent recovery-evidence policies.
+The Greenbone AI report treated recorded integrity and restore successes
+as current without checking their timestamps, while the email table
+incorrectly applied the 48-hour daily-backup threshold to those weekly
+controls. This caused valid weekly checks to appear stale in one section
+and current in another.
+
+### Changes
+
+- Retained a 48-hour freshness window for daily backups.
+- Applied an eight-day freshness window to weekly repository-integrity
+  and restore-validation checks.
+- Retained seven days plus two hours for weekly off-host replication.
+- Updated the Greenbone AI evidence collector to calculate timestamp-aware
+  current, stale, failed or unknown states before AI analysis.
+- Updated the email table to use separate daily-backup and weekly-assurance
+  freshness thresholds.
+- Preserved rollback copies of both modified generators.
+
+### Validation
+
+- AI generator Python syntax validation passed.
+- Email generator shell syntax validation passed.
+- Report-only generation completed without sending an email.
+- The regenerated report returned GREEN.
+- All four daily backups were current.
+- All four integrity checks and restore validations were current at
+  approximately 60.9 hours within the eight-day threshold.
+- Off-host replication and backup storage were healthy.
