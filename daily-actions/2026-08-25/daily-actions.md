@@ -242,3 +242,17 @@ The startup 503 and readiness messages observed during controlled restarts clear
 The persistent installation argument, security guidance, operations procedure, progress record and project timeline were merged into `kubernetes-homelab/main` at revision `dd8cb32`. The merged working branch was deleted after verification.
 
 Recovery-sensitive database, token and encryption-configuration material remains root-restricted and excluded from Git. SOPS + age for Git-managed Kubernetes secret declarations remains a future Stage 2 activity.
+
+## DietPi SOPS and age secrets foundation
+
+DietPi began the Stage 2 SOPS and age pilot on 25 August 2026.
+
+- Installed Debian `age` 1.2.1 and checksum-verified SOPS 3.13.3 for ARM64.
+- Created separate DietPi operational and protected recovery age identities without displaying private key material.
+- Verified that both identities independently decrypt a two-recipient test payload.
+- Created encrypted sources for the Pi-hole alert email environment, Restic REST credentials and Restic repository password.
+- Confirmed both identities decrypt all three sources to matching protected working copies.
+- Confirmed no private identity or plaintext credential is present in the repository candidate.
+- Left all live credentials, Pi-hole databases, services and configuration unchanged.
+
+The recovery identity under `/mnt/backup/recovery/sops-age/` is a protected online copy. A detached offline copy and recovery rehearsal remain outstanding.

@@ -2,3 +2,6 @@
 # Keep only generated/sanitised SCP documentation in Git.
 host-recovery-*/
 host-recovery-*.tar.gz
+configuration/dietpi/secrets/*
+!configuration/dietpi/secrets/*.sops.env
+!configuration/dietpi/secrets/README.md
