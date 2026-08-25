@@ -470,3 +470,16 @@ and current in another.
 - All four integrity checks and restore validations were current at
   approximately 60.9 hours within the eight-day threshold.
 - Off-host replication and backup storage were healthy.
+
+
+## Engineering portfolio SOPS production deployment
+
+- Corrected the production deployment helper to resolve `/home/james/projects/engineering-portfolio` from the script location.
+- Merged the source-path correction at engineering-portfolio revision `2145aac`.
+- Diagnosed the initial controlled-deployment stop as an expired Nginx Proxy Manager API token; the existing production container remained healthy and unchanged.
+- Created and validated a ten-year NPM token through the authenticated refresh endpoint; expiry is 25 August 2036.
+- Retained the token only in the protected TestServer host file and confirmed proxy-host API access with HTTP 200.
+- Completed deployment under change `CHG-20260825-7954`.
+- Restored `me.jrwroberts.co.uk` to `engineering-portfolio:80`.
+- Deployed revision `2145aac` using image `james-roberts/engineering-portfolio:local`.
+- No credential value was displayed or committed.
