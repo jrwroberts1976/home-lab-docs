@@ -375,3 +375,9 @@ The Stage 2 SOPS and age foundation for `ids-01` was completed on 25 August 2026
 ### Remaining recovery control
 
 The recovery age identity on DietPi backup storage remains protected online recovery material. A validated detached offline copy and full recovery rehearsal remain outstanding.
+
+## SOPS and age service overview
+
+- Created the consolidated SOPS and age service overview.
+- Recorded the four-host architecture, credential boundaries, live-delivery patterns and recovery workflow.
+- Recorded detached offline recovery media and a full recovery rehearsal as the remaining Stage 2 control gap.
