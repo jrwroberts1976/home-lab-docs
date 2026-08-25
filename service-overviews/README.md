@@ -26,3 +26,4 @@ Each Service Overview should cover where relevant:
 - related SOPs and SCPs
 
 Service Overviews provide the context; SOPs provide the operating steps; SCPs provide the recovery plan.
+- [SOPS and age secret recovery](sops-and-age-secret-recovery.md) — four-host encrypted recovery architecture, operations and remaining offline control.
