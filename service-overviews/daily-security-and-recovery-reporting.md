@@ -562,3 +562,73 @@ Every material item should be interpreted using the following categories:
 - The management report must preserve the authoritative technical report's overall posture and individual control states.
 
 The purpose of this model is to prevent routine security telemetry and assurance gaps from being incorrectly presented to management as confirmed compromise.
+
+## Backup and recovery evidence policy
+
+The daily reporting pipeline uses control-specific freshness periods.
+A single age threshold must not be applied to every type of recovery
+evidence because the controls run at different frequencies.
+
+| Evidence | Intended frequency | Freshness limit | State when overdue |
+| --- | --- | ---: | --- |
+| Host backup | Daily | 48 hours | `STALE` |
+| Repository-integrity validation | Weekly | 8 days | `STALE — previous PASS` when the recorded result passed |
+| Restore validation | Weekly | 8 days | `STALE — previous PASS` when the recorded result passed |
+| Off-host replication to `k3s-node-01` | Sunday at 04:15 with up to 5 minutes random delay | 7 days plus 2 hours | Replica health becomes unhealthy |
+
+The eight-day integrity and restore window allows the intentional weekly
+control schedule plus operational grace. It must not be interpreted as
+daily validation.
+
+### Deterministic evidence states
+
+Before AI analysis, the Greenbone evidence collector combines each result
+with its corresponding timestamp and calculates one of these states:
+
+- `PASS — current`: the latest result passed and remains within its
+  control-specific freshness window.
+- `FAIL — current`: the latest result failed and remains current.
+- `STALE — previous PASS`: a historical pass exists but is older than the
+  permitted freshness window.
+- `STALE — previous FAIL`: a historical failure exists and is overdue.
+- `UNKNOWN`: the result or its timestamp is unavailable.
+
+The AI-generated narrative receives these calculated states rather than
+bare success gauges. The AI may explain a state but must not independently
+change it or describe historical evidence as current.
+
+### Report-generation flow
+
+The 07:40 Daily Security & Recovery Brief is assembled in two stages:
+
+1. `homelab-greenbone-ai-review.service` generates the advisory report
+   using timestamp-aware Prometheus evidence.
+2. `homelab-greenbone-email.service` converts that report to email and
+   appends deterministic operational evidence, including the detailed
+   backup table.
+
+Both stages must use the same freshness policy. This prevents the summary
+from describing a check as current while the detailed table labels the
+same check stale.
+
+The separate 08:30 SecOps management-report pipeline refreshes its own
+authoritative technical report before AI summarisation. Its control states
+must likewise remain deterministic and consistent with the documented
+freshness policy.
+
+### Validation and change control
+
+After changing reporting logic:
+
+1. Preserve rollback copies of the affected generators.
+2. Validate Python and shell syntax.
+3. Generate the advisory report without starting either email service.
+4. Compare the executive summary with the detailed backup evidence.
+5. Confirm that daily backups, weekly assurance checks and weekly
+   replication are evaluated against their respective schedules.
+6. Record the change and validation in the current daily-actions document.
+
+A report must not be sent when its summary and detailed evidence disagree.
+Any future consistency gate should reject combinations such as a summary
+claiming current passes while the detailed evidence reports stale or
+unknown results.
