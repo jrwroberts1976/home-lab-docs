@@ -256,3 +256,35 @@ DietPi began the Stage 2 SOPS and age pilot on 25 August 2026.
 - Left all live credentials, Pi-hole databases, services and configuration unchanged.
 
 The recovery identity under `/mnt/backup/recovery/sops-age/` is a protected online copy. A detached offline copy and recovery rehearsal remain outstanding.
+
+## K3s SOPS and age foundation
+
+The Stage 2 SOPS and age foundation for `k3s-node-01` was completed on 25 August 2026.
+
+### Implementation
+
+- Installed Debian `age` 1.1.1 and checksum-verified SOPS 3.13.3 for ARM64.
+- Created a K3s-specific operational age identity outside Git.
+- Reused only the shared public recovery recipient; the private recovery identity remained on protected DietPi backup storage.
+- Added a narrow `.sops.yaml` policy and encrypted non-deployable recovery-test artifact.
+- Confirmed that no application-managed Kubernetes credential currently requires migration.
+- Explicitly excluded K3s-generated, Kubernetes-generated, Helm-managed and MetalLB-managed Secrets from Git.
+
+### Validation
+
+- The K3s operational identity decrypted the two-recipient artifact successfully.
+- The protected recovery identity independently decrypted the same artifact to matching content.
+- The merged artifact contains no Kubernetes `apiVersion` or deployable `Secret` kind.
+- No private age identity or plaintext credential was committed.
+- The K3s node remained Ready with zero unexpected pod states.
+- Datastore encryption remained enabled at `reencrypt_finished` with matching server hashes.
+
+### Source-control closure
+
+- `kubernetes-homelab` implementation commit: `000df3a`.
+- `kubernetes-homelab/main` merge commit: `cef4980`.
+- The feature branch was deleted locally and remotely; `main` is the only remote branch.
+
+### Remaining control
+
+The recovery identity on `/mnt/backup` is a protected online copy. A tested detached offline identity copy remains required before the Stage 2 recovery control is complete.
