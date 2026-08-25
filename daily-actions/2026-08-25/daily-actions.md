@@ -1,0 +1,202 @@
+# Daily Homelab Actions — 25 August 2026
+
+Operational incident review and remediation completed from the Grafana alert inbox.
+
+## Incident summary
+
+**Overall status:** RESOLVED
+
+Three alert conditions were reviewed:
+
+1. `Backup Replica Failed` — false alert caused by a freshness threshold that no longer matched the intentional weekly replication schedule.
+2. `CrowdSec Down` — genuine TestServer CrowdSec outage caused by mandatory Loki acquisition sources using an obsolete endpoint.
+3. `Linux Host Down` — transient exporter outage that resolved automatically after approximately ten minutes.
+
+At completion, the backup replica metric, TestServer CrowdSec engine, CrowdSec metrics endpoint and Prometheus scrape target were healthy. No other unresolved Grafana alert was found.
+
+## Backup replica false alert
+
+**Status:** FIXED
+
+### Intended architecture
+
+- `ids-01` creates a local Restic backup daily at 02:30.
+- `ids-01` replicates its repositories off-host to `k3s-node-01` weekly on Sunday at 04:15.
+- The weekly timer includes `Persistent=true` and up to five minutes of random delay.
+- The replica destination is `homelab-backup@192.168.2.195`.
+- The replica root is `/home/homelab-backup/replica/ids-01`.
+
+### Detection
+
+Grafana repeatedly fired the critical `Backup Replica Failed` alert. The destination remained reachable, SSH authentication succeeded, the replica directories existed with the expected ownership, and the last replication had completed successfully on 23 August 2026.
+
+The live metric showed:
+
+```text
+homelab_backup_replica_health 0
+homelab_backup_replica_age_seconds 183070
+```
+
+### Root cause
+
+The off-host replication timer had intentionally been changed to weekly on 18 August, but `/usr/local/sbin/homelab-backup-metrics.sh` still declared the replica unhealthy after 172800 seconds, or 48 hours.
+
+The metric therefore became unhealthy every Tuesday even though the next expected replication was Sunday.
+
+### Remediation
+
+The replica freshness threshold was changed to seven days plus two hours:
+
+```bash
+REPLICA_MAX_AGE_SECONDS=$((7 * 86400 + 2 * 3600))
+```
+
+The health check now uses:
+
+```bash
+[ "$replica_age" -lt "$REPLICA_MAX_AGE_SECONDS" ]
+```
+
+This permits the intentional weekly schedule and normal execution delay while detecting a missed Sunday replication approximately two hours after it becomes overdue.
+
+The timer description was corrected from:
+
+```text
+Daily Homelab Backup Replication to k3s-node-01
+```
+
+to:
+
+```text
+Weekly Homelab Backup Replication to k3s-node-01
+```
+
+The schedule itself remained unchanged.
+
+### Validation
+
+- Metrics script syntax validation passed.
+- Metrics service completed with `status=0/SUCCESS`.
+- Replica health changed from `0` to `1`.
+- The actual replica age continued to be exported.
+- The destination, directory presence and repository-size checks remained enforced.
+- Daily local-backup checks were not changed.
+
+### Daily email update
+
+`/usr/local/sbin/homelab-greenbone-email` was updated so the daily brief distinguishes the controls correctly:
+
+- Daily backup evidence becomes overdue after 48 hours.
+- Weekly off-host replication becomes overdue after seven days and two hours.
+- The replica section explicitly identifies weekly replication to `k3s-node-01`.
+
+Rollback copies were retained for the metrics and email scripts.
+
+## TestServer CrowdSec outage
+
+**Status:** FIXED
+
+### Detection
+
+Grafana fired `CrowdSec Down` because Prometheus could not resolve the configured target:
+
+```text
+crowdsec:6060
+dial tcp: lookup crowdsec on 127.0.0.11:53: no such host
+```
+
+The separate `crowdsec-firewall` exporter remained up, but the TestServer `crowdsec` container had exited with code 1.
+
+The independent CrowdSec service on `ids-01` remained healthy and was not the failed target.
+
+### Root cause
+
+The TestServer CrowdSec container had three mandatory Loki acquisition sources:
+
+```text
+ids-01-ssh.yaml
+ids-01-greenbone.yaml
+ids-01-nginx.yaml
+```
+
+All three used the obsolete Loki URL:
+
+```text
+http://192.168.2.242:3100
+```
+
+CrowdSec could not reach that address and terminated with:
+
+```text
+unable to start crowdsec routines: starting acquisition error:
+loki is not ready: context deadline exceeded
+```
+
+Central Loki was running on TestServer and shared the `homelab_apps` Docker network with CrowdSec under the DNS name `loki`.
+
+### Remediation
+
+The three CrowdSec acquisition files were backed up and their Loki URLs changed to:
+
+```text
+http://loki:3100
+```
+
+Their existing Loki queries and labels were preserved.
+
+The CrowdSec Compose configuration validated successfully and the existing container was started without deleting or replacing its persisted configuration or database.
+
+### Validation
+
+- CrowdSec container state: running.
+- Restart count: `0`.
+- Exit code: `0`.
+- No fatal, Loki, route, timeout or acquisition errors after startup.
+- `http://192.168.2.220:6060/metrics` returned live CrowdSec metrics.
+- Prometheus reported `crowdsec:6060 up`.
+- Firewall exporter remained healthy.
+- Persistent acquisition-file backups were retained under `before-loki-dns-fix`.
+
+### Daily email update
+
+The daily email generator now reports service health separately from activity totals:
+
+- TestServer CrowdSec engine health uses `up{job="crowdsec",host="main"}`.
+- Firewall enforcement-metrics health uses `min(up{job="crowdsec-firewall"})`.
+- Existing 24-hour decision, blocked-source and blocked-packet totals remain unchanged.
+- Both new live health queries returned `1` during validation.
+
+This prevents a healthy exporter or historical activity total from masking a stopped CrowdSec engine.
+
+## Transient Linux host outage
+
+**Status:** RESOLVED AUTOMATICALLY
+
+Grafana fired `Linux Host Down` at 05:21 BST because a Linux node-exporter target had been unreachable for more than five minutes. It resolved at 05:31 BST.
+
+The timing overlaps the network instability observed during the CrowdSec/Loki investigation. No continuing Linux-host outage remained after recovery.
+
+## Final state
+
+- [x] Weekly backup replica health metric corrected and healthy.
+- [x] Weekly replication timer description corrected.
+- [x] Daily email updated with correct backup freshness semantics.
+- [x] TestServer CrowdSec restored.
+- [x] CrowdSec Loki acquisitions moved to stable Docker DNS.
+- [x] CrowdSec metrics endpoint verified.
+- [x] Prometheus CrowdSec target verified up.
+- [x] Daily email updated with explicit CrowdSec engine and firewall health.
+- [x] Transient Linux host alert confirmed resolved.
+- [x] No additional unresolved Grafana alerts found.
+
+## Rollback evidence
+
+Rollback copies retained during the work include:
+
+```text
+/usr/local/sbin/homelab-backup-metrics.sh.before-weekly-replica-threshold
+/etc/systemd/system/homelab-replication-k3s.timer.before-description-fix
+/usr/local/sbin/homelab-greenbone-email.before-weekly-replica-wording
+/usr/local/sbin/homelab-greenbone-email.before-crowdsec-health
+/home/james/docker/data/security/crowdsec/config/acquis.d/before-loki-dns-fix/
+```
