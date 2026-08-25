@@ -426,3 +426,13 @@ The shared recovery identity now has protected online and detached offline copie
 - Merged the aligned `docker-env` documentation at `28f7208` while preserving the existing TestServer user change.
 - Deleted all three temporary documentation branches after remote-main verification.
 - Began alignment of the `home-lab-docs`, `kubernetes-homelab` and `docker-env` documentation sets.
+
+## Engineering portfolio SOPS update
+
+- Updated the Engineering Projects overview data and four related case studies to reflect the completed SOPS and age work.
+- Marked the Container Version Control secrets foundation as Stage 2 complete.
+- Added Kubernetes datastore encryption and two-recipient recovery outcomes.
+- Added detached-media recovery evidence to Disaster Recovery.
+- Added protected file delivery and encrypted recovery to the Docker Platform.
+- Merged engineering-portfolio pull request `#7` at `8febcb0`.
+- Kept the SOPS and age BAU documentation follow-up open as home-lab-docs issue `#18`.
