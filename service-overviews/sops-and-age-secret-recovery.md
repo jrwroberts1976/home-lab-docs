@@ -163,17 +163,34 @@ As of 25 August 2026:
 - ids-01 Grafana automation defaults to a protected token file, and obsolete plaintext token copies have been removed.
 - All tested encrypted sources passed operational and recovery-identity validation.
 
-## Remaining control gap
+## Completed offline recovery control
 
-The recovery identity stored on DietPi backup storage is protected but online.
+On 25 August 2026, the shared recovery identity was copied to detached removable media in passphrase-encrypted form.
 
-Stage 2 recovery assurance is not complete until:
+The recovery package contains:
 
-1. a detached offline copy of the recovery identity is created;
-2. the offline copy is validated without exposing the private identity;
-3. a complete recovery rehearsal is performed using only the offline material and repository sources;
-4. the rehearsal evidence is documented;
-5. the offline medium is returned to protected detached storage.
+- `recovery-identity.txt.age`;
+- the public recovery recipient;
+- recovery instructions;
+- a SHA-256 integrity manifest.
+
+The package was written to removable media with UUID `43FA-9542`. Existing host-secret archives on the medium were preserved and their checksums were revalidated.
+
+An independent rehearsal was then completed on `TestServer`:
+
+1. the USB package passed its checksum validation;
+2. the USB was unmounted before the identity was decrypted;
+3. the recovery identity was decrypted into protected memory-backed storage;
+4. the derived public recipient matched the approved recovery recipient;
+5. SOPS ran with an isolated `HOME` and the recovered identity explicitly selected;
+6. all five TestServer encrypted sources decrypted successfully;
+7. four active sources matched their protected live files exactly;
+8. the archived contact source contained the expected variable structure;
+9. no container or service was changed;
+10. all temporary private identity and plaintext credential files were removed;
+11. the USB was physically detached after validation.
+
+The offline passphrase must remain stored separately from the removable medium. The USB must remain detached except during controlled integrity checks or recovery rehearsals.
 
 ## Source-control evidence
 
