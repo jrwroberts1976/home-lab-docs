@@ -5,7 +5,7 @@ These files are SOPS-encrypted recovery sources. Live services continue using pr
 | Encrypted source | Variables or content | Consumer | Current delivery |
 |---|---|---|---|
 | `grafana-smtp.sops.env` | `GF_SMTP_PASSWORD` | Grafana | file-backed Compose secret |
-| `grafana-api.sops.env` | `GRAFANA_TOKEN` | Grafana deployment scripts | valid token currently in monitoring `.env`; migration pending |
+| `grafana-api.sops.env` | `GRAFANA_TOKEN` | Grafana deployment scripts | protected host token file; four consumers default to `GRAFANA_TOKEN_FILE` |
 | `pihole-secondary.sops.env` | `PIHOLE_PASSWORD` | Secondary Pi-hole | file-backed Compose secret using a validated entrypoint wrapper |
 | `nebula-sync.sops.env` | `NEBULA_PRIMARY`, `NEBULA_REPLICAS` | Nebula Sync | two file-backed Compose secrets |
 | `openai.sops.env` | `OPENAI_API_KEY` | Security management reporting | protected systemd environment file |
@@ -20,7 +20,7 @@ The Pi-hole alert and Greenbone SMTP passwords currently match but remain separa
 The existing `grafana-api-token` host file is invalid and must be replaced with the validated token before the monitoring `.env` copy is retired.
 
 Never commit decrypted output or an age private identity.
-A detached offline recovery-identity copy remains outstanding.
+A passphrase-encrypted detached recovery-identity copy and independent TestServer rehearsal were validated on 25 August 2026.
 
 ## ids-01 credential-delivery closure
 

@@ -87,7 +87,7 @@ The Grafana SMTP pilot completed successfully, but the broader secrets programme
 Carried-forward items:
 
 - [ ] Migrate remaining service secrets to supported secret-file delivery.
-- [ ] Complete SOPS/age recovery procedures.
+- [x] Complete SOPS/age recovery procedures — completed and independently rehearsed on 25 August 2026.
 - [ ] Review Jenkins secret handling.
 - [ ] Test secret recovery and rebuild procedures.
 - [ ] Preserve change-control and rollback evidence for each migration.

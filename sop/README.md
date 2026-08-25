@@ -7,6 +7,8 @@ This section contains repeatable operational procedures for running and supporti
 - [Log Ingestion and Grafana Alert Email Recovery](log-ingestion-and-grafana-email-recovery.md) — recovery and validation steps for Greenbone, Pi-hole/Unbound, CrowdSec/LAPI Loki ingestion and Grafana SMTP/Docker DNS failures.
 - [Pi-hole Policy Alert Latency Improvement Runbook](pihole-policy-alert-latency.md) — staged plan to reduce policy-alert delay, measure each change, reject NFS-mounted live SQLite, harden collectors, validate both Pi-hole nodes, and roll back safely if required.
 
+- [SOPS and age secret recovery how-to](sops-age-secret-recovery-how-to.md) — creating, validating, rotating and recovering encrypted sources across all four hosts.
+
 SOPs should be task-focused and include where relevant:
 
 - purpose and scope

@@ -11,7 +11,7 @@ Every encrypted file is recoverable by two distinct age recipients:
 
 Only public recipients appear in `.sops.yaml`. Private identities must never be committed, printed in logs or copied into ordinary reports.
 
-The recovery identity on `/mnt/backup` is a protected online copy. Stage 2 recovery is not complete until a tested copy is held on detached offline media.
+The recovery identity on `/mnt/backup` is the protected online copy. A passphrase-encrypted detached copy and independent TestServer recovery rehearsal were validated on 25 August 2026.
 
 ## Encrypted-source and variable register
 

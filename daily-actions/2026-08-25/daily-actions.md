@@ -287,7 +287,7 @@ The Stage 2 SOPS and age foundation for `k3s-node-01` was completed on 25 August
 
 ### Remaining control
 
-The recovery identity on `/mnt/backup` is a protected online copy. A tested detached offline identity copy remains required before the Stage 2 recovery control is complete.
+The recovery identity now has protected online and passphrase-encrypted detached copies. The detached copy passed an independent TestServer recovery rehearsal.
 
 ## TestServer SOPS and age foundation
 
@@ -415,3 +415,10 @@ The Stage 2 detached recovery control was completed on 25 August 2026.
 ### Final control state
 
 The shared recovery identity now has protected online and detached offline copies. The offline copy and independent recovery workflow are validated. The passphrase is retained separately from the USB.
+
+## Complete multi-repository SOPS documentation
+
+- Updated DietPi, ids-01, TestServer and Kubernetes recovery status references to reflect the completed detached-media control.
+- Added the canonical SOPS and age creation, validation, restoration, rotation and recovery how-to.
+- Added operational safety gates, rollback handling, source-control requirements and an evidence checklist.
+- Began alignment of the `home-lab-docs`, `kubernetes-homelab` and `docker-env` documentation sets.
