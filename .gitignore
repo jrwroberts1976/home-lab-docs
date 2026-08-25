@@ -5,3 +5,8 @@ host-recovery-*.tar.gz
 configuration/dietpi/secrets/*
 !configuration/dietpi/secrets/*.sops.env
 !configuration/dietpi/secrets/README.md
+
+# Permit only encrypted ids-01 recovery sources.
+configuration/ids-01/secrets/*
+!configuration/ids-01/secrets/*.sops.env
+!configuration/ids-01/secrets/README.md

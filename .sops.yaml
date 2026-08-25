@@ -2,3 +2,6 @@ creation_rules:
   - path_regex: ^configuration/dietpi/secrets/.*\.sops\.env$
     age: >-
       age1s7m0azt3n3y5ygplmsu890yc3gtc9c96qu4epym4c0xr6dsfuqwshpcwjr,age12yrcf9ekgjke2ka8glpn8erq6w6l26dccz7uyahf4lpady74yu2q6dpqzy
+  - path_regex: ^configuration/ids-01/secrets/.*\.sops\.env$
+    age: >-
+      age1mjgmkrk4yfq9lj3spn7sgg9nk3gre29u97vvgdjpxv6xst35wqkqvtdrfd,age12yrcf9ekgjke2ka8glpn8erq6w6l26dccz7uyahf4lpady74yu2q6dpqzy
