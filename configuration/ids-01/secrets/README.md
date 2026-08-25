@@ -6,7 +6,7 @@ These files are SOPS-encrypted recovery sources. Live services continue using pr
 |---|---|---|---|
 | `grafana-smtp.sops.env` | `GF_SMTP_PASSWORD` | Grafana | file-backed Compose secret |
 | `grafana-api.sops.env` | `GRAFANA_TOKEN` | Grafana deployment scripts | valid token currently in monitoring `.env`; migration pending |
-| `pihole-secondary.sops.env` | `PIHOLE_PASSWORD` | Secondary Pi-hole | direct Compose environment; file-wrapper migration pending |
+| `pihole-secondary.sops.env` | `PIHOLE_PASSWORD` | Secondary Pi-hole | file-backed Compose secret using a validated entrypoint wrapper |
 | `nebula-sync.sops.env` | `NEBULA_PRIMARY`, `NEBULA_REPLICAS` | Nebula Sync | two file-backed Compose secrets |
 | `openai.sops.env` | `OPENAI_API_KEY` | Security management reporting | protected systemd environment file |
 | `pihole-alert.sops.env` | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `EMAIL_FROM`, `EMAIL_TO`, `IGNORED_CLIENTS` | Pi-hole alert service | protected systemd environment file |

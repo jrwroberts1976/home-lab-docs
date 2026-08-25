@@ -1,0 +1,91 @@
+services:
+  unbound:
+    image: debian:13-slim
+    container_name: pihole2-unbound
+    hostname: pihole2-unbound
+    restart: unless-stopped
+
+    logging:
+      driver: journald
+
+    command:
+      - /bin/sh
+      - -c
+      - |
+        apt-get update &&
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+          unbound \
+          unbound-anchor \
+          dns-root-data \
+          dnsutils \
+          ca-certificates &&
+        mkdir -p /var/lib/unbound &&
+        unbound-anchor -a /var/lib/unbound/root.key || true &&
+        rm -rf /var/lib/apt/lists/* &&
+        exec unbound -d
+
+    volumes:
+      - ./unbound/pihole.conf:/etc/unbound/unbound.conf.d/pihole.conf:ro
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "dig @127.0.0.1 -p 5335 example.com +short +time=5 +tries=1 >/dev/null || exit 1"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  pihole:
+    image: pihole/pihole:2026.07.2
+    container_name: pihole-secondary
+    hostname: pihole-secondary
+    restart: unless-stopped
+
+    logging:
+      driver: journald
+
+    depends_on:
+      unbound:
+        condition: service_healthy
+
+    ports:
+      - "${PIHOLE_HOST_IP}:53:53/tcp"
+      - "${PIHOLE_HOST_IP}:53:53/udp"
+      - "${PIHOLE_HOST_IP}:8081:80/tcp"
+
+    environment:
+      TZ: "${TZ}"
+      FTLCONF_dns_listeningMode: "ALL"
+      FTLCONF_dns_upstreams: "unbound#5335"
+
+    secrets:
+      - pihole_password
+
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        export FTLCONF_webserver_api_password="$$(cat /run/secrets/pihole_password)"
+        exec start.sh
+
+    volumes:
+      - ./etc-pihole:/etc/pihole
+      - ./log-pihole:/var/log/pihole
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "dig @127.0.0.1 pi-hole.net +short +time=5 +tries=1 >/dev/null || exit 1"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+secrets:
+  pihole_password:
+    file: /home/james/docker/secrets/pihole-secondary-password
