@@ -421,4 +421,8 @@ The shared recovery identity now has protected online and detached offline copie
 - Updated DietPi, ids-01, TestServer and Kubernetes recovery status references to reflect the completed detached-media control.
 - Added the canonical SOPS and age creation, validation, restoration, rotation and recovery how-to.
 - Added operational safety gates, rollback handling, source-control requirements and an evidence checklist.
+- Merged the canonical `home-lab-docs` refresh and how-to at `443bfb3`.
+- Merged the aligned `kubernetes-homelab` documentation at `4bdc5ff`.
+- Merged the aligned `docker-env` documentation at `28f7208` while preserving the existing TestServer user change.
+- Deleted all three temporary documentation branches after remote-main verification.
 - Began alignment of the `home-lab-docs`, `kubernetes-homelab` and `docker-env` documentation sets.
