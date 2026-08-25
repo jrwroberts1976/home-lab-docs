@@ -200,3 +200,45 @@ Rollback copies retained during the work include:
 /usr/local/sbin/homelab-greenbone-email.before-crowdsec-health
 /home/james/docker/data/security/crowdsec/config/acquis.d/before-loki-dns-fix/
 ```
+
+
+## K3s datastore encryption at rest
+
+**Status:** COMPLETED
+
+K3s datastore encryption was enabled and closed under controlled recovery, rotation and health gates on `k3s-node-01`.
+
+### Recovery preparation
+
+- Confirmed the single-server K3s v1.36.2+k3s1 cluster used the embedded SQLite datastore.
+- Verified non-root users could not traverse the root-only datastore directories.
+- Confirmed the daily backup uses SQLite `.backup` and that the staged database passed `PRAGMA quick_check`.
+- Created root-only pre-encryption and pre-rotation recovery points containing a consistent database backup and the required recovery material.
+- Verified recovery-file checksums before advancing the encryption state.
+
+### Encryption transition
+
+- Added the persistent K3s server flag `--secrets-encryption`.
+- Enabled AES-CBC datastore encryption.
+- Resolved the intermediate `prepare` stage by following the staged K3s workflow rather than repeating the consolidated `rotate-keys` command.
+- Completed `rotate`, controlled restart, `reencrypt`, and final controlled restart.
+- K3s emitted `SecretsUpdateComplete` after re-encrypting 14 Secret objects.
+
+### Final validation
+
+- Encryption status: `Enabled`.
+- Rotation stage: `reencrypt_finished`.
+- Server encryption hashes: all match.
+- Secret API: all 14 Secret objects readable.
+- Node: `Ready`.
+- Unexpected pod states: `0`.
+- SQLite quick check: `ok`.
+- K3s service: active and running with successful status.
+
+The startup 503 and readiness messages observed during controlled restarts cleared as the API server became ready. No workload declaration or Secret value was manually changed.
+
+### Source-control closure
+
+The persistent installation argument, security guidance, operations procedure, progress record and project timeline were merged into `kubernetes-homelab/main` at revision `dd8cb32`. The merged working branch was deleted after verification.
+
+Recovery-sensitive database, token and encryption-configuration material remains root-restricted and excluded from Git. SOPS + age for Git-managed Kubernetes secret declarations remains a future Stage 2 activity.
