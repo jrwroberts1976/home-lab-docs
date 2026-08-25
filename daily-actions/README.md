@@ -4,6 +4,7 @@ Daily operational follow-up notes from the automated homelab security, recovery 
 
 ## Reports
 
+- [2026-08-25](2026-08-25/daily-actions.md)
 - [2026-08-22](2026-08-22/daily-actions.md)
 - [2026-08-21](2026-08-21/daily-actions.md)
 
@@ -18,6 +19,8 @@ daily-actions/
 ├── README.md
 ├── 2026-08-21/
 │   └── daily-actions.md
-└── 2026-08-22/
+├── 2026-08-22/
+│   └── daily-actions.md
+└── 2026-08-25/
     └── daily-actions.md
 ```
