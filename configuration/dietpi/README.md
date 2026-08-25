@@ -17,7 +17,9 @@ Runtime executables are stored under `scripts/dietpi/`. Custom systemd units are
 
 ## Secret handling
 
-The repository contains environment-file templates only. Live values remain outside Git with restricted permissions.
+The repository contains environment-file templates and approved SOPS-encrypted recovery sources. Plaintext live values and private age identities remain outside Git with restricted permissions.
+
+See [DietPi encrypted secret sources](secrets/README.md) for the variable register, recipient model and controlled restoration requirements.
 
 The following must never be committed:
 

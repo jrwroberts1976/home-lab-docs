@@ -64,3 +64,13 @@ The rehearsal evidence was retained locally under `/var/tmp/dietpi-restore-rehea
 ## Remaining limitation
 
 This proves source completeness and non-destructive reconstruction. A full clean-host recovery, including protected secret restoration and controlled service activation, remains a disaster-recovery exercise and must be performed in an isolated maintenance window.
+
+## Encrypted credential recovery
+
+Approved DietPi credentials are stored as SOPS-encrypted sources under `configuration/dietpi/secrets/`.
+
+See [the encrypted-source register and controlled restoration procedure](secrets/README.md).
+
+Both the DietPi operational identity and protected recovery identity were validated on 25 August 2026. Restoration must use protected temporary storage, validate names and counts, install with documented ownership and modes, and remove all plaintext temporary material.
+
+The recovery identity on `/mnt/backup` is an online protected copy and does not replace the required detached offline copy.
