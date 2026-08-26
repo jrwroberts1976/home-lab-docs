@@ -14,8 +14,7 @@ It should be kept alongside the technical service documentation and updated when
 
 | Host | Container / service | Purpose in the network | Primary role |
 |---|---|---|---|
-| main | `prometheus` | Collects and stores time-series metrics from the homelab, including hosts, Docker, security controls and service health. | Monitoring / metrics |
-| main | `grafana` | Provides dashboards and visualisation for infrastructure, security, availability and operational data. | Monitoring / visualisation |
+| main | `prometheus` | Collects and stores time-series metrics from the homelab, including hosts, Docker, security controls, service health and Kubernetes state. | Monitoring / metrics |
 | main | `loki` | Stores application and infrastructure logs for centralised log search and investigation. | Logging |
 | main | `cadvisor` | Exposes Docker container resource and runtime metrics to Prometheus. | Monitoring / Docker telemetry |
 | main | `blackbox-exporter` | Performs HTTP/HTTPS, TCP and ICMP-style external/service probes used by Prometheus. | Availability monitoring |
@@ -38,21 +37,61 @@ It should be kept alongside the technical service documentation and updated when
 | main | `engineering-portfolio` | Hosts the engineering portfolio application/site. | Web application |
 | main | `cloudflare-ddns` | Maintains Cloudflare DNS records for services using dynamic addressing. | Network / DNS |
 | main | `maintenance-page` | Provides the maintenance/availability page used during controlled service changes. | Web / change management |
+| ids-01 | `prometheus` | Stores the metrics used by the live Grafana service, including the `kubernetes-state` target for Homelab Defender. | Monitoring / metrics |
+| ids-01 | `grafana` | Provides the live homelab dashboards, central alert evaluation and email notification service. | Monitoring / visualisation / alerting |
+| ids-01 | `loki` | Provides the Loki datasource used by the live Grafana service for central log investigation and log-backed alerting. | Logging |
+| ids-01 | `blackbox-exporter` | Provides availability probes from the ids-01 monitoring stack. | Availability monitoring |
+| ids-01 | `wud` | Watches ids-01 container images and provides image-update information. | Container lifecycle / updates |
 | ids-01 | `cadvisor` | Exposes Docker/container resource metrics from the IDS host to Prometheus. | Monitoring / Docker telemetry |
 | ids-01 | `pihole` | Provides secondary DNS filtering and security-policy enforcement for DNS resilience. | DNS / security |
 | ids-01 | `unbound` | Provides recursive DNS resolution upstream of the secondary Pi-hole. | DNS / resolver |
 
-## Service relationships
+## Monitoring topology
 
-The main monitoring path is broadly:
+The homelab currently has more than one Prometheus instance. TestServer (`main`) has its own Prometheus, and `ids-01` also runs Prometheus as part of the live Grafana monitoring stack.
+
+For Homelab Defender, both Prometheus instances were shown to scrape the same `kube-state-metrics` endpoint successfully, but the live Grafana datasource resolves to the Prometheus container on `ids-01`.
+
+The Defender monitoring path is therefore:
 
 ```text
-Hosts / containers / network devices
+Homelab Defender on k3s-node-01
+        |
+        v
+kube-state-metrics 192.168.2.211:8080
+        |
+        v
+Prometheus on ids-01
+        |
+        v
+Grafana on ids-01
+```
+
+The live Grafana Prometheus datasource is:
+
+```text
+name: Prometheus
+uid: PBFA97CFB590B2093
+url: http://prometheus:9090
+```
+
+The live Loki datasource is:
+
+```text
+name: Loki
+uid: P8E80F9AEF21F6940
+url: http://loki:3100
+```
+
+A more general metrics relationship remains:
+
+```text
+Hosts / containers / network devices / Kubernetes state
             |
-            +--> node-exporter / cAdvisor / exporters
+            +--> node-exporter / cAdvisor / exporters / kube-state-metrics
             |
             v
-       Prometheus
+       Prometheus instance
             |
             +--> Grafana dashboards
             +--> Grafana alerting
@@ -71,7 +110,7 @@ Applications / Docker / security services
            Loki
             |
             v
-         Grafana
+     Grafana on ids-01
 ```
 
 The network security path includes:
@@ -101,6 +140,14 @@ Authelia (where protected)
         v
 Published application
 ```
+
+## Host-specific monitoring stacks
+
+The TestServer and `ids-01` monitoring Compose definitions are materially different and should not be treated as two copies of one host-independent file.
+
+The `ids-01` stack contains Grafana, its own Prometheus and Loki, WUD, Blackbox Exporter and the `monitoring` Docker network. TestServer has a different service composition, bindings and network ownership.
+
+Do not overwrite one host's Compose file with the other merely to remove apparent drift. Shared service definitions or Grafana assets should be handled explicitly while host-specific runtime configuration remains host-specific.
 
 ## cAdvisor incident — 22 August 2026
 
@@ -161,14 +208,14 @@ sudo docker network ls
 sudo docker network inspect monitoring
 ```
 
-For Prometheus scrape health:
+For Prometheus scrape health, query the Prometheus instance on the host being investigated. On `ids-01`:
 
 ```bash
 curl -sG 'http://localhost:9090/api/v1/query' \
   --data-urlencode 'query=up' | jq .
 ```
 
-For cAdvisor specifically:
+For cAdvisor specifically on `ids-01`:
 
 ```bash
 sudo docker inspect cadvisor \

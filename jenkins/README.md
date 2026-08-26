@@ -16,6 +16,7 @@ This area documents how Jenkins is operated, changed, validated, supported and r
 
 - [Platform baseline — 26 August 2026](platform-baseline-2026-08-26.md) — pre-change versions, image identities, ownership, security controls, release state and update candidates.
 - [Homelab Defender monitoring baseline — 26 August 2026](homelab-defender-monitoring-baseline-2026-08-26.md) — validated K3s metrics path, live Grafana/Prometheus architecture, monitoring ownership boundaries and planned dashboard/alert design.
+- [Homelab Defender service overview](../service-overviews/homelab-defender.md) — service-level purpose, runtime, dependencies, monitoring, alerting, availability and maintenance context.
 
 ## Service scope
 
@@ -40,7 +41,8 @@ Operational support for the delivered workload uses the existing homelab monitor
 | Application, tests and delivery pipeline | `jenkins-gradle-delivery-lab` |
 | Node-side restricted deploy implementation | `jenkins-gradle-delivery-lab/ops/deploy-homelab-defender` |
 | Kubernetes desired state and approved release digest | `kubernetes-homelab/applications/homelab-defender-test` |
-| Reusable Grafana dashboard and alert configuration | `docker-env/stacks/monitoring/grafana` |
+| Grafana alert definitions and dashboard source | `grafana-alerting` |
+| Host-specific monitoring Compose/runtime configuration | `docker-env` plus controlled host deployment state |
 | Jenkins operational documentation and evidence | `home-lab-docs/jenkins` |
 | Runtime Jenkins data | TestServer `/home/james/docker/data/jenkins` |
 | DinD image/build cache | TestServer `/home/james/docker/data/jenkins-docker` |
@@ -48,7 +50,7 @@ Operational support for the delivered workload uses the existing homelab monitor
 
 The TestServer Jenkins Compose file and custom controller Dockerfile are operationally critical but are not yet recorded here as Git-owned source. Bringing them under controlled source ownership is part of the Jenkins documentation and recovery work.
 
-The TestServer and `ids-01` monitoring Compose definitions are host-specific and must not be made identical merely to remove drift. Shared Grafana assets should be Git-owned and reusable, while host-specific runtime definitions remain explicit.
+The TestServer and `ids-01` monitoring Compose definitions are host-specific and must not be made identical merely to remove drift. Grafana rule/dashboard source should follow the existing `grafana-alerting` repository, while host-specific runtime definitions remain explicit.
 
 ## Current release
 
