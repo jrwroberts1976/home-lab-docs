@@ -1,5 +1,7 @@
 # NPM token SOPS synchronisation
 
+For token creation or rotation, first follow [NPM API token creation and rotation](npm-api-token-rotation.md).
+
 Run [`scripts/sync-npm-token-sops.sh`](../scripts/sync-npm-token-sops.sh) on **TestServer**. It updates only the encrypted
 recovery source and deliberately stops before committing or pushing.
 
