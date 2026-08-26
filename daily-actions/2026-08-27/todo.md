@@ -5,6 +5,8 @@
 1. Sync local working checkouts to the newly merged `main` branches before starting any new Stage 5 work.
    - `jrwroberts1976/homelab-container-version-control`
    - `jrwroberts1976/home-lab-docs`
+   - `jrwroberts1976/jenkins-gradle-delivery-lab`
+   - `jrwroberts1976/engineering-portfolio`
    - keep the live dirty `/home/james/docker` checkout untouched and do not treat it as the authoritative working copy.
 
 2. Reconfirm the Stage 4 baseline after sync.
@@ -34,7 +36,25 @@
    - prefer a reversible, low-impact service;
    - confirm ownership, secrets, architecture, security and rollback readiness before selection.
 
-6. Update the project tracker and daily-actions documentation as Stage 5 decisions are made.
+6. Publish Homelab Defender through a controlled external route and link it from the Engineering Portfolio.
+   - start from validated build 15 unless a newer immutable release has completed the same validation and Git reconciliation;
+   - choose and record a dedicated public Defender hostname;
+   - expose only the Defender application through the existing Cloudflare/reverse-proxy model;
+   - keep Jenkins, the private Docker registry and Kubernetes control paths private;
+   - validate TLS, browser/game behaviour and monitoring from an external client;
+   - add a build-time `PUBLIC_HOMELAB_DEFENDER_URL` to the Engineering Portfolio;
+   - render a `Play Homelab Defender` link only when the public URL is configured and proven;
+   - deploy the portfolio through its controlled production path and verify the external link;
+   - retain a quick route-disable/publication rollback path.
+   - publication runbook: `jrwroberts1976/jenkins-gradle-delivery-lab/PUBLICATION_GUIDE.md`.
+
+7. Keep the new container-management user guides aligned with Stage 5 implementation.
+   - `docs/user-guides/create-new-container.md`;
+   - `docs/user-guides/update-existing-container.md`;
+   - `docs/user-guides/README.md`;
+   - update them when the actual Stage 5 deployment command, approval gate and rollback implementation are proven.
+
+8. Update the project tracker and daily-actions documentation as Stage 5 and Defender publication decisions are made.
 
 ## Safety boundary carried forward
 
@@ -46,4 +66,6 @@ deployment.allowed=false
 deployment.performed=false
 ```
 
-Do not add Docker/Compose/Kubernetes deployment authority until the Stage 5 human-controlled pilot boundary has been explicitly reviewed.
+Do not add Docker/Compose deployment authority until the Stage 5 human-controlled pilot boundary has been explicitly reviewed.
+
+Publishing Homelab Defender is a separate Kubernetes/public-edge change. It must not widen Jenkins, registry or Kubernetes management exposure.
