@@ -1,7 +1,7 @@
 # Container Version Control — Stage 4 Jenkins Integration Checkpoint
 
 **Date:** 26 August 2026  
-**Status:** READ-ONLY JENKINS EXECUTION BOUNDARY PROVEN; CREDENTIAL-BOUND PIPELINE RUN STILL OUTSTANDING  
+**Status:** READ-ONLY JENKINS CREDENTIAL-STORE EXECUTION BOUNDARY PROVEN
 **Implementation repository:** `jrwroberts1976/homelab-container-version-control`
 
 ## Purpose
@@ -220,7 +220,44 @@ id:       homelab-stage4-testserver-validator
 username: homelab-validator
 ```
 
-The dedicated temporary private key remains in Jenkins persistent storage until credential-store binding is successfully proven. It must not be removed before that point.
+The Jenkins credential-store entry is persisted and proven through the real Pipeline path. The temporary loose validator private/public key pair was removed after the first complete successful Pipeline proof, and a subsequent Pipeline run succeeded using the Jenkins credential store alone.
+
+## Credential-bound Pipeline proof
+
+The Stage 4 Jenkins job has now completed the real read-only path using the persisted Jenkins SSH credential.
+
+The proof progressed fail-closed:
+
+- Build #1 exposed a Pipeline parameter-binding defect.
+- Build #2 reached TestServer and produced the real Dozzle deployment plan, then stopped on the unapproved JSON parser constructor.
+- Build #3 progressed further and stopped on the unapproved `parseText(String)` method.
+- Only these two exact Script Security signatures were approved:
+  - `new groovy.json.JsonSlurperClassic`
+  - `method groovy.json.JsonSlurperClassic parseText java.lang.String`
+- Build #4 completed the full read-only Pipeline successfully.
+- The transitional loose SSH key pair was then removed.
+- Build #5 completed successfully using the Jenkins credential store alone.
+
+Build #5 proved:
+
+```text
+loose private key absent
+loose public key absent
+pinned known_hosts retained
+Jenkins credential resolved
+credential username=homelab-validator
+deployment-plan artifact received
+decision=no-change
+proposed action=none
+deployment.allowed=false
+deployment.performed=false
+Stop before deployment executed
+Finished: SUCCESS
+```
+
+Jenkins and Dozzle both remained running with restart count `0`.
+
+This closes the Stage 4 credential-store execution-boundary proof.
 
 ## Jenkins controller validation capability
 
@@ -256,7 +293,7 @@ The checked-out schema is pinned to reviewed blob:
 
 ## Reviewable Jenkinsfile
 
-A root `Jenkinsfile` has been prepared on `stage4/jenkins-integration` and remains uncommitted for review.
+A root `Jenkinsfile` is committed on `stage4/jenkins-integration` and is under review in implementation PR #26.
 
 Static checks confirm:
 
@@ -269,7 +306,7 @@ Static checks confirm:
 - no Kubernetes or Helm deployment command;
 - explicit stop-before-deployment behaviour.
 
-The implementation repository currently has exactly two review changes:
+Implementation PR #26 contains exactly two reviewed files:
 
 ```text
 Jenkinsfile
@@ -278,23 +315,29 @@ ops/testserver/homelab-stage4-validation-ssh
 
 ## Remaining work
 
-Before Stage 4 Jenkins integration is complete:
+The Stage 4 Jenkins execution boundary is now complete.
 
-1. create `homelab-stage4-testserver-validator` in the Jenkins credential store without exposing the private key;
-2. configure the Jenkins job/multibranch job for `homelab-container-version-control`;
-3. run the Jenkinsfile through Jenkins credential binding;
-4. verify the archived deployment-plan artifact and Jenkins-side Groovy assertions;
-5. exercise a fail-closed Pipeline result;
-6. remove the temporary loose validator key only after credential binding is proven;
-7. review and commit the implementation wrapper and Jenkinsfile;
-8. complete the implementation PR;
-9. establish a durable Jenkins network identity for the `/32` SSH restriction; and
-10. keep deployment authority disabled throughout Stage 4.
+Close-out work remains:
 
-Stage 4 remains:
+1. review and merge implementation PR #26 if the final diff is unchanged;
+2. review and merge documentation PR #40;
+3. retain the existing read-only Jenkins job and credential configuration;
+4. establish a durable Jenkins network identity so the current `/32` SSH restriction survives controller recreation without broadening access; and
+5. keep deployment authority disabled until a separately reviewed Stage 5 pilot introduces an explicit human-controlled deployment boundary.
+
+The Jenkins controller remains a platform exception:
+
+```text
+Jenkins may assess Jenkins
+Jenkins may propose a Jenkins update
+Jenkins must not automatically deploy or recreate Jenkins
+```
+
+Stage 4 is complete as:
 
 ```text
 READ-ONLY
+credential-store execution proven
 deployment.allowed=false
 deployment.performed=false
 ```
