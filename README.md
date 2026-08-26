@@ -71,7 +71,7 @@ Existing operational documents remain valid and will be progressively classified
 ### Active — priority order
 
 - Remove synthetic Pi-hole enforcement-probe traffic from raw seven-day client/category Prometheus totals while retaining all five active DNS block tests.
-- Project: end-to-end Docker image version control — continue Stage 0 inventory of declared vs running images, drift/floating/unmanaged classification, and secret-location inventory. Delivery is now tracked in `jrwroberts1976/homelab-container-version-control` issue #1; the original home-lab-docs issue #9 remains the initiating record.
+- Project: end-to-end Docker image version control — Stage 4 read-only validation-gate foundation is now established on TestServer: service ownership resolves 30/30 containers, deployment remains disabled for every service, explicit version-ordering schemes are recorded, and the next engineering step is the standalone candidate-image comparator before Jenkins integration. Delivery remains tracked in `jrwroberts1976/homelab-container-version-control` issue #1; the original home-lab-docs issue #9 remains the initiating record.
 - Restore and verify Suricata 24-hour collection after the collection timeout.
 - Investigate CrowdSec reporting synchronisation / DNS resolution.
 - Add a Greenbone → Loki ingestion health check.
@@ -128,11 +128,12 @@ Existing operational documents remain valid and will be progressively classified
 
 ### Recommended next item
 
-Continue Stage 0 of the Docker image version-control project: inventory the TestServer and ids-01 Compose declarations against the actually running image tags/digests and classify drift, floating tags and unmanaged containers. For BAU/security work, restore and verify the Suricata 24-hour collection. The Docker/WUD BAU check remains in pending verification until the next scheduled scan completes with `0 errors`.
+Continue Stage 4 of the Docker image version-control project by implementing and independently testing the read-only candidate-image comparator. It must use exact digest identity first, explicit supported version parsers second, block unsafe downgrades or unknown ordering, and require provenance for local builds before any Jenkins integration. For BAU/security work, restore and verify the Suricata 24-hour collection. The Docker/WUD BAU check remains in pending verification until the next scheduled scan completes with `0 errors`.
 
 ## Documentation
 
 - [Jenkins Operations](jenkins/README.md) — Jenkins/DinD service ownership, image and security baselines, controlled delivery validation, Kubernetes reconciliation and recovery planning.
+- [Container Version Control — Stage 4 Validation Gate Foundation](jenkins/container-version-control-stage4-foundation-2026-08-26.md) — TestServer ownership resolution, read-only safety boundary, version-ordering strategy, digest precedence and the next comparator milestone.
 - [Grafana Alerting](service-overviews/grafana-alerting.md) — central alert evaluation and validated SMTP delivery through a Docker Compose secret.
 
 - [Engineering Portfolio Deployment and Maintenance](engineering-portfolio-deployment.md) — guarded production deployment, readiness checks, Nginx Proxy Manager maintenance switching, persistent all-path maintenance fallback, validation evidence and version-control ownership.
