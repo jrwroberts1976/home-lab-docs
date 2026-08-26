@@ -58,7 +58,7 @@ The first fully automated end-to-end release recorded in this documentation is J
 
 ## Monitoring architecture
 
-The existing Kubernetes monitoring components already provide the state required for an operational dashboard; no new Kubernetes exporter or Prometheus scrape target is required.
+The existing Kubernetes monitoring components provide the state required for operational monitoring; no new Kubernetes exporter or Prometheus scrape target was required.
 
 `kube-state-metrics` runs in the K3s `monitoring` namespace and is exposed at:
 
@@ -89,7 +89,7 @@ uid: PBFA97CFB590B2093
 url: http://prometheus:9090
 ```
 
-A separate Prometheus instance on TestServer also scrapes the same `kube-state-metrics` endpoint successfully. The live Grafana dashboards and alert evaluation use the `ids-01` Prometheus datasource.
+A separate Prometheus instance on TestServer also scrapes the same `kube-state-metrics` endpoint successfully. The live Grafana dashboard and alert evaluation use the `ids-01` Prometheus datasource.
 
 ## Current metrics
 
@@ -114,7 +114,7 @@ restart total      = 8
 pod phase          = Running
 ```
 
-The historical restart count of `8` must not itself generate a new incident. Restart alerting should detect an increase over a short time window.
+The historical restart count of `8` is not itself an incident. Restart alerting detects a new increase over a ten-minute window.
 
 ## Release identity
 
@@ -132,7 +132,7 @@ For operational release display, use `image_spec` and `image_id`. Do not treat t
 
 ## Resource telemetry limitation
 
-Kubernetes `metrics-server` currently provides point-in-time resource usage through `kubectl top`; the recorded pod sample was approximately `1m` CPU and `166Mi` memory.
+Kubernetes `metrics-server` provides point-in-time resource usage through `kubectl top`; the recorded pod sample was approximately `1m` CPU and `166Mi` memory.
 
 However, the live `ids-01` Prometheus instance returned no Defender series for:
 
@@ -141,87 +141,145 @@ container_cpu_usage_seconds_total{namespace="homelab-defender-test",container="h
 container_memory_working_set_bytes{namespace="homelab-defender-test",container="homelab-defender"}
 ```
 
-Therefore CPU and memory panels should not be added to the first Grafana dashboard by inventing or assuming unavailable telemetry. They can be added later if kubelet/cAdvisor resource series are deliberately exposed to the live Prometheus path.
+CPU and memory panels were therefore intentionally omitted from the first Grafana dashboard. They can be added later if kubelet/cAdvisor resource series are deliberately exposed to the live Prometheus path.
 
-## Grafana dashboard ownership
+## Grafana source ownership
 
-The live Grafana container runs on `ids-01` and file-provisions dashboards from:
-
-```text
-/home/james/docker/data/monitoring/grafana/dashboards
-    -> /etc/grafana/dashboards
-```
-
-The existing `jrwroberts1976/grafana-alerting` repository already contains a `dashboards/` directory and is the appropriate Git home for the Defender dashboard candidate.
-
-The expected source file is:
+Grafana dashboard and alert source is Git-managed in:
 
 ```text
-grafana-alerting/dashboards/homelab-defender-kubernetes.json
+jrwroberts1976/grafana-alerting
 ```
 
-Existing Grafana dashboards use a datasource variable named `${DS_PROMETHEUS}` rather than hard-coding a datasource UID. The Defender dashboard should follow that convention.
-
-## Alert ownership and deployment
-
-Grafana alert definitions are Git-managed in:
+The deployed Defender source files are:
 
 ```text
-jrwroberts1976/grafana-alerting/rules
+dashboards/homelab-defender-kubernetes.json
+rules/homelab-defender-deployment-unavailable.json
+rules/homelab-defender-new-restart.json
 ```
 
-The repository deploys Grafana-managed alert rules through the Grafana provisioning API. The live rules are persisted by Grafana and are visible in the Grafana database; they should not be created by writing directly to SQLite.
+The source change was introduced on branch `monitoring/homelab-defender`, committed as `5a1b65c`, merged through `grafana-alerting#4`, and incorporated into `main` as merge commit `8244758`.
 
-Existing automation on `ids-01` also demonstrates the protected-token pattern:
+The host-specific monitoring Compose/runtime configuration remains separate from these reusable Grafana assets.
+
+## Deployed dashboard — 26 August 2026
+
+The Defender dashboard was deployed to live Grafana through the authenticated dashboard API rather than by copying into the file-provisioned dashboard mount.
+
+Deployment result:
+
+```text
+API: POST /api/dashboards/db
+HTTP: 200
+status: success
+uid: homelab-defender-k8s
+version: 1
+path: /d/homelab-defender-k8s/homelab-defender-kubernetes-operations
+```
+
+Dashboard title:
+
+```text
+Homelab Defender Kubernetes Operations
+```
+
+The dashboard contains nine panels:
+
+1. Available Replicas
+2. Desired Replicas
+3. Container Ready
+4. Running Pods
+5. Restart Total
+6. New Restarts - 10m
+7. Current Release Image
+8. Deployment Replica History
+9. Container Restart History
+
+All dashboard PromQL expressions were validated successfully against the live `ids-01` Prometheus before deployment.
+
+The dashboard source uses the confirmed live datasource UID `PBFA97CFB590B2093`. The release panel uses `{{image_spec}}` so the digest-pinned build `14` identity is displayed rather than the misleading standalone `image=:12` label.
+
+## Deployed alerts — 26 August 2026
+
+The alert rules were deployed individually through Grafana's provisioning API using the protected API token at:
 
 ```text
 /home/james/docker/secrets/grafana-api-token
 ```
 
-Deployment scripts use `GRAFANA_TOKEN` when explicitly supplied, otherwise read the protected token file, and call the Grafana provisioning API at `http://localhost:3001`.
+No direct SQLite write was used and the broad repository-wide `deploy-alerts.sh` path was deliberately avoided so unrelated rules could not be reconciled accidentally.
 
-The live Prometheus datasource UID used by existing rules is:
+### Homelab Defender Deployment Unavailable
 
 ```text
-PBFA97CFB590B2093
+Grafana rule UID: ffwbnisgmg4cgb
+Grafana database ID: 37
+folder UID: homelab-alerts
+rule group: Homelab Defender
+severity: critical
+category: availability
+for: 2m
+noDataState: Alerting
+execErrState: Alerting
+provenance: api
+paused: false
 ```
 
-The existing Grafana alert folder UID is `homelab-alerts`, displayed as **Homelab Alerts**.
-
-## Initial alert design
-
-The first service-specific rules should cover:
-
-1. deployment unavailable — available replicas lower than desired replicas;
-2. container/pod not ready; and
-3. a new restart detected over a short evaluation window.
-
-Deployment availability can be expressed conceptually as:
+PromQL:
 
 ```promql
-kube_deployment_status_replicas_available{
-  namespace="homelab-defender-test",
-  deployment="homelab-defender"
-}
-<
-kube_deployment_spec_replicas{
-  namespace="homelab-defender-test",
-  deployment="homelab-defender"
-}
+sum(kube_deployment_spec_replicas{namespace="homelab-defender-test",deployment="homelab-defender"})
+-
+sum(kube_deployment_status_replicas_available{namespace="homelab-defender-test",deployment="homelab-defender"})
+> bool 0
 ```
 
-New restarts can be detected with:
+The expression evaluated to `0` against the healthy baseline before deployment.
+
+### Homelab Defender New Container Restart
+
+```text
+Grafana rule UID: afwbnisiruz28f
+Grafana database ID: 38
+folder UID: homelab-alerts
+rule group: Homelab Defender
+severity: warning
+category: stability
+for: 1m
+noDataState: OK
+execErrState: Alerting
+provenance: api
+paused: false
+```
+
+PromQL:
 
 ```promql
-increase(
-  kube_pod_container_status_restarts_total{
-    namespace="homelab-defender-test",
-    container="homelab-defender"
-  }[10m]
-) > 0
+sum(
+  increase(
+    kube_pod_container_status_restarts_total{
+      namespace="homelab-defender-test",
+      container="homelab-defender"
+    }[10m]
+  )
+) > bool 0
 ```
 
-Existing homelab alert rules typically evaluate every 60 seconds and use labels such as `severity` and `category` for notification routing.
+The expression evaluated to `0` before deployment while the historical restart total remained `8`, confirming that the existing counter would not immediately trigger the rule.
+
+## Post-deployment validation status
+
+The Grafana API accepted the dashboard with HTTP `200` and both rules with HTTP `201`. Both returned live rule objects with `provenance=api` and `isPaused=false`.
+
+A final post-deployment retrieval/evaluation check is still required to confirm:
+
+- the dashboard can be retrieved from live Grafana by UID;
+- both alert rules are present with the expected source definitions;
+- both rules evaluate healthy/inactive against the current baseline; and
+- no unexpected notification was generated.
+
+Until that check is complete, the deployment is recorded as successful at the API/configuration layer with final operational evaluation verification pending.
 
 ## Restart interpretation
 
@@ -253,19 +311,21 @@ The delivery path includes:
 - digest-pinned Kubernetes release state; and
 - Git-owned desired-state reconciliation after an approved release.
 
-Grafana API tokens, SMTP passwords and other credentials must remain outside committed documentation and source files.
+Grafana API tokens, SMTP passwords and other credentials remain outside committed documentation and source files.
 
 ## Maintenance and change rules
 
 Before changing Defender monitoring:
 
 1. validate PromQL against the live Prometheus datasource;
-2. preserve the existing Grafana rule state as rollback evidence when changing alerts;
-3. validate dashboard JSON with `jq` before deployment;
-4. deploy alerts through the existing Grafana provisioning API, not direct SQLite writes;
-5. deploy dashboard JSON only to the existing Grafana dashboard mount;
-6. avoid changes to Kubernetes or Prometheus unless a missing telemetry requirement is explicitly approved; and
-7. record the resulting operational state in `home-lab-docs`.
+2. validate dashboard/rule JSON before deployment;
+3. preserve existing live Grafana state as rollback evidence when changing existing rules or dashboards;
+4. merge source to `grafana-alerting/main` before live deployment;
+5. deploy alert rules individually through the Grafana provisioning API using the protected token pattern;
+6. deploy the Defender dashboard through the scoped Grafana dashboard API unless a future controlled change deliberately moves it to file provisioning;
+7. do not write directly to Grafana SQLite;
+8. avoid Kubernetes or Prometheus changes unless a missing telemetry requirement is explicitly approved; and
+9. verify live dashboard/rule state after deployment and record the evidence in `home-lab-docs`.
 
 ## Source ownership
 
