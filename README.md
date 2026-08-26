@@ -71,7 +71,7 @@ Existing operational documents remain valid and will be progressively classified
 ### Active — priority order
 
 - Remove synthetic Pi-hole enforcement-probe traffic from raw seven-day client/category Prometheus totals while retaining all five active DNS block tests.
-- Project: end-to-end Docker image version control — continue Stage 0 inventory of declared vs running images, drift/floating/unmanaged classification, and secret-location inventory. Delivery is now tracked in `jrwroberts1976/homelab-container-version-control` issue #1; the original home-lab-docs issue #9 remains the initiating record.
+- Project: end-to-end Docker image version control — Stage 4 read-only ownership, explicit image typing, image comparison and the first candidate image planner are now validated on TestServer. The planner verifies clean authoritative Git ownership, Compose validity, runtime image ID/RepoDigest, remote OCI index digest and exact target-platform manifest, then emits a non-deploying JSON decision. Deployment remains disabled. The next engineering work is broader candidate coverage, local-build provenance, Trivy validation, secret-readiness checking and the non-secret Jenkins deployment-plan artifact. Delivery remains tracked in `jrwroberts1976/homelab-container-version-control` issue #1; the original home-lab-docs issue #9 remains the initiating record.
 - Restore and verify Suricata 24-hour collection after the collection timeout.
 - Investigate CrowdSec reporting synchronisation / DNS resolution.
 - Add a Greenbone → Loki ingestion health check.
@@ -91,6 +91,7 @@ Existing operational documents remain valid and will be progressively classified
 
 ### Completed today
 
+- Container Version Control Stage 4 advanced through the first complete read-only candidate-planner path — service ownership resolves 30/30 TestServer containers with 25 explicit registry images and 5 explicit local builds; the comparator passed its policy matrix; Dozzle authoritative Git/Compose, runtime image identity, remote OCI index and `linux/arm64` manifest were resolved independently; the planner returned `same` via exact digest; five deliberate fail-closed tests passed; and deployment remained both disallowed and unperformed. Implementation is split across stacked pull requests `homelab-container-version-control#19`, `#20` and `#21`.
 - ids-01 service estate audited and cleaned — zero failed units; unused Docker Alloy removed in favour of the active systemd collector; obsolete SecOps timer and legacy secondary Pi-hole metrics units archived; active collectors revalidated.
 - Daily Security & Recovery Brief enhanced with combined primary and secondary Pi-hole Adult and Malware/Phishing totals by client IP, fresh evidence collection before email delivery, synthetic-probe exclusion and evidence-correct explanatory wording.
 - Engineering Portfolio guarded deployment workflow validated end-to-end — the deployment script now distinguishes Docker `running` from application readiness, retries `/healthz` for up to approximately 60 seconds, fails early on Docker `unhealthy`, and runs the container-version-control project route as part of smoke testing. The corrected script was merged to the Engineering Portfolio `main` branch and a subsequent production deployment completed successfully.
@@ -128,11 +129,12 @@ Existing operational documents remain valid and will be progressively classified
 
 ### Recommended next item
 
-Continue Stage 0 of the Docker image version-control project: inventory the TestServer and ids-01 Compose declarations against the actually running image tags/digests and classify drift, floating tags and unmanaged containers. For BAU/security work, restore and verify the Suricata 24-hour collection. The Docker/WUD BAU check remains in pending verification until the next scheduled scan completes with `0 errors`.
+Continue Stage 4 of the Docker image version-control project by extending the read-only candidate planner beyond the proven Dozzle path, then add local-build provenance handling, Trivy candidate scanning, secret-readiness checks and the non-secret deployment-plan artifact before Jenkins integration. Deployment must remain disabled throughout this stage. For BAU/security work, restore and verify the Suricata 24-hour collection. The Docker/WUD BAU check remains in pending verification until the next scheduled scan completes with `0 errors`.
 
 ## Documentation
 
 - [Jenkins Operations](jenkins/README.md) — Jenkins/DinD service ownership, image and security baselines, controlled delivery validation, Kubernetes reconciliation and recovery planning.
+- [Container Version Control — Stage 4 Validation Gate Foundation](jenkins/container-version-control-stage4-foundation-2026-08-26.md) — TestServer ownership, explicit image types, comparator policy, immutable runtime/registry identity, OCI platform validation, read-only candidate planner, fail-closed evidence and next Jenkins-gate milestones.
 - [Grafana Alerting](service-overviews/grafana-alerting.md) — central alert evaluation and validated SMTP delivery through a Docker Compose secret.
 
 - [Engineering Portfolio Deployment and Maintenance](engineering-portfolio-deployment.md) — guarded production deployment, readiness checks, Nginx Proxy Manager maintenance switching, persistent all-path maintenance fallback, validation evidence and version-control ownership.
