@@ -60,6 +60,7 @@ Initial indexes are maintained under:
 ```text
 sop/
 scp/
+procedures/
 service-overviews/
 ```
 
@@ -143,6 +144,10 @@ Continue Stage 0 of the Docker image version-control project: inventory the Test
 - [Daily Security & Recovery Reporting](service-overviews/daily-security-and-recovery-reporting.md) — report-generation chains, dual-Pi-hole evidence aggregation, recovery/Loki assurance and combined email behaviour.
 - [ids-01 Service and Timer Inventory](service-overviews/ids-01-service-inventory.md) — active service ownership, schedules, retired duplicate collectors and validation commands.
 - [Daily Homelab Actions](daily-actions/README.md) — dated operational follow-up notes, with each day stored in its own `YYYY-MM-DD` folder.
+
+## Procedures
+
+- [NPM token SOPS synchronisation procedure](procedures/npm-token-sops-synchronisation.md) — safely synchronise the protected live Nginx Proxy Manager token into its encrypted TestServer recovery source.
 
 ## Operational assets
 
