@@ -145,3 +145,8 @@ grafana-alert-email-standard.md
 ```
 
 Secrets are deliberately not stored in this repository. In particular, the ASUS SSH private key, Grafana API token and Nginx Proxy Manager token remain external to Git.
+
+## NPM recovery validation
+
+- `prepare-npm-sops-recovery-validation.sh` — packages the staged encrypted NPM source and a one-way protected-source checksum, then transfers them to DietPi.
+- `dietpi/validate-npm-sops-recovery-identity.sh` — decrypts the transferred NPM source with the protected recovery identity in RAM, verifies the checksum and removes temporary material.
