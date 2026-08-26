@@ -1,25 +1,25 @@
 # Container Version Control — Stage 4 Validation Gate Foundation
 
 **Date:** 26 August 2026  
-**Status:** Stage 4 foundation validated; comparator and Jenkins gate not yet implemented  
+**Status:** Stage 4 ownership, image comparator and read-only candidate planner validated; Jenkins gate integration not yet implemented  
 **Implementation repository:** `jrwroberts1976/homelab-container-version-control`
 
 ## Purpose
 
-This document records the operational checkpoint reached before implementing the Stage 4 candidate-image comparator and Jenkins validation gate.
+This document records the operational checkpoint reached while building the Stage 4 validation gate for controlled Docker/Compose image version management.
 
-The project is building controlled, observable and reversible Docker image version management. Git and Compose remain the desired-state authority, Renovate will propose changes, Jenkins will validate them, and WUD remains an independent update signal rather than a deployment authority.
+Git and Compose remain the desired-state authority, Renovate proposes changes, Jenkins will validate them, and WUD remains an independent update signal rather than a deployment authority.
 
-At this checkpoint Stage 4 is deliberately **read-only**. No image pull, container recreation, restart or deployment capability has been introduced by the Stage 4 work described here.
+Stage 4 remains deliberately **read-only**. The validated components described here can inspect Git, Compose, runtime Docker image identity and remote registry manifest metadata, but they do not pull images, restart or recreate containers, run `docker compose up`, deploy services or give Jenkins deployment authority.
 
 ## Stage 4 safety boundary
 
 The first Jenkins milestone is a read-only validation gate. Its intended responsibilities are:
 
 1. resolve service ownership;
-2. identify the authoritative Git/Compose source;
+2. identify and verify the authoritative Git/Compose source;
 3. validate Compose configuration;
-4. compare current and proposed image identities;
+4. identify current runtime and desired candidate image identities;
 5. block unsafe downgrades or unknown ordering;
 6. verify architecture/manifest compatibility;
 7. run Trivy security validation;
@@ -30,10 +30,11 @@ Automatic deployment is explicitly outside the current Stage 4 scope.
 
 ## Service ownership model
 
-A service-ownership registry was created in the implementation repository as:
+The implementation repository contains:
 
 ```text
 config/service-ownership.yml
+scripts/resolve-service-ownership.sh
 ```
 
 The ownership model distinguishes three authorities:
@@ -44,12 +45,32 @@ The ownership model distinguishes three authorities:
 | `external-git` | Service whose runtime may appear under another filesystem location but whose source is owned by a separate Git repository |
 | `platform-exception` | Deliberate service that currently has no acceptable Git source mapping and must fail closed for deployment automation |
 
-Every recorded ownership rule currently has:
+Every resolved rule currently returns:
 
 ```text
 validation: read-only
 deployment_allowed: false
 ```
+
+### Explicit image types
+
+Image type is now explicit for the complete current TestServer container estate:
+
+```text
+registry-image: 25
+local-build:     5
+unknown/null:    0
+```
+
+The five local-build services are:
+
+- `birdnet-exporter`;
+- `crowdsec-exporter`;
+- `engineering-portfolio`;
+- `projects-jrwroberts-co-uk`; and
+- the Jenkins controller platform exception.
+
+This prevents the candidate planner from guessing whether a service is registry-backed or locally built.
 
 ### Explicit ownership overrides
 
@@ -62,38 +83,13 @@ The following services require explicit ownership rather than the normal `docker
 | Jenkins controller | `platform-exception` | `no-git-source` |
 | Jenkins DinD service | `platform-exception` | `no-git-source` |
 
-The Engineering Portfolio runtime Compose copy under `/home/james/docker/stacks/engineering-portfolio/compose.yml` was verified byte-identical to its authoritative source `/home/james/projects/engineering-portfolio/compose.yml`. Its deployment script explicitly copies from the Git-owned project into the production runtime location.
+The Engineering Portfolio runtime Compose copy under `/home/james/docker/stacks/engineering-portfolio/compose.yml` was verified byte-identical to its authoritative source `/home/james/projects/engineering-portfolio/compose.yml` at the ownership checkpoint.
 
 The Jenkins controller and DinD Compose file remains under `/home/james/projects/docker-compose.yml`, and `/home/james/projects` is not itself a Git worktree. Jenkins is therefore intentionally treated as a platform exception. Jenkins may assess or propose a Jenkins update, but Jenkins must not automatically recreate or deploy its own controller.
 
-## Read-only ownership resolver
-
-The implementation repository now contains a read-only ownership resolver:
-
-```text
-scripts/resolve-service-ownership.sh
-```
-
-The resolver maps a running container through Docker Compose labels to the ownership registry and emits machine-readable JSON containing:
-
-- container name;
-- Compose project and service;
-- authority;
-- repository;
-- authoritative source Compose path;
-- runtime Compose path;
-- image type;
-- exception where applicable;
-- validation mode; and
-- `deployment_allowed`.
-
-The resolver fails closed when a service is outside the default `docker-env` authority root and has no explicit override.
-
-## Full TestServer validation
+## Full TestServer ownership validation
 
 The ownership resolver was exercised against the complete TestServer Docker estate.
-
-Validation result:
 
 ```text
 resolved:            30
@@ -102,12 +98,6 @@ docker-env:          26
 external-git:        2
 platform-exception:  2
 other authority:     0
-```
-
-Safety result:
-
-```text
-PASS: every container resolved to a recognised authority
 ```
 
 All 30 resolved services returned:
@@ -120,18 +110,11 @@ This proves the Stage 4 ownership layer covers the current TestServer estate wit
 
 ## Version-ordering strategy
 
-A separate version-scheme registry was added as:
+The implementation repository contains:
 
 ```text
 config/version-schemes.yml
-```
-
-An inventory of image declarations in the clean `docker-env` worktree and the two external Git-owned projects found:
-
-```text
-semver               18
-floating-or-channel   2
-other                  8
+scripts/compare-image-version.py
 ```
 
 The initial explicit ordering rules are:
@@ -139,43 +122,13 @@ The initial explicit ordering rules are:
 | Repository | Parser | Reason |
 |---|---|---|
 | normal registry images | SemVer default | Most current TestServer release tags are semantic versions |
-| `ghcr.io/tphakala/birdnet-go` | `yyyymmdd` | Current release tags use an eight-digit date such as `20260716` |
-| `getwud/wud` | `integer` | Current release tags use integer releases such as `8` |
+| `ghcr.io/tphakala/birdnet-go` | `yyyymmdd` | Release tags use an eight-digit date such as `20260716` |
+| `getwud/wud` | `integer` | Release tags use integer releases such as `8` |
 | `lscr.io/linuxserver/duckdns` | `opaque` | Tags such as `af6dcae5-ls86` must not be guessed into an ordering |
 | `nginx` | `channel` | `alpine` is a moving channel, not an ordered release |
 | local builds | `provenance` | Local images must be assessed through source/build provenance rather than tag ordering |
 
-Unknown ordering must fail closed as:
-
-```text
-ordering-unknown-blocked
-```
-
-Local builds must report:
-
-```text
-local-build-provenance-required
-```
-
-## Digest precedence
-
-Digest identity takes precedence over tag text.
-
-A declaration such as:
-
-```text
-linuxserver/smokeping:latest@sha256:<digest>
-```
-
-is still reproducible at deployment time because the digest fixes the exact artifact, even though `latest` by itself is a moving tag.
-
-Likewise, a digest-only declaration is reproducible even when no human-readable version tag is present.
-
-A digest change under the same tag is a real image change and must receive full validation. It must not be silently treated as `same`, nor should Jenkins guess upgrade/downgrade ordering from an unchanged tag.
-
-## Planned comparator results
-
-The next implementation component is the read-only image comparator. Its expected policy results are:
+The comparator emits fail-closed results including:
 
 ```text
 same
@@ -185,57 +138,241 @@ ordering-unknown-blocked
 local-build-provenance-required
 ```
 
-The following edge case remains to be explicitly classified before implementation is considered complete:
+## Comparator validation
+
+The read-only comparator is implemented and validated.
+
+Synthetic policy matrix:
 
 ```text
-same tag + different digest
+15/15 PASS
 ```
 
-It is known to be a real image change, but the final policy result name for that condition has not yet been selected.
+Coverage includes:
 
-## Implementation commits at checkpoint
+- SemVer same / upgrade / downgrade;
+- `v`-prefixed SemVer;
+- BirdNET `YYYYMMDD` upgrade / downgrade;
+- WUD integer upgrade / downgrade;
+- opaque DuckDNS ordering blocked;
+- nginx channel ordering blocked;
+- same digest classified `same`;
+- same tag with different digest treated as a real change and blocked as unknown ordering;
+- repository changes blocked;
+- local builds require provenance; and
+- malformed or unsupported digest values fail closed.
 
-The local implementation branch on TestServer is:
+Real TestServer checks included Dozzle, BirdNET-Go, WUD, DuckDNS, Smokeping and Engineering Portfolio.
+
+## Digest precedence and runtime identity
+
+Digest identity takes precedence over tag text.
+
+A declaration such as:
 
 ```text
-stage4/service-ownership
+linuxserver/smokeping:latest@sha256:<digest>
 ```
 
-Recorded local commits:
+is reproducible at deployment time because the digest fixes the exact artifact, even though `latest` by itself is a moving tag.
+
+Runtime validation also established that Docker `Config.Image` must not be treated as the complete immutable identity. For example, a Git declaration may contain a tag plus digest while the runtime creation reference only preserves the tag.
+
+The Stage 4 planner therefore records separately:
 
 ```text
-71d526b  Add Stage 4 service ownership registry
-828950a  Add Stage 4 service ownership resolver
-8469100  Add Stage 4 image version scheme registry
+Docker Config.Image
+runtime image ID
+runtime RepoDigests
+runtime OS / architecture
+candidate OCI index digest
+candidate platform-manifest digest
 ```
 
-At the time this operational checkpoint was written, that implementation branch had not yet been pushed to GitHub. These commit identifiers therefore record the validated local state rather than claiming the changes are already present on the remote default branch.
+## Read-only candidate image planner
+
+The implementation repository now contains:
+
+```text
+scripts/plan-image-update.py
+```
+
+The first candidate-planner path joins:
+
+```text
+running container
+    -> ownership resolver
+    -> explicit clean authoritative Git checkout
+    -> Compose validation
+    -> exact desired service image
+    -> runtime image identity
+    -> remote OCI manifest metadata
+    -> target-platform manifest
+    -> image comparator
+    -> read-only JSON plan
+```
+
+For registry-backed services the planner:
+
+- requires `validation=read-only`;
+- requires `deployment_allowed=false`;
+- rejects platform exceptions from automatic planning;
+- rejects local builds until provenance handling is implemented;
+- requires an explicit clean authoritative Git checkout;
+- verifies the checkout's GitHub repository against the ownership registry;
+- records the exact Git revision used as desired-state evidence;
+- validates the full Compose model;
+- extracts only the selected service image;
+- records runtime image ID and RepoDigest independently from `Config.Image`;
+- resolves the remote OCI index digest without pulling image layers;
+- selects exactly one manifest matching the runtime OS and architecture;
+- invokes the comparator using immutable digest identity; and
+- emits deployment state explicitly as disabled and not performed.
+
+## Compose secret-handling boundary
+
+The planner deliberately avoids retaining the full rendered Compose document.
+
+Validation runs:
+
+```text
+docker compose config
+```
+
+with stdout discarded. Candidate extraction then uses image-only output:
+
+```text
+docker compose config --images <service>
+```
+
+This means the planner validates the full Compose model without capturing a rendered configuration that could contain interpolated environment values.
+
+## Dozzle end-to-end validation
+
+Dozzle was used as the first complete real TestServer candidate-planner path.
+
+Authoritative source:
+
+```text
+repository: jrwroberts1976/docker-env
+revision:   232a364bd929b2ed3ed6ffa37dccd045f8c05843
+compose:    stacks/management/docker-compose.yml
+service:    dozzle
+```
+
+Desired and runtime reference:
+
+```text
+amir20/dozzle:v10.7.2
+```
+
+Runtime identity:
+
+```text
+image ID:
+sha256:f1480337d833d51986224a50211780b6ccf2b4cbf0f92be3b0eab4b44b6c469d
+
+RepoDigest / OCI index digest:
+sha256:01f9018ffdaa0ec523f9a91dea3eff65b25cdb5f0566ac6d5a2cb4cf591e35e9
+
+platform:
+linux/arm64
+```
+
+Remote registry inspection returned an OCI image index with exactly one `linux/arm64` application manifest:
+
+```text
+sha256:f4328903c5e34dae27b1a64439d6e047172fc3a4cfc925c59ea008f3178c4069
+```
+
+The top-level remote index digest exactly matched the runtime RepoDigest.
+
+Final comparator result:
+
+```text
+method: exact-digest
+result: same
+```
+
+Final deployment state:
+
+```json
+{
+  "allowed": false,
+  "performed": false
+}
+```
+
+The exact staged planner blob was executed successfully before commit.
+
+## Candidate-planner fail-closed validation
+
+Five deliberate planner controls were exercised:
+
+```text
+5/5 PASS
+```
+
+Validated rejection cases:
+
+1. clean checkout of the wrong Git repository;
+2. dirty authoritative checkout;
+3. local-build candidate pending provenance handling; and
+4. Jenkins `platform-exception` candidate.
+
+The fifth test confirmed that a valid Dozzle plan still succeeded after the negative controls.
+
+Additional safety checks confirmed the planner contains no deployment or source-control mutation primitives.
+
+## Implementation branches and pull requests
+
+Stage 4 is being reviewed as a stacked series so each capability remains independently reviewable:
+
+| PR | Branch | Capability |
+|---|---|---|
+| `#19` | `stage4/service-ownership` | ownership registry, resolver, image types and version schemes |
+| `#20` | `stage4/image-comparator` | pure/read-only image comparator |
+| `#21` | `stage4/candidate-planner` | read-only candidate image planner |
+
+Candidate-planner commit:
+
+```text
+f3de3b1  Add Stage 4 candidate image planner
+```
+
+GitHub comparison confirmed `stage4/candidate-planner` is exactly one commit ahead of `stage4/image-comparator` and adds only:
+
+```text
+scripts/plan-image-update.py
+```
 
 ## Source checkout discipline
 
 The live `/home/james/docker` checkout was intentionally left unchanged because it contained unrelated state and was behind its remote branch.
 
-A clean detached worktree was created for Stage 4 source-of-truth validation:
+A clean detached worktree remains the Stage 4 desired-state input for `docker-env` validation:
 
 ```text
 /var/tmp/docker-env-stage4
 ```
 
-That worktree was based on `origin/main` and is used as clean desired-state input. Future Jenkins validation should use clean SCM checkouts/worktrees rather than treating live runtime filesystem copies as authoritative Git state.
+Current recorded revision during the Dozzle planner validation:
 
-External Git-owned services similarly require clean source checkouts of their own repositories.
+```text
+232a364bd929b2ed3ed6ffa37dccd045f8c05843
+```
+
+Future Jenkins validation should use clean SCM checkouts/worktrees rather than treating live runtime filesystem copies as authoritative Git state.
 
 ## Next engineering step
 
-Build and test the read-only image comparator independently of Jenkins.
+The next Stage 4 milestone is to extend the candidate planner beyond the proven Dozzle path and complete the remaining validation-gate controls:
 
-The comparator must establish:
+1. broaden registry-image coverage and handle supported manifest forms safely;
+2. implement local-build provenance handling;
+3. add Trivy candidate security validation;
+4. add secret-readiness checks without exposing secret values;
+5. produce the non-secret deployment-plan artifact including exact rollback identity; and
+6. only then connect the proven read-only controls into Jenkins.
 
-```text
-What is running now?
-What does authoritative Git declare?
-What image is proposed?
-Is it the same, an upgrade, a downgrade, or impossible to order safely?
-```
-
-Only after the comparator and related validation controls are proven should they be connected to a Jenkins Stage 4 pipeline. Deployment capability remains disabled until the later guarded-deployment stage has its own approval, rollback and recovery controls.
+Deployment capability remains disabled. Guarded deployment, health checks and rollback execution belong to the later deployment stage and require their own approval and recovery controls.
