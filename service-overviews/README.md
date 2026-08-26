@@ -4,6 +4,7 @@ This section explains the services that make up the homelab, how they fit togeth
 
 ## Current service overviews
 
+- [Jenkins Operations](../jenkins/README.md) — operational ownership, delivery boundaries, platform baselines, controlled updates, validation and recovery planning for Jenkins, DinD, Trivy, registry publication and K3s deployment.
 - [Grafana Alerting](grafana-alerting.md) — central alert evaluation, Git-managed rules, Compose SMTP-secret delivery and notification validation.
 
 - [AI Security Review](ai-security-review.md) — documents `homelab-security-reader.py`, its Loki and Prometheus evidence sources, the Greenbone AI review path, and ingestion-health requirements.

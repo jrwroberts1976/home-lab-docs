@@ -132,6 +132,7 @@ Continue Stage 0 of the Docker image version-control project: inventory the Test
 
 ## Documentation
 
+- [Jenkins Operations](jenkins/README.md) — Jenkins/DinD service ownership, image and security baselines, controlled delivery validation, Kubernetes reconciliation and recovery planning.
 - [Grafana Alerting](service-overviews/grafana-alerting.md) — central alert evaluation and validated SMTP delivery through a Docker Compose secret.
 
 - [Engineering Portfolio Deployment and Maintenance](engineering-portfolio-deployment.md) — guarded production deployment, readiness checks, Nginx Proxy Manager maintenance switching, persistent all-path maintenance fallback, validation evidence and version-control ownership.
