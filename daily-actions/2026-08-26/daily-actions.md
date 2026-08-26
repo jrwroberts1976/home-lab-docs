@@ -167,7 +167,7 @@ No Jenkins controller, builder, image, credential, job, registry, Kubernetes res
 
 ## Jenkins / Homelab Defender desired-state alignment and monitoring baseline
 
-**Status:** MONITORING DATA PATH VALIDATED
+**Status:** MONITORING DATA PATH AND OWNERSHIP VALIDATED
 
 The `jenkins-gradle-delivery-lab` repository was brought back to a clean, current `main` baseline and its remaining Kubernetes ownership wording was corrected.
 
@@ -178,7 +178,7 @@ The `jenkins-gradle-delivery-lab` repository was brought back to a clean, curren
 - Merge commit: `d0e8e8b`.
 - Updated files: `README.md` and `BEGINNERS_GUIDE.md` only.
 
-The corrected documentation now records `jrwroberts1976/kubernetes-homelab/applications/homelab-defender-test` as the authoritative Kubernetes desired state, including the approved image tag and digest. The application repository retains the source code, Jenkins delivery workflow and restricted deployment implementation. The retired duplicate manifest is no longer described as authoritative.
+The corrected documentation records `jrwroberts1976/kubernetes-homelab/applications/homelab-defender-test` as the authoritative Kubernetes desired state, including the approved image tag and digest. The application repository retains the source code, Jenkins delivery workflow and restricted deployment implementation. The retired duplicate manifest is no longer described as authoritative.
 
 ### Kubernetes workload baseline
 
@@ -188,17 +188,17 @@ The running Homelab Defender workload was inspected without changing cluster sta
 - Namespace: `homelab-defender-test`.
 - Deployment `homelab-defender`: desired `1`, available `1`, ready `1/1`.
 - Pod: Running and ready.
-- Current image: build `14` pinned to digest `sha256:325b28fe96cee8f59b3aeabf436923391d2a4df81483895b010cb3f943e8eb4a`.
+- Current approved image: build `14` pinned to digest `sha256:325b28fe96cee8f59b3aeabf436923391d2a4df81483895b010cb3f943e8eb4a`.
 - Pod restart total: `8`.
-- Current pod resource sample: approximately `1m` CPU and `166Mi` memory.
+- Current pod resource sample through `metrics-server`: approximately `1m` CPU and `166Mi` memory.
 - Kubernetes Metrics API: available through `metrics-server`.
 - `kube-state-metrics`: already deployed in the `monitoring` namespace.
 
-`kube-state-metrics` itself showed 31 restarts and the Defender pod showed 8, with both most recently restarting at approximately the same time. This is a watch item because it may indicate a wider node or service event rather than an application-only failure; no root cause was asserted from the snapshot alone.
+`kube-state-metrics` itself showed 31 restarts and the Defender pod showed 8, with both most recently restarting at approximately the same time. This remains a watch item because it may indicate a wider node or service event rather than an application-only failure; no root cause was asserted from the snapshot alone.
 
 ### Prometheus integration
 
-No additional Kubernetes exporter or Prometheus scrape configuration was required.
+No additional Kubernetes exporter or Prometheus scrape configuration is required for state/readiness/restart monitoring.
 
 The TestServer Prometheus instance was independently validated first:
 
@@ -209,7 +209,7 @@ The TestServer Prometheus instance was independently validated first:
 - Existing target: `192.168.2.211:8080`.
 - Target health: `up`.
 
-Prometheus already stores the required Defender metrics:
+Prometheus already stores the required Defender state metrics:
 
 - `kube_deployment_spec_replicas` = `1`;
 - `kube_deployment_status_replicas_available` = `1`;
@@ -223,7 +223,8 @@ Further inventory established that the live Grafana service runs on `ids-01`, no
 - Grafana image: `grafana/grafana:13.2.0`.
 - Host port: `3001` mapped to container port `3000`.
 - Grafana and Prometheus share the `monitoring` Docker network on `ids-01`.
-- The provisioned datasource is `http://prometheus:9090`.
+- Live Prometheus datasource: UID `PBFA97CFB590B2093`, URL `http://prometheus:9090`.
+- Live Loki datasource: UID `P8E80F9AEF21F6940`, URL `http://loki:3100`.
 - `prometheus` resolves successfully from inside the Grafana container.
 - The Prometheus readiness endpoint returns ready from the Grafana network.
 - A live Defender query through that datasource returned `kube_deployment_status_replicas_available = 1`.
@@ -245,33 +246,78 @@ Grafana on ids-01
 
 The TestServer Prometheus path remains valid, but the Defender dashboard and alerts should use the existing datasource behind the live `ids-01` Grafana service.
 
-### Grafana source ownership
+### Grafana alert persistence and deployment
 
-The live `ids-01:/home/james/docker` monitoring tree is deployment state and is not itself a Git checkout.
+Read-only inspection of Grafana 13.2 confirmed that live alert rules are persisted in the `alert_rule` database table. Existing rule records include query JSON, condition, rule UID, folder UID, group, duration, annotations and labels.
 
-The `home-lab-docs` repository contains monitoring documentation and runbooks but does not currently hold the live dashboard JSON or alert-rule YAML as deployable source.
-
-`docker-env` already owns stack configuration under `stacks/monitoring`, so reusable Defender Grafana assets should be introduced there under a controlled source layout such as:
+The supported authoring/deployment path is the Grafana provisioning API, not direct SQLite writes. Existing token consumers default to:
 
 ```text
-stacks/monitoring/grafana/
-  dashboards/homelab-defender-kubernetes.json
-  alerting/homelab-defender-alerts.yml
+GRAFANA_URL=http://localhost:3001
+GRAFANA_TOKEN_FILE=/home/james/docker/secrets/grafana-api-token
 ```
 
-The proposed paths are not ignored by the current `docker-env` Git rules.
+The standard infrastructure alert folder UID is `homelab-alerts` and existing rules commonly evaluate every 60 seconds with `severity` and `category` labels used for notification routing.
 
-The TestServer and `ids-01` monitoring Compose definitions are materially different host-specific stacks. They must not be made identical merely to remove drift. The Defender monitoring change should add reusable Grafana assets only and leave both host-specific Compose definitions unchanged unless a separate controlled change explicitly addresses them.
+### Corrected Grafana source ownership
 
-A focused record of this architecture is maintained in `jenkins/homelab-defender-monitoring-baseline-2026-08-26.md`.
+The earlier working assumption that new Defender Grafana assets should live under `docker-env/stacks/monitoring/grafana` was superseded after inspecting the existing Grafana source repository.
 
-The next monitoring step remains Grafana-only: add a Homelab Defender operational dashboard and alert rules using the existing Prometheus datasource. Initial alerting should detect unavailable replicas, a not-ready container and **new** restarts, rather than alerting merely because the historical restart counter is already eight.
+`jrwroberts1976/grafana-alerting` already exists specifically for Grafana-managed definitions on `ids-01`:
+
+- alert definitions are stored under `rules/`;
+- rules are deployed through the provisioning API;
+- candidate PromQL is validated before deployment; and
+- the repository already contains a `dashboards/` directory.
+
+The corrected ownership is therefore:
+
+```text
+Grafana dashboard/rule source  -> grafana-alerting
+Grafana runtime/Compose        -> host-specific monitoring stack / docker-env ownership where applicable
+Operational evidence           -> home-lab-docs
+```
+
+The TestServer and `ids-01` monitoring Compose definitions remain materially different host-specific stacks and must not be made identical merely to remove apparent drift.
+
+### Release identity finding
+
+The `kube_pod_container_info` metric exposed an important label distinction:
+
+```text
+image      = 192.168.2.220:5000/homelab-defender:12
+image_id   = 192.168.2.220:5000/homelab-defender@sha256:325b28fe96cee8f59b3aeabf436923391d2a4df81483895b010cb3f943e8eb4a
+image_spec = 192.168.2.220:5000/homelab-defender:14@sha256:325b28fe96cee8f59b3aeabf436923391d2a4df81483895b010cb3f943e8eb4a
+```
+
+The digest-pinned `image_spec` matches the approved build `14`; the separate `image` label must not be used alone as the displayed release number. Dashboard release identity should use `image_spec` and `image_id`.
+
+### Resource telemetry limitation
+
+The live `ids-01` Prometheus instance returned no Defender series for:
+
+```text
+container_cpu_usage_seconds_total{namespace="homelab-defender-test",container="homelab-defender"}
+container_memory_working_set_bytes{namespace="homelab-defender-test",container="homelab-defender"}
+```
+
+The first Defender Grafana dashboard should therefore omit CPU/memory panels rather than assume unavailable Prometheus telemetry. Those panels can be added later if kubelet/cAdvisor resource series are deliberately exposed to the live Prometheus path.
+
+### Documentation update
+
+A dedicated service overview now records the service-level architecture, ownership, availability, monitoring and alerting context:
+
+```text
+service-overviews/homelab-defender.md
+```
+
+The existing Grafana Alerting and Docker Container Inventory service overviews were also corrected to reflect the live `ids-01` Grafana/Prometheus/Loki stack and API-managed alert model.
 
 No Kubernetes object, Prometheus target, Jenkins runtime, registry, Grafana runtime or application deployment was changed during this monitoring validation.
 
 ## Priority follow-up
 
-1. Add the Git-owned Homelab Defender Grafana dashboard and alert assets under `docker-env/stacks/monitoring/grafana`, validate them, then deploy only those assets to the existing `ids-01` Grafana mounts.
+1. Create the Homelab Defender dashboard and service-specific alert candidates in a clean `grafana-alerting` branch; validate JSON and PromQL before deployment through the existing Grafana dashboard/API paths.
 2. Validate Jenkins credential handling and log masking, then run a fresh end-to-end delivery test against the Kubernetes-owned desired state.
 3. Reconcile each future approved Jenkins release tag and digest into `kubernetes-homelab` so Git remains authoritative.
 4. Review and separately commit the preserved Terraform course addition in `training-platform-manager`.
