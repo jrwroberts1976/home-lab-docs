@@ -10,6 +10,8 @@ Kubernetes desired state remains authoritative in:
 
 - [kubernetes-homelab/applications/homelab-defender-test](https://github.com/jrwroberts1976/kubernetes-homelab/tree/main/applications/homelab-defender-test)
 
+The separate `homelab-container-version-control` project is building the read-only validation and later guarded deployment controls for Docker/Compose image version management. Its implementation repository remains authoritative for those controls; this area records their operational use and validation within the homelab.
+
 This area documents how Jenkins is operated, changed, validated, supported and recovered as part of the homelab.
 
 ## Current documents
@@ -17,6 +19,7 @@ This area documents how Jenkins is operated, changed, validated, supported and r
 - [Platform baseline — 26 August 2026](platform-baseline-2026-08-26.md) — pre-change versions, image identities, ownership, security controls, release state and update candidates.
 - [Homelab Defender monitoring baseline — 26 August 2026](homelab-defender-monitoring-baseline-2026-08-26.md) — the initial build-14 monitoring baseline, live Grafana/Prometheus architecture, monitoring ownership boundaries, dashboard/alert deployment and closure evidence.
 - [Homelab Defender build 15 validation — 26 August 2026](homelab-defender-build-15-validation-2026-08-26.md) — successful full release, Trivy database refresh evidence, K3s runtime validation, monitoring checks and immutable Git desired-state reconciliation.
+- [Container Version Control — Stage 4 Validation Gate Foundation — 26 August 2026](container-version-control-stage4-foundation-2026-08-26.md) — read-only TestServer service ownership, full 30-container resolution evidence, version-ordering rules, digest precedence and comparator next step.
 - [Homelab Defender service overview](../service-overviews/homelab-defender.md) — service-level purpose, runtime, dependencies, monitoring, alerting, availability and maintenance context.
 
 ## Service scope
@@ -33,6 +36,8 @@ Jenkins currently provides:
 
 Operational support for the delivered workload uses the existing homelab monitoring platform. `kube-state-metrics` exposes the Defender deployment and pod state, Prometheus stores those metrics, and the live Grafana service on `ids-01` hosts the dedicated Defender operations dashboard and two service-specific alert rules.
 
+The container-version-control Stage 4 work is separate from the existing Homelab Defender deployment path. At the current checkpoint it is read-only: ownership resolution and version-policy configuration have been proven, but no Jenkins job has yet been given image-pull, restart, recreation or Docker deployment authority for this project.
+
 ## Ownership boundaries
 
 | Concern | Authoritative source |
@@ -42,6 +47,7 @@ Operational support for the delivered workload uses the existing homelab monitor
 | Application, tests and delivery pipeline | `jenkins-gradle-delivery-lab` |
 | Node-side restricted deploy implementation | `jenkins-gradle-delivery-lab/ops/deploy-homelab-defender` |
 | Kubernetes desired state and approved release digest | `kubernetes-homelab/applications/homelab-defender-test` |
+| Docker/Compose version-control implementation and policy | `homelab-container-version-control` |
 | Grafana alert definitions and dashboard source | `grafana-alerting` |
 | Host-specific monitoring Compose/runtime configuration | `docker-env` plus controlled host deployment state |
 | Jenkins operational documentation and evidence | `home-lab-docs/jenkins` |
@@ -49,7 +55,7 @@ Operational support for the delivered workload uses the existing homelab monitor
 | DinD image/build cache | TestServer `/home/james/docker/data/jenkins-docker` |
 | Live Defender Grafana state | Grafana runtime on `ids-01` |
 
-The TestServer Jenkins Compose file and custom controller Dockerfile are operationally critical but are not yet recorded here as Git-owned source. Bringing them under controlled source ownership remains part of the Jenkins documentation and recovery work.
+The TestServer Jenkins Compose file and custom controller Dockerfile are operationally critical but are not yet recorded here as Git-owned source. Bringing them under controlled source ownership remains part of the Jenkins documentation and recovery work. The container-version-control ownership registry therefore treats the Jenkins controller and DinD services as explicit `platform-exception` / `no-git-source` entries and keeps deployment disabled for them.
 
 The TestServer and `ids-01` monitoring Compose definitions are host-specific and must not be made identical merely to remove drift. Grafana rule/dashboard source follows the existing `grafana-alerting` repository, while host-specific runtime definitions remain explicit.
 
@@ -150,6 +156,8 @@ Before changing Jenkins or a delivery image:
 
 The Jenkins deploy helper currently advances the live Deployment by build tag. The Git-owned Kubernetes manifest records the approved immutable tag plus digest after release validation. Do not apply an older desired-state image over a newer healthy Jenkins deployment; reconcile Git first.
 
+For the separate Docker/Compose container-version-control project, Jenkins must remain assessment-only until the Stage 4 comparator, manifest/architecture validation, Trivy checks, secret-readiness checks and non-secret deployment plan are independently proven. Later deployment capability requires separate guarded-deployment, health-check and rollback controls.
+
 ## Planned documents
 
 - Jenkins controller and DinD update SOP.
@@ -157,3 +165,4 @@ The Jenkins deploy helper currently advances the live Deployment by build tag. T
 - End-to-end release and Kubernetes reconciliation SOP.
 - Jenkins controller/data recovery SOP.
 - Private-registry publication and recovery notes.
+- Container version-control Stage 4 comparator and Jenkins validation-gate evidence.
