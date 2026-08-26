@@ -317,7 +317,7 @@ No Kubernetes object, Prometheus target, Jenkins runtime, registry or applicatio
 
 ## Homelab Defender Grafana deployment
 
-**Status:** DEPLOYED — FINAL LIVE EVALUATION CHECK PENDING
+**Status:** COMPLETE
 
 The validated monitoring candidates were built in a clean `grafana-alerting` worktree because the existing live checkout on `ids-01` contained substantial unrelated modified and untracked work.
 
@@ -389,12 +389,19 @@ Homelab Defender New Container Restart
 
 The broad repository-wide `deploy-alerts.sh` was deliberately not used; only the two intended rules were created through scoped provisioning API calls. The Grafana container was not restarted and no Kubernetes or Prometheus change was required.
 
-The remaining closure check is to retrieve the live dashboard and both rules after creation, confirm the rule definitions match source, verify both rules evaluate healthy/inactive against the current baseline, and confirm no unexpected notification was generated.
+Final read-only closure validation passed:
+
+- dashboard retrieval by UID returned HTTP `200`, version `1` and nine panels;
+- both alert-rule definitions returned HTTP `200` and remained unpaused;
+- at `2026-08-26T07:05:30Z`, both rules were `state=inactive` and `health=ok`;
+- Grafana Alertmanager returned HTTP `200` with `0` active Defender alert instances; and
+- both current Defender PromQL conditions evaluated to `0`.
+
+No Defender firing condition or active alert instance was present during the closure check. A synthetic firing/email-delivery exercise was not performed as part of this validation.
 
 ## Priority follow-up
 
-1. Complete the final post-deployment Grafana retrieval/evaluation check for the Defender dashboard and two alert rules, then record closure evidence.
-2. Validate Jenkins credential handling and log masking, then run a fresh end-to-end delivery test against the Kubernetes-owned desired state.
-3. Reconcile each future approved Jenkins release tag and digest into `kubernetes-homelab` so Git remains authoritative.
-4. Review and separately commit the preserved Terraform course addition in `training-platform-manager`.
-5. Continue watching for Linux exporter availability recurrence and identify the affected instance if it returns.
+1. Validate Jenkins credential handling and log masking, then run a fresh end-to-end delivery test against the Kubernetes-owned desired state.
+2. Reconcile each future approved Jenkins release tag and digest into `kubernetes-homelab` so Git remains authoritative.
+3. Review and separately commit the preserved Terraform course addition in `training-platform-manager`.
+4. Continue watching for Linux exporter availability recurrence and identify the affected instance if it returns.
