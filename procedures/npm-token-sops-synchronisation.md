@@ -55,6 +55,24 @@ After that validation passes, review the staged allowlist and commit the single
 encrypted file. Record the commit against `docker-env` issue 10, then merge and
 delete the temporary branch.
 
+## 4. Transfer for recovery-identity validation
+
+On TestServer, package the staged encrypted source with a one-way checksum of the protected live values and transfer it to DietPi:
+
+```bash
+cd /home/james/projects/home-lab-docs
+scripts/prepare-npm-sops-recovery-validation.sh
+```
+
+On DietPi, validate the package using the protected recovery identity:
+
+```bash
+cd /home/dietpi/projects/home-lab-docs
+scripts/dietpi/validate-npm-sops-recovery-identity.sh
+```
+
+The TestServer script transfers only encrypted material and a checksum. The DietPi script decrypts only in protected RAM, compares the recovered values without displaying them, and removes both the plaintext and transferred archive.
+
 ## Recovery if the script stops
 
 Nothing live has been changed. Inspect safely with:
