@@ -244,7 +244,7 @@ Prometheus on ids-01
 Grafana on ids-01
 ```
 
-The TestServer Prometheus path remains valid, but the Defender dashboard and alerts should use the existing datasource behind the live `ids-01` Grafana service.
+The TestServer Prometheus path remains valid, but the Defender dashboard and alerts use the existing datasource behind the live `ids-01` Grafana service.
 
 ### Grafana alert persistence and deployment
 
@@ -290,7 +290,7 @@ image_id   = 192.168.2.220:5000/homelab-defender@sha256:325b28fe96cee8f59b3aeabf
 image_spec = 192.168.2.220:5000/homelab-defender:14@sha256:325b28fe96cee8f59b3aeabf436923391d2a4df81483895b010cb3f943e8eb4a
 ```
 
-The digest-pinned `image_spec` matches the approved build `14`; the separate `image` label must not be used alone as the displayed release number. Dashboard release identity should use `image_spec` and `image_id`.
+The digest-pinned `image_spec` matches the approved build `14`; the separate `image` label must not be used alone as the displayed release number. Dashboard release identity uses `image_spec`.
 
 ### Resource telemetry limitation
 
@@ -301,23 +301,99 @@ container_cpu_usage_seconds_total{namespace="homelab-defender-test",container="h
 container_memory_working_set_bytes{namespace="homelab-defender-test",container="homelab-defender"}
 ```
 
-The first Defender Grafana dashboard should therefore omit CPU/memory panels rather than assume unavailable Prometheus telemetry. Those panels can be added later if kubelet/cAdvisor resource series are deliberately exposed to the live Prometheus path.
+The first Defender Grafana dashboard therefore omits CPU/memory panels rather than assume unavailable Prometheus telemetry. Those panels can be added later if kubelet/cAdvisor resource series are deliberately exposed to the live Prometheus path.
 
 ### Documentation update
 
-A dedicated service overview now records the service-level architecture, ownership, availability, monitoring and alerting context:
+A dedicated service overview records the service-level architecture, ownership, availability, monitoring and alerting context:
 
 ```text
 service-overviews/homelab-defender.md
 ```
 
-The existing Grafana Alerting and Docker Container Inventory service overviews were also corrected to reflect the live `ids-01` Grafana/Prometheus/Loki stack and API-managed alert model.
+The Grafana Alerting and Docker Container Inventory service overviews were also corrected to reflect the live `ids-01` Grafana/Prometheus/Loki stack and API-managed alert model.
 
-No Kubernetes object, Prometheus target, Jenkins runtime, registry, Grafana runtime or application deployment was changed during this monitoring validation.
+No Kubernetes object, Prometheus target, Jenkins runtime, registry or application deployment was changed during the monitoring validation.
+
+## Homelab Defender Grafana deployment
+
+**Status:** DEPLOYED — FINAL LIVE EVALUATION CHECK PENDING
+
+The validated monitoring candidates were built in a clean `grafana-alerting` worktree because the existing live checkout on `ids-01` contained substantial unrelated modified and untracked work.
+
+Source control:
+
+- Branch: `monitoring/homelab-defender`
+- Source commit: `5a1b65c` — `Add Homelab Defender Grafana monitoring`
+- Pull request: `grafana-alerting#4`
+- Merge commit: `8244758`
+- Files added: exactly 3
+- Additions: 293
+
+Files:
+
+```text
+dashboards/homelab-defender-kubernetes.json
+rules/homelab-defender-deployment-unavailable.json
+rules/homelab-defender-new-restart.json
+```
+
+Pre-deployment validation passed:
+
+- all JSON validated with `jq`;
+- all ten distinct dashboard PromQL expressions returned live data;
+- desired replicas = `1`;
+- available replicas = `1`;
+- historical restart total = `8`;
+- deployment-unavailable alert expression = `0`;
+- new-restart alert expression = `0`;
+- no existing Defender dashboard UID was present;
+- neither Defender alert title already existed; and
+- the protected Grafana token source was usable without exposing the token.
+
+Live dashboard deployment:
+
+```text
+Title: Homelab Defender Kubernetes Operations
+UID: homelab-defender-k8s
+API: POST /api/dashboards/db
+HTTP: 200
+status: success
+version: 1
+path: /d/homelab-defender-k8s/homelab-defender-kubernetes-operations
+```
+
+Live alert deployment:
+
+```text
+Homelab Defender Deployment Unavailable
+  UID: ffwbnisgmg4cgb
+  database ID: 37
+  HTTP: 201
+  severity: critical
+  category: availability
+  for: 2m
+  provenance: api
+  paused: false
+
+Homelab Defender New Container Restart
+  UID: afwbnisiruz28f
+  database ID: 38
+  HTTP: 201
+  severity: warning
+  category: stability
+  for: 1m
+  provenance: api
+  paused: false
+```
+
+The broad repository-wide `deploy-alerts.sh` was deliberately not used; only the two intended rules were created through scoped provisioning API calls. The Grafana container was not restarted and no Kubernetes or Prometheus change was required.
+
+The remaining closure check is to retrieve the live dashboard and both rules after creation, confirm the rule definitions match source, verify both rules evaluate healthy/inactive against the current baseline, and confirm no unexpected notification was generated.
 
 ## Priority follow-up
 
-1. Create the Homelab Defender dashboard and service-specific alert candidates in a clean `grafana-alerting` branch; validate JSON and PromQL before deployment through the existing Grafana dashboard/API paths.
+1. Complete the final post-deployment Grafana retrieval/evaluation check for the Defender dashboard and two alert rules, then record closure evidence.
 2. Validate Jenkins credential handling and log masking, then run a fresh end-to-end delivery test against the Kubernetes-owned desired state.
 3. Reconcile each future approved Jenkins release tag and digest into `kubernetes-homelab` so Git remains authoritative.
 4. Review and separately commit the preserved Terraform course addition in `training-platform-manager`.
