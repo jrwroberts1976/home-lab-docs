@@ -32,34 +32,25 @@ Follow-up: retire or disable the obsolete workflow and document its removal so i
 
 ## NPM token recovery-source closure
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 
 The protected Nginx Proxy Manager API token was previously rotated through NPM's authenticated refresh route and validated with an expiry in 2036.
 
-Today's preflight confirmed:
+The encrypted recovery source passed all remaining controls:
 
-- the protected live file remains readable;
 - it contains exactly `NPM_URL`, `NPM_TOKEN` and `NPM_PROXY_ID`;
-- the operational age identity is available;
-- the existing SOPS source differs from the rotated live token, as expected;
-- no private identity was found in the repository; and
-- no credential value was displayed.
+- SOPS encrypted-file status passed;
+- the TestServer operational identity decrypted the candidate;
+- the recovered values exactly matched the protected live `npm.env`;
+- the encrypted validation package was transferred to DietPi without plaintext;
+- the protected DietPi recovery identity independently decrypted the candidate;
+- the recovered DietPi checksum matched the protected TestServer source;
+- all transferred and decrypted validation material was removed; and
+- no credential or private identity was displayed.
 
-An existing isolated worktree was identified at:
+The single encrypted source was committed as `5c5d3e9` and merged through `docker-env` pull request `#11`. Merge commit: `a9dbee5`. Issue `docker-env#10` closed as completed.
 
-```text
-/var/tmp/docker-env-npm-sops
-```
-
-It is registered on branch `security/sync-npm-token-sops`, based on `docker-env/main` commit `28f7208`, and contains one unstaged modification:
-
-```text
-secrets/testserver/nginx-proxy-manager.sops.env
-```
-
-The candidate must be validated against the protected live source with the operational identity, staged through the exact allowlist, and independently validated using the DietPi recovery identity before commit or push.
-
-No live credential, proxy host, container or service was changed during these checks.
+The original TestServer checkout changes remained untouched. No container, Nginx Proxy Manager proxy host or service was changed.
 
 ## NPM operational procedures
 
@@ -87,8 +78,6 @@ No password, API token or private age identity is stored in the documentation.
 
 ## Priority follow-up
 
-1. Complete the NPM SOPS candidate validation using both approved age identities.
-2. Commit and merge the single encrypted recovery-source update against `docker-env` issue 10.
-3. Retire the redundant Training Platform workflow.
-4. Continue watching for Linux exporter availability recurrence.
-5. Begin the Docker image version-control Stage 0 inventory after security-critical recovery closure.
+1. Retire the redundant Training Platform workflow.
+2. Continue watching for Linux exporter availability recurrence.
+3. Begin the Docker image version-control Stage 0 inventory now that the security-critical recovery closure is complete.
