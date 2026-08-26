@@ -462,10 +462,132 @@ kubernetes-homelab#12
 
 No application code, Jenkinsfile, deployment helper, Kubernetes manifest, runtime object, image, service or monitoring configuration was changed by the documentation sweep.
 
+## Container version-control Stage 4 validation-gate foundation
+
+**Status:** IN PROGRESS — READ-ONLY FOUNDATION AND COMPARATOR VALIDATED
+
+Work moved from inventory/policy preparation into the Stage 4 Jenkins validation-gate foundation in `jrwroberts1976/homelab-container-version-control`.
+
+### Service ownership foundation
+
+The Stage 4 service-ownership branch records the authority boundary between runtime Compose metadata and the Git source that Jenkins is allowed to assess.
+
+Implementation commits:
+
+```text
+71d526b Add Stage 4 service ownership registry
+828950a Add Stage 4 service ownership resolver
+8469100 Add Stage 4 image version scheme registry
+```
+
+Pull request:
+
+```text
+homelab-container-version-control#19
+Add Stage 4 service ownership foundation
+```
+
+The resolver was validated against the complete current TestServer Docker estate:
+
+- 30 containers resolved;
+- 0 failed resolution;
+- 26 services resolved to `docker-env` authority;
+- 2 services resolved to external Git authority;
+- 2 services resolved to explicit Jenkins platform exceptions;
+- 0 services resolved to an unknown authority; and
+- `deployment_allowed=false` for every resolved service.
+
+The two external Git-owned services are the Engineering Portfolio and `projects.jrwroberts.co.uk`. Jenkins and Jenkins DinD remain explicit `platform-exception` services because their TestServer Compose source is not yet Git-owned. Jenkins may assess its own platform state, but it must not automatically recreate or deploy its own controller/DinD runtime.
+
+A clean detached `docker-env` worktree at `/var/tmp/docker-env-stage4` was used for desired-state inspection. The live `/home/james/docker` checkout was deliberately left unchanged because it contains unrelated nested worktree state. This preserves the distinction between authoritative Git input and live operational files.
+
+### Version ordering model
+
+The image estate was sampled to establish the tag schemes the downgrade gate must understand rather than assuming every image uses SemVer.
+
+Observed declaration classes included:
+
+- 18 SemVer references;
+- BirdNET-Go `YYYYMMDD` releases;
+- WUD integer releases;
+- opaque LinuxServer DuckDNS tags;
+- moving/channel references such as `nginx:alpine`;
+- digest-pinned references; and
+- local builds using `:local` tags.
+
+`config/version-schemes.yml` therefore defines explicit parsers for SemVer, `YYYYMMDD`, integer, opaque and channel references, while local builds are routed to source-provenance assessment. Unsafe ordering guesses fail closed.
+
+Digest identity takes precedence over tag text. A digest-pinned declaration is reproducible even when its human-readable tag is a moving channel. Same-tag/different-digest is treated as a real image change and is not silently classified as `same`.
+
+### Read-only image comparator
+
+A separate stacked branch added the first policy decision component:
+
+```text
+1fd8fac Add Stage 4 image version comparator
+```
+
+Pull request:
+
+```text
+homelab-container-version-control#20
+Add Stage 4 image version comparator
+```
+
+PR #20 is stacked on the service-ownership branch so its review remains isolated to the comparator file.
+
+The comparator is deliberately pure/read-only. It contains no image pull, Docker mutation, network request, subprocess execution, restart/recreate or deployment capability.
+
+Synthetic policy validation passed 15/15 cases, covering:
+
+- SemVer same/upgrade/downgrade;
+- `v`-prefixed SemVer;
+- BirdNET `YYYYMMDD` upgrade/downgrade;
+- WUD integer upgrade/downgrade;
+- opaque tags failing closed;
+- channel tags failing closed;
+- same immutable digest returning `same`;
+- same tag/different digest returning `ordering-unknown-blocked`;
+- repository change returning `ordering-unknown-blocked`; and
+- local builds returning `local-build-provenance-required`.
+
+Digest hardening also passed: valid SHA-256 digests are accepted, while short, non-hex and unsupported digest forms are rejected rather than treated as valid identity.
+
+Representative real-TestServer checks passed:
+
+```text
+Dozzle proposed SemVer upgrade      -> upgrade
+BirdNET-Go newer YYYYMMDD release   -> upgrade
+WUD integer increment               -> upgrade
+DuckDNS opaque candidate            -> ordering-unknown-blocked
+Engineering Portfolio local build   -> local-build-provenance-required
+```
+
+The tests produced no additional repository changes.
+
+### Runtime identity finding
+
+The real-estate comparator test exposed an important planner requirement. Smokeping reports its running creation reference as:
+
+```text
+linuxserver/smokeping:latest
+```
+
+while Git desired state records the same service with an immutable digest pin. `docker inspect .Config.Image` therefore cannot be treated as the complete runtime artifact identity.
+
+The next Stage 4 candidate planner must collect the runtime creation reference, Docker image ID and RepoDigest values separately, then compare those with the authoritative Git declaration. This prevents a digest-pinned desired state from being reduced to a floating runtime tag during validation.
+
+### Safety state
+
+No container was pulled, recreated, restarted or deployed during the Stage 4 ownership/comparator work. No `docker compose up` was executed and Jenkins has not been given production deployment authority by these changes.
+
+Operational documentation for this checkpoint is being tracked in `home-lab-docs#39`. The implementation project remains authoritative for policy, registry/configuration and validation scripts.
+
 ## Priority follow-up
 
-1. Keep each future approved Jenkins release tag and digest reconciled into `kubernetes-homelab` so Git remains authoritative.
-2. Complete the remaining Jenkins controller/data recovery and host-specific source-ownership documentation.
-3. Review and separately commit the preserved Terraform course addition in `training-platform-manager`.
-4. Continue watching for Linux exporter availability recurrence and identify the affected instance if it returns.
-5. Separately evaluate the controlled Cloudflare game route and BuildKit/buildx migration when those changes are prioritised.
+1. Continue Stage 4 of the Docker image version-control project with the read-only candidate image planner: runtime container → ownership resolver → authoritative Git Compose → candidate image → runtime image identity → comparator decision.
+2. Keep each future approved Jenkins release tag and digest reconciled into `kubernetes-homelab` so Git remains authoritative.
+3. Complete the remaining Jenkins controller/data recovery and host-specific source-ownership documentation.
+4. Review and separately commit the preserved Terraform course addition in `training-platform-manager`.
+5. Continue watching for Linux exporter availability recurrence and identify the affected instance if it returns.
+6. Separately evaluate the controlled Cloudflare game route and BuildKit/buildx migration when those changes are prioritised.
