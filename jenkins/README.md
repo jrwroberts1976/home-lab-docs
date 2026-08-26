@@ -15,6 +15,7 @@ This area documents how Jenkins is operated, changed, validated, supported and r
 ## Current documents
 
 - [Platform baseline — 26 August 2026](platform-baseline-2026-08-26.md) — pre-change versions, image identities, ownership, security controls, release state and update candidates.
+- [Homelab Defender monitoring baseline — 26 August 2026](homelab-defender-monitoring-baseline-2026-08-26.md) — validated K3s metrics path, live Grafana/Prometheus architecture, monitoring ownership boundaries and planned dashboard/alert design.
 
 ## Service scope
 
@@ -28,6 +29,8 @@ Jenkins currently provides:
 - Kubernetes rollout and application health verification; and
 - automatic rollback to the previously running image when release verification fails.
 
+Operational support for the delivered workload uses the existing homelab monitoring platform. `kube-state-metrics` exposes the Defender deployment and pod state, Prometheus stores those metrics, and the live Grafana service on `ids-01` is the intended dashboard and alerting layer.
+
 ## Ownership boundaries
 
 | Concern | Authoritative source |
@@ -37,11 +40,15 @@ Jenkins currently provides:
 | Application, tests and delivery pipeline | `jenkins-gradle-delivery-lab` |
 | Node-side restricted deploy implementation | `jenkins-gradle-delivery-lab/ops/deploy-homelab-defender` |
 | Kubernetes desired state and approved release digest | `kubernetes-homelab/applications/homelab-defender-test` |
+| Reusable Grafana dashboard and alert configuration | `docker-env/stacks/monitoring/grafana` |
 | Jenkins operational documentation and evidence | `home-lab-docs/jenkins` |
 | Runtime Jenkins data | TestServer `/home/james/docker/data/jenkins` |
 | DinD image/build cache | TestServer `/home/james/docker/data/jenkins-docker` |
+| Live Defender Grafana deployment state | `ids-01:/home/james/docker/data/monitoring/grafana` |
 
-The TestServer Compose file and custom controller Dockerfile are operationally critical but are not yet recorded here as Git-owned source. Bringing them under controlled source ownership is part of the Jenkins documentation and recovery work.
+The TestServer Jenkins Compose file and custom controller Dockerfile are operationally critical but are not yet recorded here as Git-owned source. Bringing them under controlled source ownership is part of the Jenkins documentation and recovery work.
+
+The TestServer and `ids-01` monitoring Compose definitions are host-specific and must not be made identical merely to remove drift. Shared Grafana assets should be Git-owned and reusable, while host-specific runtime definitions remain explicit.
 
 ## Current release
 
@@ -65,7 +72,8 @@ Before changing Jenkins or a delivery image:
 6. Confirm Jenkins returns healthy with its jobs, credentials and build history intact.
 7. Run a gated end-to-end release.
 8. Reconcile the approved tag and digest into `kubernetes-homelab`.
-9. Record the before/after evidence in this area and the current daily-actions log.
+9. Confirm the operational monitoring path remains healthy after release.
+10. Record the before/after evidence in this area and the current daily-actions log.
 
 ## Planned documents
 
