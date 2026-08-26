@@ -1,6 +1,6 @@
 # Daily Homelab Actions — 26 August 2026
 
-Operational incident review, secrets-recovery follow-up, procedure documentation and GitHub repository consolidation.
+Operational incident review, secrets-recovery follow-up, procedure documentation, GitHub repository consolidation and Jenkins/Kubernetes monitoring validation.
 
 ## Morning alert review
 
@@ -165,9 +165,63 @@ The area now records:
 
 No Jenkins controller, builder, image, credential, job, registry, Kubernetes resource or service was changed.
 
+## Jenkins / Homelab Defender desired-state alignment and monitoring baseline
+
+**Status:** MONITORING DATA PATH VALIDATED
+
+The `jenkins-gradle-delivery-lab` repository was brought back to a clean, current `main` baseline and its remaining Kubernetes ownership wording was corrected.
+
+- Starting `main`: `5e36490`.
+- Documentation branch: `docs/align-kubernetes-ownership`.
+- Documentation commit: `81d08eb`.
+- Pull request: `jenkins-gradle-delivery-lab#3`.
+- Merge commit: `d0e8e8b`.
+- Updated files: `README.md` and `BEGINNERS_GUIDE.md` only.
+
+The corrected documentation now records `jrwroberts1976/kubernetes-homelab/applications/homelab-defender-test` as the authoritative Kubernetes desired state, including the approved image tag and digest. The application repository retains the source code, Jenkins delivery workflow and restricted deployment implementation. The retired duplicate manifest is no longer described as authoritative.
+
+### Kubernetes workload baseline
+
+The running Homelab Defender workload was inspected without changing cluster state.
+
+- Node `k3s-node-01`: Ready, K3s `v1.36.2+k3s1`.
+- Namespace: `homelab-defender-test`.
+- Deployment `homelab-defender`: desired `1`, available `1`, ready `1/1`.
+- Pod: Running and ready.
+- Current image: build `14` pinned to digest `sha256:325b28fe96cee8f59b3aeabf436923391d2a4df81483895b010cb3f943e8eb4a`.
+- Pod restart total: `8`.
+- Current pod resource sample: approximately `1m` CPU and `166Mi` memory.
+- Kubernetes Metrics API: available through `metrics-server`.
+- `kube-state-metrics`: already deployed in the `monitoring` namespace.
+
+`kube-state-metrics` itself showed 31 restarts and the Defender pod showed 8, with both most recently restarting at approximately the same time. This is a watch item because it may indicate a wider node or service event rather than an application-only failure; no root cause was asserted from the snapshot alone.
+
+### Prometheus integration
+
+No additional Kubernetes exporter or Prometheus scrape configuration was required.
+
+- Prometheus image: `prom/prometheus:v3.13.1`.
+- Host binding: `192.168.2.220:9090`.
+- Readiness endpoint: PASS.
+- Existing scrape job: `kubernetes-state`.
+- Existing target: `192.168.2.211:8080`.
+- Target health: `up`.
+
+Prometheus already stores the required Defender metrics:
+
+- `kube_deployment_spec_replicas` = `1`;
+- `kube_deployment_status_replicas_available` = `1`;
+- `kube_pod_container_status_ready` = `1`; and
+- `kube_pod_container_status_restarts_total` = `8`.
+
+The next monitoring step is therefore Grafana-only: add a Homelab Defender operational dashboard and alert rules using the existing Prometheus datasource. Initial alerting should detect unavailable replicas, a not-ready container and **new** restarts, rather than alerting merely because the historical restart counter is already eight.
+
+No Kubernetes object, Prometheus target, Jenkins runtime, registry or application deployment was changed during this monitoring validation.
+
 ## Priority follow-up
 
-1. Validate Jenkins credential handling and log masking, then run a fresh end-to-end delivery test against the Kubernetes-owned desired state.
-2. Reconcile the successful Jenkins release into `kubernetes-homelab` and complete the delivery documentation.
-3. Review and separately commit the preserved Terraform course addition in `training-platform-manager`.
-4. Continue watching for Linux exporter availability recurrence and identify the affected instance if it returns.
+1. Add the Homelab Defender Grafana operational dashboard and alerts using the already-scraped Kubernetes metrics; alert on unavailable/not-ready state and increases in restart count.
+2. Validate Jenkins credential handling and log masking, then run a fresh end-to-end delivery test against the Kubernetes-owned desired state.
+3. Reconcile each future approved Jenkins release tag and digest into `kubernetes-homelab` so Git remains authoritative.
+4. Review and separately commit the preserved Terraform course addition in `training-platform-manager`.
+5. Continue watching for Linux exporter availability recurrence and identify the affected instance if it returns.
