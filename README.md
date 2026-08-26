@@ -147,6 +147,7 @@ Continue Stage 0 of the Docker image version-control project: inventory the Test
 
 ## Procedures
 
+- [NPM API token creation and rotation](procedures/npm-api-token-rotation.md) — create a validated long-lived Nginx Proxy Manager API token and install it atomically into the protected TestServer environment.
 - [NPM token SOPS synchronisation procedure](procedures/npm-token-sops-synchronisation.md) — safely synchronise the protected live Nginx Proxy Manager token into its encrypted TestServer recovery source.
 
 ## Operational assets
