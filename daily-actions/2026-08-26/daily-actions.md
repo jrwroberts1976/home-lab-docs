@@ -26,9 +26,13 @@ Each resolved automatically after approximately five minutes. The alert email te
 
 ### Redundant Training Platform pipeline
 
-The recurring `docker-env` **Deploy Training Platform** GitHub Actions failures were confirmed to originate from a redundant pipeline and are not an infrastructure incident.
+**Status:** COMPLETE
 
-Follow-up: retire or disable the obsolete workflow and document its removal so it no longer generates failure notifications.
+The recurring `docker-env` **Deploy Training Platform** GitHub Actions failures were confirmed to originate from a redundant pipeline and were not an infrastructure incident.
+
+The workflow was retired through `docker-env#14` and merged as `232a364`. Its automatic `main` push, manual-dispatch and `content-updated` repository-dispatch paths were removed. The existing Training Platform retirement record now documents the automation closure and recovery constraints.
+
+No container, image, route, proxy host, runner or service was changed. Preserved source, submodules and Git history remain available, while unrelated repository changes can no longer trigger deployment of the retired platform.
 
 ## NPM token recovery-source closure
 
@@ -144,6 +148,7 @@ The live service was restored to `engineering-portfolio:80` after validation.
 
 ## Priority follow-up
 
-1. Retire the redundant Training Platform workflow.
-2. Continue watching for Linux exporter availability recurrence and identify the affected instance if it returns.
+1. Validate Jenkins credential handling and log masking, then run a fresh end-to-end delivery test against the Kubernetes-owned desired state.
+2. Reconcile the successful Jenkins release into `kubernetes-homelab` and complete the delivery documentation.
 3. Review and separately commit the preserved Terraform course addition in `training-platform-manager`.
+4. Continue watching for Linux exporter availability recurrence and identify the affected instance if it returns.
