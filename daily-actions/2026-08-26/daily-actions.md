@@ -146,6 +146,25 @@ The updated production deployment workflow was exercised after merging the healt
 
 The live service was restored to `engineering-portfolio:80` after validation.
 
+## Jenkins operations documentation
+
+**Status:** BASELINE COMPLETE
+
+A dedicated `jenkins/` operational documentation area was created through `home-lab-docs#30` and merged as `4502ecf`.
+
+The area now records:
+
+- service and source-of-truth ownership across TestServer, `jenkins-gradle-delivery-lab`, `kubernetes-homelab` and `home-lab-docs`;
+- the 26 August pre-change Jenkins, DinD, Trivy, Gradle and Temurin baseline;
+- current image IDs and registry digests;
+- credential-binding and build-log masking evidence;
+- the registry credential-cleanup hardening gap;
+- update acceptance gates;
+- the current build 14 release and rollback evidence; and
+- outstanding recovery documentation and Git-ownership requirements.
+
+No Jenkins controller, builder, image, credential, job, registry, Kubernetes resource or service was changed.
+
 ## Priority follow-up
 
 1. Validate Jenkins credential handling and log masking, then run a fresh end-to-end delivery test against the Kubernetes-owned desired state.
