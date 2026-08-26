@@ -168,16 +168,26 @@ The restart rule uses a ten-minute `increase()` expression so the historical res
 
 The broad repository-wide `deploy-alerts.sh` was not used for this change. The two Defender rules were deployed individually so unrelated live rules could not be reconciled accidentally.
 
-## Post-deployment verification status
+## Post-deployment verification — complete
 
-The API accepted the dashboard and both rules successfully. A final live retrieval/evaluation check remains required to confirm:
+A read-only closure check retrieved the dashboard and both alert rules from live Grafana.
 
-- dashboard retrieval by UID;
-- exact live rule definitions;
-- healthy/inactive evaluation state for both rules; and
-- absence of unexpected notifications.
+Dashboard retrieval returned HTTP `200` with UID `homelab-defender-k8s`, title `Homelab Defender Kubernetes Operations`, version `1`, nine panels and the expected dashboard path.
 
-Until that check completes, the Defender monitoring change is considered deployed successfully at the Grafana configuration/API layer with final operational evaluation verification pending.
+Both alert-rule definitions returned HTTP `200`, matched the deployed source settings and remained unpaused.
+
+The live Grafana rule-state endpoint returned HTTP `200`. At `2026-08-26T07:05:30Z`:
+
+```text
+ffwbnisgmg4cgb | Homelab Defender Deployment Unavailable | state=inactive | health=ok
+afwbnisiruz28f | Homelab Defender New Container Restart  | state=inactive | health=ok
+```
+
+Grafana Alertmanager also returned HTTP `200` and reported zero active Defender alert instances. Direct Prometheus evaluation returned `0` for both Defender rule conditions.
+
+No Defender firing condition or active alert instance was present during the closure check. A synthetic firing/email-delivery exercise was not performed as part of this validation.
+
+**Homelab Defender monitoring status: COMPLETE.**
 
 ## SMTP credential delivery
 
@@ -196,6 +206,8 @@ On 24 August 2026, direct Gmail authentication, Grafana secret loading, Grafana 
 On 26 August 2026, the live Grafana database and datasource configuration were inspected read-only. This confirmed the Prometheus/Loki datasource UIDs, API-managed live alert-rule persistence and the existing `homelab-alerts` folder/group conventions without changing Grafana state.
 
 Later on 26 August 2026, the Git-owned Homelab Defender dashboard and two alert rules were deployed through scoped Grafana API calls. No Grafana container restart, Prometheus change, Kubernetes change or Jenkins change was required.
+
+The final read-only Defender closure check confirmed dashboard retrieval, exact rule retrieval, both rules `inactive` with `health=ok`, zero active Defender alert instances and both PromQL conditions equal to `0`.
 
 ## Recovery rule
 
