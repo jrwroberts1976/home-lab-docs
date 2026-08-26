@@ -26,6 +26,7 @@ Record only evidence-backed work. Distinguish completed, fixed, resolved, open a
 
 ## Reports
 
+- [2026-08-26](2026-08-26/daily-actions.md)
 - [2026-08-25](2026-08-25/daily-actions.md)
 - [2026-08-24](2026-08-24/daily-actions.md)
 - [2026-08-23](2026-08-23/daily-actions.md)
@@ -49,6 +50,8 @@ daily-actions/
 │   └── daily-actions.md
 ├── 2026-08-24/
 │   └── daily-actions.md
-└── 2026-08-25/
+├── 2026-08-25/
+│   └── daily-actions.md
+└── 2026-08-26/
     └── daily-actions.md
 ```
