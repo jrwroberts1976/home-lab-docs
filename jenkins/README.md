@@ -19,7 +19,7 @@ This area documents how Jenkins is operated, changed, validated, supported and r
 - [Platform baseline — 26 August 2026](platform-baseline-2026-08-26.md) — pre-change versions, image identities, ownership, security controls, release state and update candidates.
 - [Homelab Defender monitoring baseline — 26 August 2026](homelab-defender-monitoring-baseline-2026-08-26.md) — the initial build-14 monitoring baseline, live Grafana/Prometheus architecture, monitoring ownership boundaries, dashboard/alert deployment and closure evidence.
 - [Homelab Defender build 15 validation — 26 August 2026](homelab-defender-build-15-validation-2026-08-26.md) — successful full release, Trivy database refresh evidence, K3s runtime validation, monitoring checks and immutable Git desired-state reconciliation.
-- [Container Version Control — Stage 4 Validation Gate Foundation — 26 August 2026](container-version-control-stage4-foundation-2026-08-26.md) — read-only TestServer service ownership, full 30-container resolution evidence, version-ordering rules, digest precedence and comparator next step.
+- [Container Version Control — Stage 4 Validation Gate Foundation — 26 August 2026](container-version-control-stage4-foundation-2026-08-26.md) — read-only TestServer ownership, explicit image types, version comparator, immutable runtime/registry identity, OCI platform validation, candidate-planner fail-closed controls and next Jenkins-gate steps.
 - [Homelab Defender service overview](../service-overviews/homelab-defender.md) — service-level purpose, runtime, dependencies, monitoring, alerting, availability and maintenance context.
 
 ## Service scope
@@ -36,7 +36,7 @@ Jenkins currently provides:
 
 Operational support for the delivered workload uses the existing homelab monitoring platform. `kube-state-metrics` exposes the Defender deployment and pod state, Prometheus stores those metrics, and the live Grafana service on `ids-01` hosts the dedicated Defender operations dashboard and two service-specific alert rules.
 
-The container-version-control Stage 4 work is separate from the existing Homelab Defender deployment path. At the current checkpoint it is read-only: ownership resolution and version-policy configuration have been proven, but no Jenkins job has yet been given image-pull, restart, recreation or Docker deployment authority for this project.
+The container-version-control Stage 4 work is separate from the existing Homelab Defender deployment path. At the current checkpoint it remains read-only: ownership resolution, explicit image typing, version-policy comparison, runtime/registry digest identity and the first candidate image planner have been proven. No Jenkins job has been given image-pull, restart, recreation or Docker deployment authority for this project.
 
 ## Ownership boundaries
 
@@ -156,7 +156,7 @@ Before changing Jenkins or a delivery image:
 
 The Jenkins deploy helper currently advances the live Deployment by build tag. The Git-owned Kubernetes manifest records the approved immutable tag plus digest after release validation. Do not apply an older desired-state image over a newer healthy Jenkins deployment; reconcile Git first.
 
-For the separate Docker/Compose container-version-control project, Jenkins must remain assessment-only until the Stage 4 comparator, manifest/architecture validation, Trivy checks, secret-readiness checks and non-secret deployment plan are independently proven. Later deployment capability requires separate guarded-deployment, health-check and rollback controls.
+For the separate Docker/Compose container-version-control project, Jenkins must remain assessment-only. The ownership resolver, image comparator, OCI manifest/platform checks and first read-only candidate planner are now independently proven. Remaining Stage 4 gates include broader candidate coverage, local-build provenance, Trivy validation, secret-readiness checks and the non-secret deployment-plan artifact before Jenkins integration is considered complete. Later deployment capability requires separate guarded-deployment, health-check and rollback controls.
 
 ## Planned documents
 
@@ -165,4 +165,4 @@ For the separate Docker/Compose container-version-control project, Jenkins must 
 - End-to-end release and Kubernetes reconciliation SOP.
 - Jenkins controller/data recovery SOP.
 - Private-registry publication and recovery notes.
-- Container version-control Stage 4 comparator and Jenkins validation-gate evidence.
+- Container version-control Stage 4 Jenkins validation-gate and non-secret deployment-plan evidence.
