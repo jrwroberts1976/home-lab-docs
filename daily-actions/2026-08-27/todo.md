@@ -54,7 +54,17 @@
    - `docs/user-guides/README.md`;
    - update them when the actual Stage 5 deployment command, approval gate and rollback implementation are proven.
 
-8. Update the project tracker and daily-actions documentation as Stage 5 and Defender publication decisions are made.
+8. Audit the Grafana Host Overview dashboard and confirm that all intended hosts are represented.
+   - establish the authoritative list of hosts that should appear;
+   - inspect Prometheus active targets and identify missing/down exporters before changing Grafana;
+   - compare available host labels/hostnames with the dashboard variable query;
+   - check whether `homelab_network_device_info` is emitted for every intended host or is unintentionally filtering the list;
+   - verify each dashboard panel uses a metric available for all host classes rather than only Docker/Linux subsets;
+   - distinguish collection gaps from dashboard-query/filtering gaps;
+   - correct the dashboard only after the underlying metric coverage is proven;
+   - validate the final host count and record any deliberate exclusions.
+
+9. Update the project tracker and daily-actions documentation as Stage 5, Defender publication and Host Overview decisions are made.
 
 ## Safety boundary carried forward
 
