@@ -235,8 +235,6 @@ sum(kube_deployment_status_replicas_available{namespace="homelab-defender-test",
 > bool 0
 ```
 
-The expression evaluated to `0` against the healthy baseline before deployment.
-
 ### Homelab Defender New Container Restart
 
 ```text
@@ -268,18 +266,40 @@ sum(
 
 The expression evaluated to `0` before deployment while the historical restart total remained `8`, confirming that the existing counter would not immediately trigger the rule.
 
-## Post-deployment validation status
+## Post-deployment validation — complete
 
-The Grafana API accepted the dashboard with HTTP `200` and both rules with HTTP `201`. Both returned live rule objects with `provenance=api` and `isPaused=false`.
+The live dashboard and both alert rules were retrieved read-only after deployment.
 
-A final post-deployment retrieval/evaluation check is still required to confirm:
+Dashboard verification:
 
-- the dashboard can be retrieved from live Grafana by UID;
-- both alert rules are present with the expected source definitions;
-- both rules evaluate healthy/inactive against the current baseline; and
-- no unexpected notification was generated.
+```text
+HTTP: 200
+UID: homelab-defender-k8s
+Title: Homelab Defender Kubernetes Operations
+Version: 1
+Panels: 9
+Path: /d/homelab-defender-k8s/homelab-defender-kubernetes-operations
+```
 
-Until that check is complete, the deployment is recorded as successful at the API/configuration layer with final operational evaluation verification pending.
+Both alert definitions returned HTTP `200`, retained the expected source settings, and remained unpaused.
+
+Live rule evaluation at `2026-08-26T07:05:30Z`:
+
+```text
+ffwbnisgmg4cgb | Homelab Defender Deployment Unavailable | state=inactive | health=ok
+afwbnisiruz28f | Homelab Defender New Container Restart  | state=inactive | health=ok
+```
+
+Grafana Alertmanager returned HTTP `200` with zero active Defender alert instances. The current PromQL conditions were also both `0`:
+
+```text
+Homelab Defender Deployment Unavailable -> 0
+Homelab Defender New Container Restart  -> 0
+```
+
+No Defender firing condition or active alert instance was present during the closure check. A synthetic firing/email-delivery exercise was not performed as part of this validation.
+
+**Monitoring rollout status: COMPLETE.** The dashboard is retrievable, both rules are present, healthy and inactive, and the current healthy workload baseline generates no Defender alert instance.
 
 ## Restart interpretation
 
