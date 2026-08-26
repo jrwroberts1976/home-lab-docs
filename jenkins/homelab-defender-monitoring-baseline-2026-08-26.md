@@ -310,13 +310,47 @@ sum(
 ) > bool 0
 ```
 
-## Post-deployment validation status
+## Post-deployment validation — complete
 
-The Grafana API accepted the dashboard and both rules successfully. Both rule-create responses returned the expected source definition, `provenance=api` and `isPaused=false`.
+A read-only closure check was completed against live Grafana and Prometheus after deployment.
 
-The remaining validation step is to retrieve the dashboard/rules from live Grafana after creation and confirm both alert rules evaluate healthy/inactive against the current baseline with no unexpected notification.
+Dashboard retrieval:
 
-Until that check is completed, the deployment is recorded as successful at the source and Grafana configuration/API layers with final operational evaluation verification pending.
+```text
+GET /api/dashboards/uid/homelab-defender-k8s
+HTTP: 200
+UID: homelab-defender-k8s
+Title: Homelab Defender Kubernetes Operations
+Version: 1
+Panels: 9
+Path: /d/homelab-defender-k8s/homelab-defender-kubernetes-operations
+```
+
+Both alert-rule definitions were retrieved by UID with HTTP `200`. The live definitions matched the deployed source, both remained `isPaused=false`, and the expected severity/category/duration settings were present.
+
+Live evaluation at `2026-08-26T07:05:30Z`:
+
+```text
+ffwbnisgmg4cgb | Homelab Defender Deployment Unavailable | state=inactive | health=ok
+afwbnisiruz28f | Homelab Defender New Container Restart  | state=inactive | health=ok
+```
+
+Grafana Alertmanager returned HTTP `200` and reported:
+
+```text
+Active Defender alert instances: 0
+```
+
+The current PromQL conditions also remained healthy:
+
+```text
+Homelab Defender Deployment Unavailable -> 0
+Homelab Defender New Container Restart  -> 0
+```
+
+No Defender firing condition or active alert instance was present during the closure check. A synthetic firing/email-delivery exercise was not performed as part of this validation.
+
+**Operational status: COMPLETE.** The dashboard is retrievable, both rules are live and healthy, and the healthy baseline produces no Defender alert instance.
 
 ## Restart interpretation
 
