@@ -1,14 +1,14 @@
 # Container Version Control — Stage 4 Candidate Planner Checkpoint
 
 **Date:** 26 August 2026  
-**Status:** READ-ONLY CANDIDATE PLANNER VALIDATED  
+**Status:** READ-ONLY REGISTRY-IMAGE CANDIDATE PLANNING VALIDATED ACROSS CURRENT TESTSERVER ESTATE  
 **Implementation repository:** `jrwroberts1976/homelab-container-version-control`
 
 This checkpoint supersedes the earlier Stage 4 note in `daily-actions.md` that identified the candidate image planner as the next engineering step.
 
 ## Completed in this checkpoint
 
-The Stage 4 implementation now includes three stacked review units:
+The Stage 4 implementation is reviewed as three stacked units:
 
 ```text
 #19  stage4/service-ownership
@@ -16,17 +16,14 @@ The Stage 4 implementation now includes three stacked review units:
 #21  stage4/candidate-planner
 ```
 
-GitHub comparison confirmed `stage4/candidate-planner` is exactly one commit ahead of `stage4/image-comparator` and adds only:
-
-```text
-scripts/plan-image-update.py
-```
-
-Candidate-planner commit:
+Candidate-planner commits:
 
 ```text
 f3de3b1  Add Stage 4 candidate image planner
+707a6af  Fix service-specific candidate image extraction
 ```
+
+The planner remains read-only and emits machine-readable evidence without performing image pulls, container recreation, restart or deployment.
 
 ## Validated planner path
 
@@ -37,7 +34,7 @@ running container
 → service ownership
 → clean authoritative Git checkout
 → Compose validation
-→ desired image extraction
+→ exact service image extraction
 → runtime image identity
 → remote OCI index
 → linux/arm64 platform manifest
@@ -45,53 +42,14 @@ running container
 → read-only JSON plan
 ```
 
-Authoritative source:
+Authoritative source during validation:
 
 ```text
 repository: jrwroberts1976/docker-env
 revision:   232a364bd929b2ed3ed6ffa37dccd045f8c05843
-compose:    stacks/management/docker-compose.yml
-service:    dozzle
 ```
 
-Desired/runtime image:
-
-```text
-amir20/dozzle:v10.7.2
-```
-
-Runtime image ID:
-
-```text
-sha256:f1480337d833d51986224a50211780b6ccf2b4cbf0f92be3b0eab4b44b6c469d
-```
-
-Runtime RepoDigest and remote OCI index digest matched exactly:
-
-```text
-sha256:01f9018ffdaa0ec523f9a91dea3eff65b25cdb5f0566ac6d5a2cb4cf591e35e9
-```
-
-Exactly one compatible platform manifest was found:
-
-```text
-platform: linux/arm64
-digest:   sha256:f4328903c5e34dae27b1a64439d6e047172fc3a4cfc925c59ea008f3178c4069
-```
-
-Comparator result:
-
-```text
-method: exact-digest
-result: same
-```
-
-Deployment state remained:
-
-```text
-allowed:   false
-performed: false
-```
+For Dozzle the runtime RepoDigest and remote OCI index digest matched exactly, one compatible `linux/arm64` manifest was found, the comparator returned `same` via `exact-digest`, and deployment remained disabled/not performed.
 
 ## Fail-closed controls
 
@@ -110,17 +68,95 @@ passed: 5
 failed: 0
 ```
 
-The exact staged planner blob was executed successfully before commit.
+The exact staged planner blob was executed successfully before the initial planner commit.
 
 ## Secret-handling boundary
 
-The planner validates the complete Compose model but discards rendered output. It then obtains only the selected service image through:
+The planner validates the complete Compose model while discarding rendered stdout. Service-image extraction now uses:
 
 ```text
-docker compose config --images <service>
+docker compose config --no-interpolate --format json
 ```
 
-This prevents the planner from retaining a fully rendered Compose document containing interpolated environment values.
+and pipes the model directly to `jq` to retain only:
+
+```text
+.services[$service].image
+```
+
+This avoids retaining a fully interpolated Compose document and also avoids the dependency-expansion behaviour of `docker compose config --images <service>`.
+
+## Autokuma extraction defect and fix
+
+The first full estate sweep exposed one planner defect for `autokuma`.
+
+`docker compose config --images autokuma` returned both:
+
+```text
+louislam/uptime-kuma:1.23.16
+ghcr.io/bigboot/autokuma@sha256:8acbd3ad3ec8cb6c066aa0ee541154921283ec78159015937128541921c47974
+```
+
+because Autokuma declares a Compose `depends_on` relationship with Uptime Kuma.
+
+Commit `707a6af` replaced dependency-expanded image-list parsing with exact service-image extraction from the non-interpolated Compose model. Autokuma then returned its single authoritative image and validated as `same` via `exact-digest` on `linux/arm64`. Dozzle remained valid after the change.
+
+## Full TestServer registry-image sweep
+
+After the Autokuma fix, every automatically eligible registry-backed service on the current TestServer estate produced a safe read-only plan.
+
+Final result:
+
+```text
+running containers:       30
+eligible registry images: 24
+planned successfully:     24
+policy-blocked:            1
+local-build skipped:       4
+platform exceptions:       2
+planner failures:          0
+```
+
+Policy results:
+
+```text
+23 same
+ 1 ordering-unknown-blocked
+```
+
+All successful plans resolved a compatible `linux/arm64` candidate platform.
+
+### Important representative results
+
+**Autokuma**
+
+```text
+candidate: ghcr.io/bigboot/autokuma@sha256:8acbd3ad3ec8cb6c066aa0ee541154921283ec78159015937128541921c47974
+result:    same
+method:    exact-digest
+```
+
+**Smokeping**
+
+Git desired state remains digest-pinned even though runtime `Config.Image` is only `linuxserver/smokeping:latest`:
+
+```text
+candidate: linuxserver/smokeping:latest@sha256:a0d1e57744a2217a0fe83b7828cffe2cbce16f44e59c858bead8ff41e7b63581
+result:    same
+method:    exact-digest
+```
+
+This confirms the planner does not reduce the authoritative Git digest pin to a floating runtime tag.
+
+**Maintenance page**
+
+```text
+candidate: nginx:alpine
+result:    ordering-unknown-blocked
+method:    same-tag-different-identity
+```
+
+The remote `nginx:alpine` digest has moved since the currently running image. The planner correctly treats this as a successful policy block rather than guessing whether the moving channel represents an upgrade or downgrade.
 
 ## Safety state
 
@@ -128,11 +164,14 @@ No image was pulled by the planner. No container was recreated, restarted or dep
 
 ## Next Stage 4 work
 
-1. broaden registry-image candidate coverage and safely handle supported manifest forms;
+Registry-image candidate planning is now validated across the complete current eligible TestServer estate.
+
+Next controls:
+
+1. add the read-only Trivy candidate security-validation gate;
 2. implement local-build provenance handling;
-3. add Trivy candidate security validation;
-4. add secret-readiness checks without exposing secret values;
-5. produce the non-secret deployment-plan artifact with exact rollback identity; and
-6. connect the proven read-only controls into Jenkins only after those gates are independently validated.
+3. add secret-readiness checks without exposing secret values;
+4. produce the non-secret deployment-plan artifact with exact rollback identity; and
+5. connect the proven read-only controls into Jenkins only after those gates are independently validated.
 
 Deployment remains disabled throughout Stage 4.
