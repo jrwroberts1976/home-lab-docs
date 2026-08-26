@@ -399,9 +399,73 @@ Final read-only closure validation passed:
 
 No Defender firing condition or active alert instance was present during the closure check. A synthetic firing/email-delivery exercise was not performed as part of this validation.
 
+## Homelab Defender build 15 release and documentation closure
+
+**Status:** COMPLETE
+
+A fresh end-to-end release was completed after the Jenkins/Kubernetes ownership and monitoring work above.
+
+Jenkins build `15` ran the complete gated path:
+
+```text
+Test
+→ Package
+→ Containerise
+→ Security Scan
+→ Publish image
+→ Deploy to K3s
+→ rollout and /healthz verification
+```
+
+Jenkins recorded `SUCCESS` after `1013344 ms`.
+
+Approved immutable identity:
+
+```text
+192.168.2.220:5000/homelab-defender:15@sha256:2154a1881acc63db852dbeebc7daf5890a1c9527c4b70837b2ad33fb76ad940b
+```
+
+Independent runtime validation confirmed:
+
+- Deployment `homelab-defender`: `1/1` available;
+- build-15 pod: `Running`;
+- pod restart count: `0`;
+- Prometheus observed the build-15 image identity;
+- Defender deployment-unavailable expression: `0`;
+- Defender new-restart expression: `0`.
+
+The long Trivy stage was investigated separately. The primary vulnerability-DB mirror returned `BLOB_UNKNOWN`, Trivy automatically succeeded through its fallback repository, and the persistent `trivy-cache` volume was confirmed healthy with approximately `2.6G` of vulnerability/Java database data. This was a legitimate database refresh, not a cache failure; no Jenkinsfile change was required.
+
+The approved build-15 tag and digest were reconciled into `kubernetes-homelab` through pull request `#11`, merged as:
+
+```text
+1565663aa0ed1584a09bdc0761ce5e143bf61cce
+```
+
+The dedicated build-15 operational validation was added to `home-lab-docs` through pull request `#37`, merged as:
+
+```text
+b19fe5c5f0a0158b01f7fcabf5123c1faf6303fa
+```
+
+A final cross-repository documentation sweep then refreshed every Markdown guide in `jenkins-gradle-delivery-lab` and the current-state Defender documentation in `kubernetes-homelab` while preserving earlier build-14 and platform-baseline sections as historical evidence.
+
+Documentation sweep merges:
+
+```text
+jenkins-gradle-delivery-lab#4
+8233e8fe0919d5616bc02d4703fc07475dda6384
+
+kubernetes-homelab#12
+1a9a3d2a76d2567bf5b13e12b48a9d5b6d9dd034
+```
+
+No application code, Jenkinsfile, deployment helper, Kubernetes manifest, runtime object, image, service or monitoring configuration was changed by the documentation sweep.
+
 ## Priority follow-up
 
-1. Validate Jenkins credential handling and log masking, then run a fresh end-to-end delivery test against the Kubernetes-owned desired state.
-2. Reconcile each future approved Jenkins release tag and digest into `kubernetes-homelab` so Git remains authoritative.
+1. Keep each future approved Jenkins release tag and digest reconciled into `kubernetes-homelab` so Git remains authoritative.
+2. Complete the remaining Jenkins controller/data recovery and host-specific source-ownership documentation.
 3. Review and separately commit the preserved Terraform course addition in `training-platform-manager`.
 4. Continue watching for Linux exporter availability recurrence and identify the affected instance if it returns.
+5. Separately evaluate the controlled Cloudflare game route and BuildKit/buildx migration when those changes are prioritised.
