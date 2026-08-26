@@ -15,7 +15,7 @@ This area documents how Jenkins is operated, changed, validated, supported and r
 ## Current documents
 
 - [Platform baseline — 26 August 2026](platform-baseline-2026-08-26.md) — pre-change versions, image identities, ownership, security controls, release state and update candidates.
-- [Homelab Defender monitoring baseline — 26 August 2026](homelab-defender-monitoring-baseline-2026-08-26.md) — validated K3s metrics path, live Grafana/Prometheus architecture, monitoring ownership boundaries and planned dashboard/alert design.
+- [Homelab Defender monitoring baseline — 26 August 2026](homelab-defender-monitoring-baseline-2026-08-26.md) — validated K3s metrics path, live Grafana/Prometheus architecture, monitoring ownership boundaries, deployed dashboard/alert evidence and remaining post-deployment validation.
 - [Homelab Defender service overview](../service-overviews/homelab-defender.md) — service-level purpose, runtime, dependencies, monitoring, alerting, availability and maintenance context.
 
 ## Service scope
@@ -30,7 +30,7 @@ Jenkins currently provides:
 - Kubernetes rollout and application health verification; and
 - automatic rollback to the previously running image when release verification fails.
 
-Operational support for the delivered workload uses the existing homelab monitoring platform. `kube-state-metrics` exposes the Defender deployment and pod state, Prometheus stores those metrics, and the live Grafana service on `ids-01` is the intended dashboard and alerting layer.
+Operational support for the delivered workload uses the existing homelab monitoring platform. `kube-state-metrics` exposes the Defender deployment and pod state, Prometheus stores those metrics, and the live Grafana service on `ids-01` now hosts the dedicated Defender operations dashboard and two service-specific alert rules.
 
 ## Ownership boundaries
 
@@ -46,11 +46,11 @@ Operational support for the delivered workload uses the existing homelab monitor
 | Jenkins operational documentation and evidence | `home-lab-docs/jenkins` |
 | Runtime Jenkins data | TestServer `/home/james/docker/data/jenkins` |
 | DinD image/build cache | TestServer `/home/james/docker/data/jenkins-docker` |
-| Live Defender Grafana deployment state | `ids-01:/home/james/docker/data/monitoring/grafana` |
+| Live Defender Grafana state | Grafana runtime on `ids-01` |
 
 The TestServer Jenkins Compose file and custom controller Dockerfile are operationally critical but are not yet recorded here as Git-owned source. Bringing them under controlled source ownership is part of the Jenkins documentation and recovery work.
 
-The TestServer and `ids-01` monitoring Compose definitions are host-specific and must not be made identical merely to remove drift. Grafana rule/dashboard source should follow the existing `grafana-alerting` repository, while host-specific runtime definitions remain explicit.
+The TestServer and `ids-01` monitoring Compose definitions are host-specific and must not be made identical merely to remove drift. Grafana rule/dashboard source follows the existing `grafana-alerting` repository, while host-specific runtime definitions remain explicit.
 
 ## Current release
 
@@ -61,6 +61,27 @@ Jenkins build 14 is the last recorded fully automated healthy release:
 ```
 
 Build 14 passed Gradle testing and packaging, image construction, Trivy scanning with zero HIGH/CRITICAL findings, registry publication, restricted K3s deployment, rollout and ClusterIP `/healthz` verification.
+
+## Current monitoring deployment
+
+The Defender Grafana source was merged through `grafana-alerting#4` as merge commit `8244758`.
+
+Live Grafana objects created on 26 August 2026:
+
+```text
+Dashboard: Homelab Defender Kubernetes Operations
+Dashboard UID: homelab-defender-k8s
+
+Alert: Homelab Defender Deployment Unavailable
+Alert UID: ffwbnisgmg4cgb
+
+Alert: Homelab Defender New Container Restart
+Alert UID: afwbnisiruz28f
+```
+
+The dashboard was created through `POST /api/dashboards/db` with HTTP `200`. Both alert rules were created through the Grafana provisioning API with HTTP `201` and returned `provenance=api`, `isPaused=false`.
+
+A final post-deployment live retrieval/evaluation check remains outstanding before the monitoring change is considered fully operationally closed.
 
 ## Change rules
 
