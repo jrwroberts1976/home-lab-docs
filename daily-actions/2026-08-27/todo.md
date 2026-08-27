@@ -43,8 +43,10 @@
    - ✅ Jenkins `known_hosts` now pins both `172.18.0.1` and `172.30.255.249` to the same reviewed TestServer ED25519 key;
    - known-hosts backup: `/var/backups/stage4-testserver-known_hosts-20260827-055822`;
    - implementation PR #27 changed only `STAGE4_HOST` from `172.18.0.1` to `172.30.255.249` (1 file, 1 addition, 1 deletion) and merged as `efcbc7199b435497f2b624b3efbb54bc50b274f6`;
-   - next step: run the existing Stage 4 Jenkins validation from merged `main`, prove the connection uses the new path, and reconfirm `deployment.allowed=false`, `deployment.performed=false`, and `Stop before deployment`;
-   - do not remove the old `.23 -> .1` trust path until that Jenkins proof is accepted;
+   - Jenkins job SCM branch was corrected from deleted `stage4/jenkins-integration` to merged `main` after an initial pre-pipeline fetch failure; that failed attempt executed no Jenkinsfile stages and made no infrastructure change;
+   - ✅ successful post-merge Stage 4 Jenkins run checked out exact merge `efcbc7199b435497f2b624b3efbb54bc50b274f6`, passed reviewed-input/SSH preflight, received the deployment-plan artifact, returned `dozzle -> no-change / none`, independently reconfirmed `deployment.allowed=false` and `deployment.performed=false`, executed `Stop before deployment`, archived the artifact, and finished `SUCCESS`;
+   - next step: correlate the successful run window (`06:11:34`–`06:11:52`) with TestServer SSH/firewall evidence to prove the accepted Jenkins run used source `172.30.255.250` before retiring the old `.23 -> .1` rollback trust;
+   - do not remove the old `.23 -> .1` trust path until that source-path proof is accepted;
    - no Stage 5 deployment authority has been introduced;
    - design record: `daily-actions/2026-08-27/jenkins-durable-network-identity-design.md`.
 
