@@ -2,12 +2,13 @@
 
 ## Priority TODO
 
-1. Sync local working checkouts to the newly merged `main` branches before starting any new Stage 5 work.
-   - `jrwroberts1976/homelab-container-version-control`
-   - `jrwroberts1976/home-lab-docs`
-   - `jrwroberts1976/jenkins-gradle-delivery-lab`
-   - `jrwroberts1976/engineering-portfolio`
-   - keep the live dirty `/home/james/docker` checkout untouched and do not treat it as the authoritative working copy.
+1. ✅ COMPLETE — Sync local working checkouts to the newly merged `main` branches before starting any new Stage 5 work.
+   - `jrwroberts1976/homelab-container-version-control` -> `683e3c13357770931f28808767a1ffffa010b54f`;
+   - `jrwroberts1976/home-lab-docs` -> `e5cc9a585642f2ad035b1c1128adc9726b57fa41`;
+   - `jrwroberts1976/jenkins-gradle-delivery-lab` -> `8a5519afda4e3a1bfbae3e78c88af2fe9bcd86af`;
+   - `jrwroberts1976/engineering-portfolio` -> `b96596459b6b23d12e98cee2711b0d3244b29b80`;
+   - all four local working copies fast-forwarded cleanly to the authoritative remote `main` heads;
+   - live dirty `/home/james/docker` checkout was left untouched and is not treated as the authoritative working copy.
 
 2. Reconfirm the Stage 4 baseline after sync.
    - implementation PR #26 merged as `0adfc1a9e5ad76f42a3eb4a2970dcd5014e79505`;
