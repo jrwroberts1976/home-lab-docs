@@ -1,7 +1,7 @@
 # Jenkins Durable Network Identity Design
 
 **Date:** 27 August 2026  
-**Status:** DESIGN SELECTED — EXACT NETWORK VALUES RECORDED — NO LIVE CHANGE YET  
+**Status:** GIT AUTHORITY MERGED — LIVE MIGRATION NOT STARTED  
 **Scope:** Jenkins Stage 4 restricted SSH validation path on TestServer
 
 ## Purpose
@@ -36,7 +36,7 @@ Hard-coding `172.18.0.23` directly on `homelab_apps` is rejected as the target d
 1. the shared bridge has no reserved static-IP range;
 2. the address could be allocated to another container while Jenkins is absent;
 3. reserving a safe static range would require changing or recreating a network used by many unrelated services;
-4. the Jenkins controller Compose source is not yet authoritative Git-managed configuration;
+4. the previous Jenkins controller Compose source was not authoritative Git-managed configuration;
 5. it would preserve coupling between the Jenkins trust boundary and the general application bridge.
 
 Broadening the SSH rule to `172.18.0.0/16` is explicitly rejected.
@@ -65,7 +65,7 @@ Jenkins controller
 
 The Jenkins controller remains attached to `homelab_apps` for its existing behaviour. The new network is additive and is used specifically for the restricted validator SSH path.
 
-The DinD sidecar does not need membership of `jenkins_validation` unless a separately reviewed requirement is discovered. The default design is controller-only membership.
+The DinD sidecar does not need membership of `jenkins_validation`. The reviewed configuration keeps it on `homelab_apps` only.
 
 ## Collision audit
 
@@ -115,7 +115,7 @@ A `/29` provides only six usable addresses and deliberately limits the validatio
 172.30.255.255   broadcast
 ```
 
-The Jenkins controller will retain `homelab_apps` and gain `jenkins_validation`. The DinD sidecar remains only on `homelab_apps` unless a later reviewed requirement proves otherwise.
+The Jenkins controller will retain `homelab_apps` and gain `jenkins_validation`. The DinD sidecar remains only on `homelab_apps`.
 
 The validator transport will retain:
 
@@ -128,35 +128,52 @@ The validator transport will retain:
 
 Changing the SSH destination from `172.18.0.1` to `172.30.255.249` requires a matching `known_hosts` entry for the new destination while preserving the already pinned host-key fingerprint.
 
-## Required configuration ownership
+## Git configuration authority
 
-Before the live controller is recreated, the configuration necessary to reproduce the Jenkins controller network identity must be captured in an authoritative, reviewable form.
+The Jenkins controller and DinD definition is now captured in:
 
-At minimum this must include:
+```text
+jrwroberts1976/docker-env
+stacks/jenkins/
+  Dockerfile
+  docker-compose.yml
+  README.md
+```
 
-- definition of `jenkins_validation`;
-- subnet `172.30.255.248/29` and gateway `172.30.255.249`;
-- Jenkins fixed `ipv4_address: 172.30.255.250`;
-- Jenkins membership in both `homelab_apps` and `jenkins_validation`;
-- Stage 4 SSH destination `172.30.255.249`;
-- host firewall source `172.30.255.250/32`;
-- validator authorized-key source `from="172.30.255.250"`;
-- pinned host-key handling for the new SSH destination;
-- rollback instructions.
+Review PR #15 was validated against the exact branch head `e503bb04cac4d9cb90ae20437e06defaf647eb89` and merged to `main` as:
 
-The current `/home/james/projects/docker-compose.yml` is runtime evidence, not yet sufficient Git authority by itself.
+```text
+1f95b0a2d6f8da5500a6a02d0d8416393107e8df
+```
+
+Pre-merge TestServer validation proved:
+
+- controller Dockerfile SHA256 matched the live build source exactly: `2414a641eea3abd627a5026d755b7b7820c96a60742d23e6e3955a521c884dde`;
+- `docker compose config --quiet` passed;
+- rendered Jenkins behaviour matched the current live Compose baseline;
+- rendered DinD behaviour matched the current live Compose baseline;
+- external `homelab_apps` behaviour was retained;
+- `jenkins_validation` rendered exactly as `172.30.255.248/29`, gateway `172.30.255.249`;
+- Jenkins rendered with fixed validation identity `172.30.255.250`;
+- DinD remained excluded from the validation network;
+- Jenkins remained running with restart count `0`;
+- DinD remained running with its pre-existing restart count `1`;
+- `jenkins_validation` remained absent from the live host;
+- no `docker compose up`, network creation, firewall change, validator-key change or container change was performed.
+
+The merged Git definition is now the reviewed configuration authority. The old `/home/james/projects/docker-compose.yml` remains the current live launch source until the controlled migration is executed; it must not be silently treated as the long-term source of truth.
 
 ## Migration order
 
-The eventual implementation must be staged so the existing working Stage 4 path is retained until the replacement path is proven.
+The migration must preserve the existing working Stage 4 path until the replacement path is proven.
 
 1. ✅ Complete subnet collision audit.
 2. ✅ Record exact proposed network values.
-3. Capture/reconcile Jenkins Compose configuration into an authoritative review path.
-4. Create the dedicated bridge without changing the running controller.
-5. Prepare firewall and validator-key restrictions for the new single `/32` while retaining the old `/32` temporarily.
-6. Add Jenkins to the dedicated bridge with its fixed address through the reviewed Compose change.
-7. Add the pinned TestServer host key for `172.30.255.249` and change the Stage 4 SSH destination to that gateway.
+3. ✅ Capture, validate, review and merge Jenkins Compose configuration into `docker-env` authority (PR #15 -> `1f95b0a2d6f8da5500a6a02d0d8416393107e8df`).
+4. Synchronize the merged `docker-env` authority to TestServer and perform a final Compose dry-run using project name `projects` so the existing controller is targeted rather than a second Compose project.
+5. Prepare the new `172.30.255.250/32` firewall allowance and temporary dual-source validator-key restriction while retaining the old `172.18.0.23/32` path.
+6. Migrate Jenkins through the reviewed Compose definition so Compose creates/owns `jenkins_validation`, the controller remains on `homelab_apps`, and it receives `172.30.255.250` on the validation network. Do not manually pre-create the Compose-managed network unless its ownership/labels are deliberately reproduced and reviewed.
+7. Add the pinned TestServer host key for `172.30.255.249` and change the Stage 4 SSH destination to that gateway through a reviewed implementation change.
 8. Run the existing read-only Stage 4 validation and confirm the traffic source is `172.30.255.250`.
 9. Re-run the accepted safety assertions: `deployment.allowed=false`, `deployment.performed=false`, Stop-before-deployment executed, controller and target service restart expectations understood.
 10. Remove the old `172.18.0.23/32` UFW allowance and old authorized-key source restriction only after the new path is proven.
@@ -171,7 +188,7 @@ If the new path fails:
 
 - revert the Jenkins Stage 4 SSH destination to `172.18.0.1`;
 - use the retained old `/32` firewall and key source restrictions;
-- remove Jenkins from `jenkins_validation` if necessary;
+- restore the merged Compose authority to the last proven controller-only network state if necessary;
 - leave Stage 4 deployment disabled;
 - do not proceed to Stage 5 authority work.
 
@@ -185,8 +202,8 @@ The durable identity work is complete only when all of the following are true:
 PASS: dedicated validation subnet does not overlap existing networks
 PASS: Jenkins validation IP is declarative and fixed
 PASS: only Jenkins controller requires validation-network membership
-PASS: SSH firewall source remains exactly one /32
-PASS: validator authorized key source remains exactly one address
+PASS: SSH firewall source remains exactly one /32 after cutover
+PASS: validator authorized key source remains exactly one address after cutover
 PASS: pinned TestServer host-key validation remains enabled
 PASS: Jenkins credential-store-only authentication remains in use
 PASS: Stage 4 deployment.allowed=false
