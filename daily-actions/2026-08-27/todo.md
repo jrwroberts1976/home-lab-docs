@@ -39,11 +39,11 @@
    - selected Git authority: `jrwroberts1976/docker-env/stacks/jenkins`;
    - PR #15 branch head `e503bb04cac4d9cb90ae20437e06defaf647eb89` passed local TestServer structural validation: exact Dockerfile match, Compose syntax pass, Jenkins/DinD behaviour preserved, exact new IPAM values rendered, DinD excluded from validation network, and no live change performed;
    - PR #15 merged to `docker-env/main` as `1f95b0a2d6f8da5500a6a02d0d8416393107e8df`;
-   - Jenkins remained running with restart count `0`; Jenkins DinD remained running with its pre-existing restart count `1`;
-   - `jenkins_validation` still does not exist on the live host;
-   - next step: sync merged `docker-env` authority to TestServer and run a final `docker compose --dry-run` using Compose project name `projects` before any live migration;
-   - design record: `daily-actions/2026-08-27/jenkins-durable-network-identity-design.md`;
-   - no live network, firewall rule, validator-key restriction, SSH destination or container has been changed yet.
+   - post-merge Compose dry-run against project `projects` passed and proposed only `jenkins_validation` creation plus Jenkins controller recreation; Jenkins DinD was not selected for recreation;
+   - dry-run used exact merged Git authority, left `jenkins_validation` absent, and made no live change;
+   - Jenkins remains running with restart count `0`; Jenkins DinD remains running with its pre-existing restart count `1`;
+   - next step: prepare the new `172.30.255.250/32` UFW allowance and temporary dual-source validator-key restriction while retaining the existing `172.18.0.23/32` path; do not recreate Jenkins yet;
+   - design record: `daily-actions/2026-08-27/jenkins-durable-network-identity-design.md`.
 
 4. Define the Stage 5 pilot boundary before enabling any deployment authority.
    - explicit human approval point;
