@@ -45,8 +45,14 @@
    - implementation PR #27 changed only `STAGE4_HOST` from `172.18.0.1` to `172.30.255.249` (1 file, 1 addition, 1 deletion) and merged as `efcbc7199b435497f2b624b3efbb54bc50b274f6`;
    - Jenkins job SCM branch was corrected from deleted `stage4/jenkins-integration` to merged `main` after an initial pre-pipeline fetch failure; that failed attempt executed no Jenkinsfile stages and made no infrastructure change;
    - ✅ successful post-merge Stage 4 Jenkins run checked out exact merge `efcbc7199b435497f2b624b3efbb54bc50b274f6`, passed reviewed-input/SSH preflight, received the deployment-plan artifact, returned `dozzle -> no-change / none`, independently reconfirmed `deployment.allowed=false` and `deployment.performed=false`, executed `Stop before deployment`, archived the artifact, and finished `SUCCESS`;
-   - next step: correlate the successful run window (`06:11:34`–`06:11:52`) with TestServer SSH/firewall evidence to prove the accepted Jenkins run used source `172.30.255.250` before retiring the old `.23 -> .1` rollback trust;
-   - do not remove the old `.23 -> .1` trust path until that source-path proof is accepted;
+   - ✅ TestServer SSH journal for that successful build recorded `Accepted publickey for homelab-validator from 172.30.255.250` at `06:11:34+01:00` with validator key fingerprint `SHA256:DcO1PigKb2GXD6clI/1uCNHlX2MVryivfL5BbhkNe7k`; clean disconnect recorded at `06:11:49+01:00`;
+   - ✅ UFW counters showed traffic on the exact new `172.30.255.250/32 -> tcp/22` rule, establishing accepted Stage 4 source-path proof;
+   - ✅ Jenkins controller was then deliberately recreated from exact merged `docker-env` authority `1f95b0a2d6f8da5500a6a02d0d8416393107e8df` using project `projects`; container ID changed from `bb303787ac94ec457307a31d3b1868987fd3580dee813d844e320c7acaef818b` to `f451fb005c7f3e0b23ee15dd39dc89cdea042fe178d5a212a643e432100a893d`;
+   - ✅ after recreation Jenkins returned `running`, restart count `0`, retained `homelab_apps=172.18.0.23`, and reacquired declarative `jenkins_validation=172.30.255.250` with gateway `172.30.255.249`;
+   - ✅ Jenkins persistent `known_hosts` entries for both old and new destinations survived recreation; Jenkins HTTP returned `200` after startup;
+   - ✅ Jenkins DinD container ID remained unchanged and restart count stayed at its pre-existing `1`; DinD remained excluded from `jenkins_validation`;
+   - next step: run the Stage 4 `dozzle` Jenkins validation once more after controller recreation and reconfirm the accepted `.250 -> .249` path plus the read-only contract;
+   - do not remove the old `.23 -> .1` trust path until that final post-recreation Stage 4 proof is accepted;
    - no Stage 5 deployment authority has been introduced;
    - design record: `daily-actions/2026-08-27/jenkins-durable-network-identity-design.md`.
 
