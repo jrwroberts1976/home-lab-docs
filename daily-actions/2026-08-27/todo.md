@@ -35,9 +35,13 @@
    - selected Jenkins validation identity: `172.30.255.250`;
    - future UFW source restriction: `172.30.255.250/32`;
    - future validator key restriction: `from="172.30.255.250"`;
-   - next step: capture/reconcile the Jenkins Compose definition into an authoritative review path before any live controller/network change;
+   - live controller Compose and Dockerfile were captured read-only, including persistence, TLS Docker client settings, DinD command, port mapping and controller security options;
+   - selected Git authority: `jrwroberts1976/docker-env/stacks/jenkins`;
+   - review branch: `hardening/jenkins-durable-network-identity`;
+   - draft PR #15 (`jrwroberts1976/docker-env`) contains the proposed Git-owned `Dockerfile`, `docker-compose.yml` and migration/rollback `README.md`;
+   - next step: validate the exact PR branch locally with `docker compose config` and compare rendered settings with the current runtime; do not run `docker compose up`;
    - design record: `daily-actions/2026-08-27/jenkins-durable-network-identity-design.md`;
-   - no container, Docker network, firewall rule or SSH configuration has been changed yet.
+   - no container, Docker network, firewall rule, validator key or SSH configuration has been changed yet.
 
 4. Define the Stage 5 pilot boundary before enabling any deployment authority.
    - explicit human approval point;
