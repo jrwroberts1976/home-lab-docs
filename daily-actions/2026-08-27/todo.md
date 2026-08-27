@@ -21,38 +21,25 @@
    - final result: `PASS: STAGE 4 BASELINE RECONFIRMED`;
    - no Stage 5 deployment authority is enabled.
 
-3. 🔄 IN PROGRESS — Design and implement a durable Jenkins network identity.
-   - baseline discovery confirmed Jenkins previously received dynamic `172.18.0.23` on shared external bridge `homelab_apps` (`172.18.0.0/16`, gateway `172.18.0.1`);
-   - rejected: broadening SSH to `172.18.0.0/16` or treating dynamic `172.18.0.23` as durable identity;
-   - selected dedicated validation network: `jenkins_validation` = `172.30.255.248/29`;
-   - bridge gateway / Stage 4 SSH destination: `172.30.255.249`;
-   - fixed Jenkins validation identity: `172.30.255.250`;
-   - final intended UFW source restriction: `172.30.255.250/32`;
-   - final intended validator key restriction: `from="172.30.255.250"`;
-   - Jenkins controller/DinD configuration captured into authoritative Git path `jrwroberts1976/docker-env/stacks/jenkins`;
-   - `docker-env` PR #15 merged as `1f95b0a2d6f8da5500a6a02d0d8416393107e8df` after exact Dockerfile/Compose/runtime validation;
-   - post-merge Compose dry-run confirmed only `jenkins_validation` creation plus Jenkins controller recreation would be required; DinD remained outside the operation;
-   - ✅ parallel migration trust prepared: UFW permits both old `172.18.0.23/32` and new `172.30.255.250/32`; validator key temporarily permits `from="172.18.0.23,172.30.255.250"`;
-   - validator public-key fingerprint remained `SHA256:DcO1PigKb2GXD6clI/1uCNHlX2MVryivfL5BbhkNe7k`;
-   - authorized-key backup: `/var/backups/homelab-validator-authorized_keys-20260827-055427`;
-   - ✅ `jenkins_validation` created with Compose ownership labels and reviewed IPAM values;
-   - ✅ running Jenkins attached without restart at `172.30.255.250`, while retaining `172.18.0.23` on `homelab_apps` for rollback;
-   - ✅ DinD remained excluded from `jenkins_validation` and retained pre-existing restart count `1`; Jenkins restart count remained `0`;
-   - ✅ SSH probe from Jenkins to `172.30.255.249:22` matched pinned TestServer ED25519 fingerprint `SHA256:PEDpP7QlmSztJSIYHzZ+YuIT7XurmpeWp85wRnlfZuk`;
-   - ✅ new exact `/32` UFW packet counter incremented from `0` to `1`, proving the probe used `172.30.255.250 -> 172.30.255.249:22`;
-   - ✅ Jenkins `known_hosts` now pins both `172.18.0.1` and `172.30.255.249` to the same reviewed TestServer ED25519 key;
-   - known-hosts backup: `/var/backups/stage4-testserver-known_hosts-20260827-055822`;
-   - implementation PR #27 changed only `STAGE4_HOST` from `172.18.0.1` to `172.30.255.249` (1 file, 1 addition, 1 deletion) and merged as `efcbc7199b435497f2b624b3efbb54bc50b274f6`;
-   - Jenkins job SCM branch was corrected from deleted `stage4/jenkins-integration` to merged `main` after an initial pre-pipeline fetch failure; that failed attempt executed no Jenkinsfile stages and made no infrastructure change;
-   - ✅ successful post-merge Stage 4 Jenkins run checked out exact merge `efcbc7199b435497f2b624b3efbb54bc50b274f6`, passed reviewed-input/SSH preflight, received the deployment-plan artifact, returned `dozzle -> no-change / none`, independently reconfirmed `deployment.allowed=false` and `deployment.performed=false`, executed `Stop before deployment`, archived the artifact, and finished `SUCCESS`;
-   - ✅ TestServer SSH journal for that successful build recorded `Accepted publickey for homelab-validator from 172.30.255.250` at `06:11:34+01:00` with validator key fingerprint `SHA256:DcO1PigKb2GXD6clI/1uCNHlX2MVryivfL5BbhkNe7k`; clean disconnect recorded at `06:11:49+01:00`;
-   - ✅ UFW counters showed traffic on the exact new `172.30.255.250/32 -> tcp/22` rule, establishing accepted Stage 4 source-path proof;
-   - ✅ Jenkins controller was then deliberately recreated from exact merged `docker-env` authority `1f95b0a2d6f8da5500a6a02d0d8416393107e8df` using project `projects`; container ID changed from `bb303787ac94ec457307a31d3b1868987fd3580dee813d844e320c7acaef818b` to `f451fb005c7f3e0b23ee15dd39dc89cdea042fe178d5a212a643e432100a893d`;
-   - ✅ after recreation Jenkins returned `running`, restart count `0`, retained `homelab_apps=172.18.0.23`, and reacquired declarative `jenkins_validation=172.30.255.250` with gateway `172.30.255.249`;
-   - ✅ Jenkins persistent `known_hosts` entries for both old and new destinations survived recreation; Jenkins HTTP returned `200` after startup;
-   - ✅ Jenkins DinD container ID remained unchanged and restart count stayed at its pre-existing `1`; DinD remained excluded from `jenkins_validation`;
-   - next step: run the Stage 4 `dozzle` Jenkins validation once more after controller recreation and reconfirm the accepted `.250 -> .249` path plus the read-only contract;
-   - do not remove the old `.23 -> .1` trust path until that final post-recreation Stage 4 proof is accepted;
+3. ✅ COMPLETE — Design and implement a durable Jenkins network identity.
+   - rejected the allocator-assigned `172.18.0.23` on shared `homelab_apps` as a durable security identity and rejected any subnet-wide SSH allowance;
+   - dedicated validation network implemented as `jenkins_validation` = `172.30.255.248/29`;
+   - TestServer bridge gateway / Stage 4 SSH destination = `172.30.255.249`;
+   - Jenkins declarative fixed validation identity = `172.30.255.250`;
+   - Jenkins controller remains on `homelab_apps` for existing application/DinD connectivity; `jenkins-docker` remains excluded from `jenkins_validation`;
+   - authoritative Jenkins Compose definition is `jrwroberts1976/docker-env/stacks/jenkins`, merged in PR #15 as `1f95b0a2d6f8da5500a6a02d0d8416393107e8df`;
+   - implementation PR #27 changed only `STAGE4_HOST` from `172.18.0.1` to `172.30.255.249` and merged as `efcbc7199b435497f2b624b3efbb54bc50b274f6`;
+   - strict TestServer ED25519 host-key pin remains `SHA256:PEDpP7QlmSztJSIYHzZ+YuIT7XurmpeWp85wRnlfZuk`;
+   - validator public-key fingerprint remains `SHA256:DcO1PigKb2GXD6clI/1uCNHlX2MVryivfL5BbhkNe7k`;
+   - accepted Stage 4 run proved source `172.30.255.250 -> 172.30.255.249:22` in the TestServer SSH journal and exact `/32` UFW counter;
+   - Jenkins controller was deliberately recreated from the merged Git-owned Compose authority; the container ID changed, Jenkins returned `running` with restart count `0`, and `jenkins_validation=172.30.255.250` with gateway `172.30.255.249` survived declaratively;
+   - Jenkins HTTP recovered with `200`; persistent SSH host-key state survived recreation;
+   - Jenkins DinD was not recreated, remained only on `homelab_apps`, and retained its pre-existing restart count `1`;
+   - post-recreation Stage 4 `dozzle` validation succeeded with `deployment.allowed=false`, `deployment.performed=false`, and `Stop before deployment`;
+   - temporary rollback trust was then retired: old UFW source `172.18.0.23` removed, validator key reduced to `from="172.30.255.250"`, and old `172.18.0.1` Jenkins `known_hosts` entry removed;
+   - final trust boundary is now UFW `172.30.255.250/32 -> tcp/22`, validator key `from="172.30.255.250"`, and Jenkins `known_hosts` containing the durable destination `172.30.255.249`;
+   - final post-cutover Stage 4 Jenkins run at `06:24` checked out exact merge `efcbc7199b435497f2b624b3efbb54bc50b274f6`, passed reviewed-input/SSH preflight, received the deployment-plan artifact, returned `dozzle -> no-change / none`, independently reconfirmed `deployment.allowed=false` and `deployment.performed=false`, executed `Stop before deployment`, archived the artifact, and finished `SUCCESS` with the old trust path already absent;
+   - backups retained under `/var/backups`, including pre-cutover authorized-key and known-hosts copies;
    - no Stage 5 deployment authority has been introduced;
    - design record: `daily-actions/2026-08-27/jenkins-durable-network-identity-design.md`.
 
