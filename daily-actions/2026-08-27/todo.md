@@ -21,9 +21,9 @@
    - final result: `PASS: STAGE 4 BASELINE RECONFIRMED`;
    - no Stage 5 deployment authority is enabled.
 
-3. 🔄 IN PROGRESS — Design a durable Jenkins network identity.
+3. 🔄 IN PROGRESS — Design and implement a durable Jenkins network identity.
    - read-only discovery confirmed Jenkins currently receives dynamic `172.18.0.23` on shared external bridge `homelab_apps` (`172.18.0.0/16`, gateway `172.18.0.1`);
-   - current Compose source `/home/james/projects/docker-compose.yml` declares the external network but no Jenkins `ipv4_address`;
+   - current live Compose source `/home/james/projects/docker-compose.yml` declares the external network but no Jenkins `ipv4_address`;
    - UFW permits TestServer SSH from exactly `172.18.0.23/32` and the validator key independently uses `from="172.18.0.23"`;
    - effective validator SSH remains public-key-only with PTY, X11 and TCP forwarding disabled;
    - rejected: broadening SSH to `172.18.0.0/16`;
@@ -37,11 +37,13 @@
    - future validator key restriction: `from="172.30.255.250"`;
    - live controller Compose and Dockerfile were captured read-only, including persistence, TLS Docker client settings, DinD command, port mapping and controller security options;
    - selected Git authority: `jrwroberts1976/docker-env/stacks/jenkins`;
-   - review branch: `hardening/jenkins-durable-network-identity`;
-   - draft PR #15 (`jrwroberts1976/docker-env`) contains the proposed Git-owned `Dockerfile`, `docker-compose.yml` and migration/rollback `README.md`;
-   - next step: validate the exact PR branch locally with `docker compose config` and compare rendered settings with the current runtime; do not run `docker compose up`;
+   - PR #15 branch head `e503bb04cac4d9cb90ae20437e06defaf647eb89` passed local TestServer structural validation: exact Dockerfile match, Compose syntax pass, Jenkins/DinD behaviour preserved, exact new IPAM values rendered, DinD excluded from validation network, and no live change performed;
+   - PR #15 merged to `docker-env/main` as `1f95b0a2d6f8da5500a6a02d0d8416393107e8df`;
+   - Jenkins remained running with restart count `0`; Jenkins DinD remained running with its pre-existing restart count `1`;
+   - `jenkins_validation` still does not exist on the live host;
+   - next step: sync merged `docker-env` authority to TestServer and run a final `docker compose --dry-run` using Compose project name `projects` before any live migration;
    - design record: `daily-actions/2026-08-27/jenkins-durable-network-identity-design.md`;
-   - no container, Docker network, firewall rule, validator key or SSH configuration has been changed yet.
+   - no live network, firewall rule, validator-key restriction, SSH destination or container has been changed yet.
 
 4. Define the Stage 5 pilot boundary before enabling any deployment authority.
    - explicit human approval point;
