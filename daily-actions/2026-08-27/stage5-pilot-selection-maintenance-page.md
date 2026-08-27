@@ -1,7 +1,7 @@
 # Stage 5 Pilot Selection — maintenance-page
 
 **Date:** 27 August 2026  
-**Status:** SELECTED — DESIGN/BASELINE ONLY, DEPLOYMENT AUTHORITY NOT ENABLED  
+**Status:** SELECTED — SOURCE RECONCILED, DEPLOYMENT AUTHORITY NOT ENABLED  
 **Pilot service:** `maintenance-page`
 
 ## Decision
@@ -83,7 +83,7 @@ mounts: html -> /usr/share/nginx/html:ro
 network: homelab_apps
 ```
 
-The live container's Compose labels point to `/home/james/docker/stacks/maintenance-page/docker-compose.yml`. That live checkout remains non-authoritative; the final implementation must reconcile the exact pilot source back to the reviewed `docker-env` Git authority before any deployment action is offered.
+The live container's Compose labels point to `/home/james/docker/stacks/maintenance-page/docker-compose.yml`. That live checkout remains non-authoritative; deployment planning must continue to use the reviewed `docker-env` Git authority.
 
 ## Current live baseline
 
@@ -113,6 +113,80 @@ Live mounts:
 /home/james/docker/stacks/maintenance-page/html
   -> /usr/share/nginx/html (read-only)
 ```
+
+## Source reconciliation result
+
+A read-only live-vs-authority reconciliation was completed against exact `docker-env` commit:
+
+```text
+1f95b0a2d6f8da5500a6a02d0d8416393107e8df
+```
+
+The authoritative checkout matched the expected commit exactly.
+
+The operational files matched byte-for-byte:
+
+```text
+docker-compose.yml
+  AUTH/LIVE SHA256 f39ea9ed7db5cbdf66e2cdfef3a9926aee6907b0b7fec648bfd5900f2c014d7e
+
+nginx/default.conf
+  AUTH/LIVE SHA256 5f776d04e520489a0958d2f267dcf034448a3c385b88f142ae7aa67d53a34d13
+
+html/index.html
+  AUTH/LIVE SHA256 9497b740f24af80568843efdf500544a25b47f4dd3fe248161c31c4cd202eb29
+```
+
+The live tree also contains:
+
+```text
+docker-compose.yml.bak-20260821
+docker-compose.yml.bak-wud
+html/change.json
+```
+
+The two `docker-compose.yml.bak-*` files are not referenced by the active Compose configuration and are treated as inert local backup residue, not deployment authority.
+
+`html/change.json` is intentionally generated runtime state, not uncontrolled configuration drift. The Git-managed `enable-maintenance.sh` creates it as a change-control record and the Git-managed `disable-maintenance.sh` updates it to `COMPLETED`. Because the whole `html` directory is mounted read-only into nginx, the record is visible in the served runtime filesystem, but it must not be treated as part of the immutable Git configuration identity.
+
+Current observed runtime record:
+
+```json
+{
+  "reference": "CHG-20260826-9588",
+  "status": "COMPLETED",
+  "type": "Planned Maintenance",
+  "service": "Engineering Portfolio",
+  "started": "26 August 2026, 06:22 BST",
+  "completed": "26 August 2026, 06:24 BST"
+}
+```
+
+Stage 5 drift detection must therefore distinguish:
+
+```text
+IMMUTABLE CONFIGURATION IDENTITY
+  docker-compose.yml
+  nginx/default.conf
+  html/index.html
+
+EXPECTED EPHEMERAL RUNTIME STATE
+  html/change.json
+
+IGNORED NON-RUNTIME LOCAL RESIDUE
+  docker-compose.yml.bak-*
+```
+
+Any other unexpected difference in the mounted runtime/configuration paths must fail closed before deployment approval.
+
+The HTTP baseline also passed:
+
+```text
+GET http://192.168.2.220:8088/ -> 200
+content marker -> Planned Maintenance | James Roberts
+```
+
+No container or configuration was changed by reconciliation.
 
 ## Rollback target
 
@@ -225,6 +299,8 @@ PASS: deterministic smoke checks defined
 PASS: no data repair required for rollback
 PASS: Jenkins remains excluded
 PASS: mutable candidate tag identified and blocked
+PASS: authoritative/live operational files reconciled byte-for-byte
+PASS: expected ephemeral runtime state explicitly classified
 ```
 
 ## Current state
@@ -232,6 +308,7 @@ PASS: mutable candidate tag identified and blocked
 ```text
 Stage 5 boundary design: COMPLETE
 Stage 5 pilot selection: COMPLETE — maintenance-page
+Source reconciliation: COMPLETE
 Candidate digest: NOT YET SELECTED
 Restricted deployment wrapper: NOT YET IMPLEMENTED
 Jenkins approval/execution stages: NOT YET IMPLEMENTED
