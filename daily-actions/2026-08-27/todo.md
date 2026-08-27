@@ -60,12 +60,18 @@
    - selection record: `daily-actions/2026-08-27/stage5-pilot-selection-maintenance-page.md`;
    - live audit confirmed one non-privileged nginx container, restart count `0`, no Docker socket, no writable data/database mounts, two read-only binds, one LAN HTTP endpoint and one external `homelab_apps` membership;
    - current runtime image ID: `sha256:28c4e91555d001bb0f6b2796e565bfa75302711a0d6e67c5562eb2f7d54d2483`;
-   - immutable rollback image: `nginx@sha256:4a73073bd557c65b759505da037898b61f1be6cbcc3c2c3aeac22d2a470c1752`;
+   - immutable rollback image: `nginx@sha256:4a73073bd557c65b759505da037898b61f1be6cbcc3c2c3aeac22d2a470c1752` = nginx `1.31.3-alpine`;
+   - selected immutable candidate: `nginx@sha256:db35bfc6b2951e7f8a72db5db120288c127ffaeeb4a6d4b95a26fead017d5913` = nginx `1.31.4-alpine`;
+   - candidate ARM64 manifest: `sha256:57744b8fa99abc438b1fbde6bd69e4270d0984ccfdee60c661ec22243047373a`;
    - authoritative Git stack is `jrwroberts1976/docker-env/stacks/maintenance-page` at selection-time `main` `1f95b0a2d6f8da5500a6a02d0d8416393107e8df`;
-   - deterministic smoke check: `http://192.168.2.220:8088/` must succeed and contain `Planned Maintenance | James Roberts`;
+   - source reconciliation proved `docker-compose.yml`, `nginx/default.conf` and `html/index.html` match the authoritative baseline byte-for-byte; `html/change.json` is expected runtime-generated change-control state and local `docker-compose.yml.bak-*` files are inert residue;
+   - deterministic smoke check: `http://192.168.2.220:8088/` returns `200` and contains `Planned Maintenance | James Roberts`;
    - `dozzle` rejected for first pilot because it mounts the Docker socket; Homepage/Dashy/LibreSpeed/Filebrowser rejected because they include writable application/config/data state;
-   - current Git image reference `nginx:alpine` is mutable and is explicitly blocked as a Stage 5 candidate;
-   - before deployment authority is installed, the candidate must be pinned to one reviewed digest and the exact live pilot source must be reconciled to authoritative `docker-env` Git;
+   - draft `docker-env` PR #16 now parameterises the immutable candidate as the default with `MAINTENANCE_PAGE_IMAGE` reserved for the root-policy rollback override; exact head `b28e3a79a41a0084eacd94efb3fbb76cbf7d0ddf`;
+   - PR #16 validation proved the default candidate and exact rollback digest render correctly, relative mounts resolve to the live stack, dry-run scope is `maintenance-page` only, no image pull occurs, no container/restart count changes, and the live HTTP baseline remains healthy;
+   - non-mutating Stage 5 command-boundary PR #28 passed exact-checkout validation and merged as `f05da1a31caa904c10b1a4b7455d2daf823be721`; Stage 4 remained unchanged, `ping`/`inspect maintenance-page` stayed read-only, and deploy/rollback/arbitrary commands were rejected;
+   - current helper-source review is draft implementation PR #29, head `1f8c79ecf7bd7ee458ca9f01d1e38bc763c6a8af`, containing only a disabled execution-policy template, guarded helper source and helper safety validator;
+   - PR #29 installs nothing: no Stage 5 host account/key, sudo rule, Docker-group membership, helper, policy, enable file, Jenkins credential or pipeline deployment stage exists;
    - no Stage 5 deployment authority has been enabled and no deployment has been performed.
 
 6. Publish Homelab Defender through a controlled external route and link it from the Engineering Portfolio.
@@ -100,7 +106,7 @@
 
 ## Next Stage 5 action
 
-Design the restricted `maintenance-page` Stage 5 deployment wrapper and Jenkins dry-run contract. This next phase must remain non-deploying: choose/pin the candidate digest, prove drift checks, preview exact one-service recreation and rollback actions, and prove the pipeline still stops before deployment until a separate reviewed authority-installation step.
+Validate draft implementation PR #29 from an exact checkout. The helper source contains the first service-scoped deploy/rollback command class, but mutation must remain unreachable from a source checkout and the committed execution-policy template must remain disabled. Prove the helper shell syntax, installed-path/root-policy gates, absence of broad Docker/Git/shell primitives, continued rejection by the merged SSH review wrapper, source-checkout deploy/rollback refusal, and unchanged live container IDs/restart counts. Do not install the helper, policy, enable file, account, key, sudo rule or Jenkins credential during this review phase.
 
 ## Safety boundary carried forward
 
@@ -111,10 +117,14 @@ credential-store execution proven
 deployment.allowed=false
 deployment.performed=false
 Stage 5 pilot = maintenance-page selected
+Stage 5 candidate = nginx 1.31.4 immutable digest selected
+Stage 5 rollback = nginx 1.31.3 immutable digest pinned
+Stage 5 review boundary PR #28 = MERGED, NON-MUTATING
+Stage 5 helper-source PR #29 = DRAFT / UNMERGED
 Stage 5 deployment authority = NOT ENABLED
 Stage 5 deployment performed = NO
 ```
 
-Do not add Docker/Compose deployment authority until the restricted wrapper and human-controlled pilot implementation have been separately reviewed.
+Do not install Docker/Compose deployment authority until the guarded helper, disabled policy template and subsequent human-controlled Jenkins approval path have been separately reviewed and proven fail-closed.
 
 Publishing Homelab Defender is a separate Kubernetes/public-edge change. It must not widen Jenkins, registry or Kubernetes management exposure.
