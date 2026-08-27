@@ -29,7 +29,13 @@
    - rejected: broadening SSH to `172.18.0.0/16`;
    - rejected: treating dynamic `172.18.0.23` as a durable static identity on the shared bridge;
    - selected design: add a small dedicated Jenkins validation bridge, retain `homelab_apps` for existing Jenkins behaviour, give only the Jenkins controller a declarative fixed validation IP, and use the validation bridge gateway as the Stage 4 SSH destination;
-   - exact subnet/gateway/IP remain deliberately unassigned until an all-Docker-network collision audit is complete;
+   - all-Docker-network collision audit completed with no overlap for the selected allocation;
+   - selected network: `jenkins_validation` = `172.30.255.248/29`;
+   - selected bridge gateway / Stage 4 SSH destination: `172.30.255.249`;
+   - selected Jenkins validation identity: `172.30.255.250`;
+   - future UFW source restriction: `172.30.255.250/32`;
+   - future validator key restriction: `from="172.30.255.250"`;
+   - next step: capture/reconcile the Jenkins Compose definition into an authoritative review path before any live controller/network change;
    - design record: `daily-actions/2026-08-27/jenkins-durable-network-identity-design.md`;
    - no container, Docker network, firewall rule or SSH configuration has been changed yet.
 
