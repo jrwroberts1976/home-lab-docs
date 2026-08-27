@@ -1,7 +1,7 @@
 # Jenkins Durable Network Identity Design
 
 **Date:** 27 August 2026  
-**Status:** DESIGN SELECTED — NO LIVE CHANGE YET  
+**Status:** DESIGN SELECTED — EXACT NETWORK VALUES RECORDED — NO LIVE CHANGE YET  
 **Scope:** Jenkins Stage 4 restricted SSH validation path on TestServer
 
 ## Purpose
@@ -67,18 +67,66 @@ The Jenkins controller remains attached to `homelab_apps` for its existing behav
 
 The DinD sidecar does not need membership of `jenkins_validation` unless a separately reviewed requirement is discovered. The default design is controller-only membership.
 
-## Identity model
+## Collision audit
 
-The validation bridge will use:
+A read-only all-Docker-network and host-route audit on 27 August 2026 found these active or configured IPv4 ranges on TestServer:
 
-- a small dedicated RFC1918 subnet that does not overlap any existing Docker, LAN, VPN or routed network;
-- a fixed Jenkins controller address declared in Compose;
-- the bridge gateway as the Stage 4 SSH destination;
-- a UFW allow rule for TCP/22 from exactly the fixed Jenkins address `/32`;
-- the same fixed `/32` in the validator key `from=` restriction;
+```text
+172.17.0.0/16
+172.18.0.0/16
+172.19.0.0/16
+172.21.0.0/16
+172.22.0.0/16
+172.23.0.0/16
+172.25.0.0/16
+192.168.16.0/20
+192.168.144.0/20
+192.168.2.0/24
+```
+
+No obvious VPN or tunnel IPv4 interface was present and no WireGuard tooling was installed. `jenkins_validation` did not already exist.
+
+The selected network does not overlap any discovered Docker subnet, connected LAN route or detected tunnel route.
+
+## Exact identity model
+
+Selected values:
+
+```text
+network name:        jenkins_validation
+subnet:              172.30.255.248/29
+bridge gateway:      172.30.255.249
+Jenkins fixed IP:    172.30.255.250
+SSH destination:     172.30.255.249
+firewall source:     172.30.255.250/32
+authorized_keys:     from="172.30.255.250"
+```
+
+A `/29` provides only six usable addresses and deliberately limits the validation segment. The intended allocation is:
+
+```text
+172.30.255.248   network
+172.30.255.249   TestServer Docker bridge gateway / SSH destination
+172.30.255.250   Jenkins controller fixed validation identity
+172.30.255.251   unused
+172.30.255.252   unused
+172.30.255.253   unused
+172.30.255.254   unused
+172.30.255.255   broadcast
+```
+
+The Jenkins controller will retain `homelab_apps` and gain `jenkins_validation`. The DinD sidecar remains only on `homelab_apps` unless a later reviewed requirement proves otherwise.
+
+The validator transport will retain:
+
+- UFW allow TCP/22 from exactly `172.30.255.250/32`;
+- validator key source restriction `from="172.30.255.250"`;
+- strict host-key checking;
+- the existing TestServer ED25519 host-key fingerprint;
+- Jenkins credential-store-only authentication;
 - no subnet-wide SSH allowance.
 
-The exact subnet, gateway and Jenkins address are intentionally not assigned in this document until an all-Docker-network collision audit is complete.
+Changing the SSH destination from `172.18.0.1` to `172.30.255.249` requires a matching `known_hosts` entry for the new destination while preserving the already pinned host-key fingerprint.
 
 ## Required configuration ownership
 
@@ -87,12 +135,13 @@ Before the live controller is recreated, the configuration necessary to reproduc
 At minimum this must include:
 
 - definition of `jenkins_validation`;
-- its selected subnet and gateway;
-- the Jenkins fixed `ipv4_address`;
+- subnet `172.30.255.248/29` and gateway `172.30.255.249`;
+- Jenkins fixed `ipv4_address: 172.30.255.250`;
 - Jenkins membership in both `homelab_apps` and `jenkins_validation`;
-- the Stage 4 SSH destination address used by the Jenkins pipeline;
-- the corresponding host firewall `/32` restriction;
-- the corresponding validator authorized-key `from=` restriction;
+- Stage 4 SSH destination `172.30.255.249`;
+- host firewall source `172.30.255.250/32`;
+- validator authorized-key source `from="172.30.255.250"`;
+- pinned host-key handling for the new SSH destination;
 - rollback instructions.
 
 The current `/home/james/projects/docker-compose.yml` is runtime evidence, not yet sufficient Git authority by itself.
@@ -101,14 +150,14 @@ The current `/home/james/projects/docker-compose.yml` is runtime evidence, not y
 
 The eventual implementation must be staged so the existing working Stage 4 path is retained until the replacement path is proven.
 
-1. Complete subnet collision audit.
-2. Record exact proposed network values.
+1. ✅ Complete subnet collision audit.
+2. ✅ Record exact proposed network values.
 3. Capture/reconcile Jenkins Compose configuration into an authoritative review path.
 4. Create the dedicated bridge without changing the running controller.
 5. Prepare firewall and validator-key restrictions for the new single `/32` while retaining the old `/32` temporarily.
 6. Add Jenkins to the dedicated bridge with its fixed address through the reviewed Compose change.
-7. Change the Stage 4 SSH destination to the dedicated bridge gateway.
-8. Run the existing read-only Stage 4 validation and confirm the traffic source is the new fixed `/32`.
+7. Add the pinned TestServer host key for `172.30.255.249` and change the Stage 4 SSH destination to that gateway.
+8. Run the existing read-only Stage 4 validation and confirm the traffic source is `172.30.255.250`.
 9. Re-run the accepted safety assertions: `deployment.allowed=false`, `deployment.performed=false`, Stop-before-deployment executed, controller and target service restart expectations understood.
 10. Remove the old `172.18.0.23/32` UFW allowance and old authorized-key source restriction only after the new path is proven.
 11. Recreate or otherwise test the Jenkins controller once through the controlled path and confirm the fixed identity survives.
