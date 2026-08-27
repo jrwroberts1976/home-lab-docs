@@ -22,10 +22,16 @@
    - no Stage 5 deployment authority is enabled.
 
 3. 🔄 IN PROGRESS — Design a durable Jenkins network identity.
-   - preserve the current narrow SSH source restriction;
-   - do not broaden the firewall rule to the full Docker subnet as a shortcut;
-   - make the restriction survive Jenkins controller recreation;
-   - document the chosen approach before changing the live controller/network.
+   - read-only discovery confirmed Jenkins currently receives dynamic `172.18.0.23` on shared external bridge `homelab_apps` (`172.18.0.0/16`, gateway `172.18.0.1`);
+   - current Compose source `/home/james/projects/docker-compose.yml` declares the external network but no Jenkins `ipv4_address`;
+   - UFW permits TestServer SSH from exactly `172.18.0.23/32` and the validator key independently uses `from="172.18.0.23"`;
+   - effective validator SSH remains public-key-only with PTY, X11 and TCP forwarding disabled;
+   - rejected: broadening SSH to `172.18.0.0/16`;
+   - rejected: treating dynamic `172.18.0.23` as a durable static identity on the shared bridge;
+   - selected design: add a small dedicated Jenkins validation bridge, retain `homelab_apps` for existing Jenkins behaviour, give only the Jenkins controller a declarative fixed validation IP, and use the validation bridge gateway as the Stage 4 SSH destination;
+   - exact subnet/gateway/IP remain deliberately unassigned until an all-Docker-network collision audit is complete;
+   - design record: `daily-actions/2026-08-27/jenkins-durable-network-identity-design.md`;
+   - no container, Docker network, firewall rule or SSH configuration has been changed yet.
 
 4. Define the Stage 5 pilot boundary before enabling any deployment authority.
    - explicit human approval point;
