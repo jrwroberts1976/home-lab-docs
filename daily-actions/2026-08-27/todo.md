@@ -10,14 +10,18 @@
    - all four local working copies fast-forwarded cleanly to the authoritative remote `main` heads;
    - live dirty `/home/james/docker` checkout was left untouched and is not treated as the authoritative working copy.
 
-2. Reconfirm the Stage 4 baseline after sync.
-   - implementation PR #26 merged as `0adfc1a9e5ad76f42a3eb4a2970dcd5014e79505`;
-   - documentation PR #40 merged as `5d29f963fdc9a96fdb83e3a147133c376c7f4ff5`;
-   - Jenkins credential-store-only Build #5 proof remains the accepted execution baseline;
-   - `deployment.allowed=false`;
-   - `deployment.performed=false`.
+2. ✅ COMPLETE — Reconfirm the Stage 4 baseline after sync.
+   - implementation PR #26 merge `0adfc1a9e5ad76f42a3eb4a2970dcd5014e79505` confirmed as an ancestor of current implementation `main`;
+   - documentation PR #40 merge `5d29f963fdc9a96fdb83e3a147133c376c7f4ff5` confirmed as an ancestor of current documentation `main`;
+   - critical Stage 4 `Jenkinsfile` and forced-command wrapper are unchanged from implementation PR #26;
+   - Jenkins credential-store-only Build #5 remains the accepted execution baseline;
+   - Jenkins still independently asserts `deployment.allowed=false`;
+   - Jenkins still independently asserts `deployment.performed=false`;
+   - explicit `Stop before deployment` stage remains present;
+   - final result: `PASS: STAGE 4 BASELINE RECONFIRMED`;
+   - no Stage 5 deployment authority is enabled.
 
-3. Design a durable Jenkins network identity.
+3. 🔄 IN PROGRESS — Design a durable Jenkins network identity.
    - preserve the current narrow SSH source restriction;
    - do not broaden the firewall rule to the full Docker subnet as a shortcut;
    - make the restriction survive Jenkins controller recreation;
