@@ -41,7 +41,7 @@
    - final post-cutover Stage 4 Jenkins run at `06:24` checked out exact merge `efcbc7199b435497f2b624b3efbb54bc50b274f6`, passed reviewed-input/SSH preflight, received the deployment-plan artifact, returned `dozzle -> no-change / none`, independently reconfirmed `deployment.allowed=false` and `deployment.performed=false`, executed `Stop before deployment`, archived the artifact, and finished `SUCCESS` with the old trust path already absent;
    - backups retained under `/var/backups`, including pre-cutover authorized-key and known-hosts copies;
    - no Stage 5 deployment authority has been introduced;
-   - design record: `daily-actions/2026-08-27/jenkins-durable-network-identity-design.md`.
+   - design record `daily-actions/2026-08-27/jenkins-durable-network-identity-design.md` is now `COMPLETE — LIVE CUTOVER PROVEN`.
 
 4. Define the Stage 5 pilot boundary before enabling any deployment authority.
    - explicit human approval point;
