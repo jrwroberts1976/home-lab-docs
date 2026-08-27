@@ -43,19 +43,30 @@
    - no Stage 5 deployment authority has been introduced;
    - design record `daily-actions/2026-08-27/jenkins-durable-network-identity-design.md` is now `COMPLETE — LIVE CUTOVER PROVEN`.
 
-4. Define the Stage 5 pilot boundary before enabling any deployment authority.
-   - explicit human approval point;
-   - one low-risk pilot service only;
-   - exact current-to-candidate identity captured before deployment;
-   - health/smoke checks defined in advance;
-   - automatic stop on failed validation;
-   - explicit rollback path;
-   - Jenkins controller remains a platform exception and must not automatically deploy or recreate itself.
+4. ✅ COMPLETE — Define the Stage 5 pilot boundary before enabling any deployment authority.
+   - design record: `daily-actions/2026-08-27/stage5-pilot-boundary-design.md`;
+   - one-service pilot only;
+   - explicit human approval after the read-only plan and before execution;
+   - immutable current/candidate identities required;
+   - exact authoritative Git commit required;
+   - pre-defined health/smoke checks and rollback target required before approval;
+   - drift detection must fail closed;
+   - restricted allow-listed wrapper required; unrestricted Docker/Compose or general shell authority forbidden;
+   - Jenkins controller remains a permanent platform exception and must never automatically deploy/recreate itself;
+   - design is policy-only and did not enable any deployment command or Stage 5 authority.
 
-5. Select the Stage 5 pilot service only after the deployment-control design is reviewed.
-   - avoid Jenkins itself;
-   - prefer a reversible, low-impact service;
-   - confirm ownership, secrets, architecture, security and rollback readiness before selection.
+5. ✅ COMPLETE — Select the Stage 5 pilot service after boundary review.
+   - selected pilot: `maintenance-page`;
+   - selection record: `daily-actions/2026-08-27/stage5-pilot-selection-maintenance-page.md`;
+   - live audit confirmed one non-privileged nginx container, restart count `0`, no Docker socket, no writable data/database mounts, two read-only binds, one LAN HTTP endpoint and one external `homelab_apps` membership;
+   - current runtime image ID: `sha256:28c4e91555d001bb0f6b2796e565bfa75302711a0d6e67c5562eb2f7d54d2483`;
+   - immutable rollback image: `nginx@sha256:4a73073bd557c65b759505da037898b61f1be6cbcc3c2c3aeac22d2a470c1752`;
+   - authoritative Git stack is `jrwroberts1976/docker-env/stacks/maintenance-page` at selection-time `main` `1f95b0a2d6f8da5500a6a02d0d8416393107e8df`;
+   - deterministic smoke check: `http://192.168.2.220:8088/` must succeed and contain `Planned Maintenance | James Roberts`;
+   - `dozzle` rejected for first pilot because it mounts the Docker socket; Homepage/Dashy/LibreSpeed/Filebrowser rejected because they include writable application/config/data state;
+   - current Git image reference `nginx:alpine` is mutable and is explicitly blocked as a Stage 5 candidate;
+   - before deployment authority is installed, the candidate must be pinned to one reviewed digest and the exact live pilot source must be reconciled to authoritative `docker-env` Git;
+   - no Stage 5 deployment authority has been enabled and no deployment has been performed.
 
 6. Publish Homelab Defender through a controlled external route and link it from the Engineering Portfolio.
    - start from validated build 15 unless a newer immutable release has completed the same validation and Git reconciliation;
@@ -87,6 +98,10 @@
 
 9. Update the project tracker and daily-actions documentation as Stage 5, Defender publication and Host Overview decisions are made.
 
+## Next Stage 5 action
+
+Design the restricted `maintenance-page` Stage 5 deployment wrapper and Jenkins dry-run contract. This next phase must remain non-deploying: choose/pin the candidate digest, prove drift checks, preview exact one-service recreation and rollback actions, and prove the pipeline still stops before deployment until a separate reviewed authority-installation step.
+
 ## Safety boundary carried forward
 
 ```text
@@ -95,8 +110,11 @@ READ-ONLY
 credential-store execution proven
 deployment.allowed=false
 deployment.performed=false
+Stage 5 pilot = maintenance-page selected
+Stage 5 deployment authority = NOT ENABLED
+Stage 5 deployment performed = NO
 ```
 
-Do not add Docker/Compose deployment authority until the Stage 5 human-controlled pilot boundary has been explicitly reviewed.
+Do not add Docker/Compose deployment authority until the restricted wrapper and human-controlled pilot implementation have been separately reviewed.
 
 Publishing Homelab Defender is a separate Kubernetes/public-edge change. It must not widen Jenkins, registry or Kubernetes management exposure.
