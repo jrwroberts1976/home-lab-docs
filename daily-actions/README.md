@@ -25,6 +25,19 @@ daily-actions/YYYY-MM-DD/daily-actions.md
 
 A date folder may also contain `todo.md` and focused evidence/runbook notes for substantial workstreams. Record only evidence-backed work. Distinguish completed, fixed, resolved, open and carried-forward items, and do not carry completed work forward as outstanding.
 
+## Daily start rule
+
+At the start of each homelab working day:
+
+1. Review the latest nightly/automated homelab report before starting planned project work.
+2. Identify any new failures, warnings, security findings, backup/patch issues, monitoring gaps or other actionable follow-ups.
+3. Deduplicate those findings against the existing TODO/backlog so the same task is not added twice.
+4. Add genuine new actions to the current date's `todo.md`, with enough evidence/context to make the next safe action clear.
+5. Record in `daily-actions.md` whether the nightly report produced new tasks, confirmed an existing task, or required no action.
+6. Do not silently carry an unresolved nightly finding forward: either complete it, explicitly defer it with a reason, or keep it visible in the carried-forward summary.
+
+This nightly-report triage is a recurring operational step and should appear in each day's working checklist.
+
 ## Daily summary rule
 
 Every `daily-actions.md` should finish with a concise end-of-day summary using this structure:
