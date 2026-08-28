@@ -8,6 +8,17 @@ The container-version-control project remains on the established Stage 6 path:
 
 Jenkins must never receive unrestricted shell/Docker authority. The Jenkins controller and Jenkins-DinD remain protected control-plane exceptions.
 
+## Daily operating step
+
+🔁 **DAILY FIRST STEP — Review the latest nightly homelab report and capture any new work.**
+
+- review the latest automated/nightly security, patching, backup, monitoring and health findings before starting planned project work;
+- identify genuine failures, warnings, regressions or follow-up actions;
+- deduplicate against the existing TODO/backlog;
+- add new actionable items to this file with enough evidence/context to make the next safe step clear;
+- note in `daily-actions.md` whether the report produced new tasks, reinforced an existing task, or required no action;
+- unresolved nightly findings must remain visible until completed or explicitly deferred with a reason.
+
 ## Priority TODO
 
 1. ✅ COMPLETE — Dashy Stage 6 pilot.
@@ -144,6 +155,27 @@ Jenkins must never receive unrestricted shell/Docker authority. The Jenkins cont
    - do not broaden executor permissions or change the Stage 6 deployment security model as part of this UI/organisation tidy-up;
    - identify and remove/archive obsolete temporary smoke/debug jobs only after their evidence is retained in Git/docs;
    - document the final Jenkins folder layout so future container onboarding follows the same structure.
+
+15. ⬜ Plan the Proxmox VM Infrastructure-as-Code project.
+   - target a VM environment on the Proxmox platform for PostgreSQL, TimescaleDB and Nginx;
+   - provision VM/infrastructure resources with Terraform and configure the guest/services with Ansible;
+   - define the target VM sizing, storage, networking, DNS, addressing and backup/restore model before implementation;
+   - decide how PostgreSQL/TimescaleDB data volumes, retention, backup, restore testing and monitoring will be handled;
+   - define Nginx's role and exposure model, keeping management/control interfaces private;
+   - define secrets handling so credentials are not embedded in Terraform state, Ansible source or Git;
+   - build the project as reviewed IaC in Git with a repeatable create/configure/validate/destroy or recovery workflow;
+   - document estimated effort, prerequisites, implementation stages, acceptance tests and rollback/rebuild path before starting the build.
+
+16. ⬜ Plan the long-term migration of the Docker platform onto Proxmox.
+   - treat this as a phased platform migration, not a single big-bang move;
+   - inventory the current TestServer Docker estate, Compose projects, networks, bind mounts/volumes, secrets, dependencies, ingress, DNS, monitoring and backup requirements;
+   - classify services by migration risk and dependency order, keeping Jenkins/control-plane, DNS/routing/security and stateful services in separately reviewed waves;
+   - define the target Proxmox architecture: VM/LXC boundaries, Docker hosts, storage, networking/VLANs, backup, restore and resilience model;
+   - decide which existing services should remain containers, which should move to dedicated VMs, and which should be retired or consolidated;
+   - preserve Git/Compose/IaC authority so services can be rebuilt rather than manually recreated;
+   - plan data migration, parallel-run validation, DNS/ingress cutover, monitoring continuity and per-wave rollback;
+   - use the Proxmox VM/IaC project as an early proving ground for Terraform/Ansible patterns that can later support the broader migration;
+   - create a staged migration roadmap before moving production homelab workloads.
 
 ## Safety boundary carried forward
 
