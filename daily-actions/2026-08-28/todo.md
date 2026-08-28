@@ -81,16 +81,20 @@ Jenkins must never receive unrestricted shell/Docker authority. The Jenkins cont
    - Dashy backward compatibility and generic source guards passed;
    - no host installation and no Prometheus deployment occurred as part of this merge.
 
-6. ▶ NEXT — Onboard Prometheus into the restricted Stage 6 host boundary.
-   - extend inspector forced-command wrapper with literal `inspect prometheus` only;
-   - extend inspector sudoers with literal Prometheus inspector authority only;
-   - extend executor forced-command wrapper with literal `arm/deploy/rollback/disarm prometheus` only;
-   - extend executor sudoers with the same exact service-scoped commands;
-   - update source validators so the broader boundary is still literal, finite and fail-closed;
-   - do not introduce variable service forwarding, wildcard sudo, Docker socket access, arbitrary shell or arbitrary Compose authority;
-   - review and merge before host installation.
+6. ✅ COMPLETE — Prometheus restricted Stage 6 source boundary onboarding.
+   - `homelab-container-version-control` PR #50 merged;
+   - reviewed source commit: `a812ad61a62026dec00bee6eca2f738fb160559b`;
+   - merge commit: `6a2452001c008439188c5d78660b8fd0dcfe08eb`;
+   - inspector source now permits only literal `inspect dashy` and `inspect prometheus` commands;
+   - executor source now permits only literal `arm/deploy/rollback/disarm` commands for `dashy` and `prometheus`;
+   - sudoers source contains the matching exact finite allowlists;
+   - source validators require the exact ordered command surfaces and reject variable service/action forwarding;
+   - malformed and unknown commands fail closed before sudo;
+   - shell syntax, sudoers syntax, generic inspector/execution guards and independent PR patch review passed;
+   - reviewed source is merged but has **not yet been installed on TestServer**;
+   - no Prometheus deployment occurred.
 
-7. ⬜ Create and validate `config/services/prometheus-3.13.2.json`.
+7. ▶ NEXT — Create and validate `config/services/prometheus-3.13.2.json`.
    - rollback/current = `3.13.1`;
    - candidate = `3.13.2`;
    - authority revision = `ce591602bc6300cad001eb445269f8f4b8933c53`;
@@ -193,6 +197,7 @@ Prometheus candidate local = 3.13.2
 Prometheus ready HTTP = 200
 Prometheus deployment performed = NO
 Prometheus Stage 6 manifest created = NO
+Prometheus boundary source merged = YES
 Prometheus executor authority installed = NO
 Prometheus inspector authority installed = NO
 Generic persistent-directory support merged = YES
@@ -200,4 +205,4 @@ Generic persistent-directory support installed = NO
 Jenkins unrestricted Docker/shell authority = NO
 ```
 
-Do not deploy Prometheus until explicit Prometheus host-boundary onboarding, manifest review, Jenkins human-approval path and predeployment zero-drift inspection have all been separately reviewed and proven fail-closed.
+Do not deploy Prometheus until the manifest, reviewed host installation, Jenkins human-approval path and predeployment zero-drift inspection have all been separately reviewed and proven fail-closed.
