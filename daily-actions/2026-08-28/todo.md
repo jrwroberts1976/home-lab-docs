@@ -10,9 +10,11 @@ Jenkins must never receive unrestricted shell/Docker authority. The Jenkins cont
 
 ## Daily operating step
 
-🔁 **DAILY FIRST STEP — Review the latest nightly homelab report and capture any new work.**
+🔁 **DAILY REPORT TRIAGE — Review the current day's nightly homelab report when it arrives (normally around 08:00 local time).**
 
-- review the latest automated/nightly security, patching, backup, monitoring and health findings before starting planned project work;
+- if the current day's report has already arrived, review it before starting planned project work;
+- if work starts earlier, continue safe planned work and review the report as soon as it lands; do not substitute the previous day's report;
+- review automated/nightly security, patching, backup, monitoring and health findings;
 - identify genuine failures, warnings, regressions or follow-up actions;
 - deduplicate against the existing TODO/backlog;
 - add new actionable items to this file with enough evidence/context to make the next safe step clear;
@@ -61,25 +63,25 @@ Jenkins must never receive unrestricted shell/Docker authority. The Jenkins cont
    - an exact immutable candidate can be injected for Stage 6;
    - no deployment occurred as part of this source-only change.
 
-5. ▶ NEXT — Finish the generic persistent-directory / digest-pinned Stage 6 framework change.
-   - current branch: `stage6/persistent-directory-support` in `homelab-container-version-control`;
-   - exact four-file change scope already prepared:
+5. ✅ COMPLETE — Generic persistent-directory / digest-pinned Stage 6 framework change.
+   - `homelab-container-version-control` PR #49 merged;
+   - reviewed source commit: `18e431aac7777a31a931053ca7b4a4198098d0b8`;
+   - merge commit: `5daee1d5f14b717180a4b87ffb5d52b73c7c043e`;
+   - exact four-file scope:
      - `config/service-update-manifest.schema.json`;
      - `ops/testserver/homelab-stage6-execute`;
      - `ops/testserver/homelab-stage6-inspect`;
      - `scripts/validate-stage6-service-manifest.py`;
-   - shell syntax passes;
-   - Dashy backward compatibility passes;
-   - positive persistent-directory test passes;
-   - directory + static hash is rejected;
-   - file bind without hash is rejected;
-   - unknown metadata mode is rejected;
-   - clean up `jsonschema.ValidationError` handling so invalid manifests return a concise `FAIL:` message rather than a Python traceback;
-   - rerun semantic/source guards;
-   - inspect final diff;
-   - commit, push, open PR, independently review and merge before installing anything on TestServer.
+   - persistent bind-mounted directories can now be represented explicitly with `source_kind: directory` and `sha256: null`;
+   - file bind mounts remain SHA-256 pinned and default to `source_kind: file` for backward compatibility;
+   - inspector and executor reject symlink bind sources;
+   - `metadata_verification: digest-pinned` supports images without OCI version/revision labels while retaining exact config ID, OS, architecture and RepoDigest gates;
+   - unknown metadata modes fail closed;
+   - JSON Schema validation errors now return concise `FAIL:` output without a Python traceback;
+   - Dashy backward compatibility and generic source guards passed;
+   - no host installation and no Prometheus deployment occurred as part of this merge.
 
-6. ⬜ Onboard Prometheus into the restricted Stage 6 host boundary.
+6. ▶ NEXT — Onboard Prometheus into the restricted Stage 6 host boundary.
    - extend inspector forced-command wrapper with literal `inspect prometheus` only;
    - extend inspector sudoers with literal Prometheus inspector authority only;
    - extend executor forced-command wrapper with literal `arm/deploy/rollback/disarm prometheus` only;
@@ -193,9 +195,9 @@ Prometheus deployment performed = NO
 Prometheus Stage 6 manifest created = NO
 Prometheus executor authority installed = NO
 Prometheus inspector authority installed = NO
-Generic persistent-directory support committed = NO
+Generic persistent-directory support merged = YES
 Generic persistent-directory support installed = NO
 Jenkins unrestricted Docker/shell authority = NO
 ```
 
-Do not deploy Prometheus until the generic compatibility change, explicit Prometheus host-boundary onboarding, manifest review, Jenkins human-approval path and predeployment zero-drift inspection have all been separately reviewed and proven fail-closed.
+Do not deploy Prometheus until explicit Prometheus host-boundary onboarding, manifest review, Jenkins human-approval path and predeployment zero-drift inspection have all been separately reviewed and proven fail-closed.
