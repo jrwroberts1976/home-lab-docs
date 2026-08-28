@@ -136,6 +136,15 @@ Jenkins must never receive unrestricted shell/Docker authority. The Jenkins cont
    - distinguish collection gaps from dashboard-query gaps before changing Grafana;
    - validate the final host count and deliberate exclusions.
 
+14. ⬜ Tidy the Jenkins dashboard and organise container pipelines into folders.
+   - create a clear Jenkins folder for each managed container/service so its inspection, candidate/update, approval and deployment pipelines are grouped together;
+   - use predictable folder/job naming so the dashboard quickly shows which pipelines belong to which container;
+   - keep shared Jenkins platform/control-plane, credential-validation and infrastructure utility jobs in a separate administrative folder rather than mixing them with service pipelines;
+   - preserve existing job history, build numbers, credentials, triggers, parameters and security boundaries when jobs are moved or recreated;
+   - do not broaden executor permissions or change the Stage 6 deployment security model as part of this UI/organisation tidy-up;
+   - identify and remove/archive obsolete temporary smoke/debug jobs only after their evidence is retained in Git/docs;
+   - document the final Jenkins folder layout so future container onboarding follows the same structure.
+
 ## Safety boundary carried forward
 
 ```text
