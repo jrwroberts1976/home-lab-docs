@@ -113,7 +113,7 @@ Validation already completed:
 - persistent directory + `sha256: null`: PASS;
 - persistent directory + static SHA-256: rejected as expected;
 - file bind + missing SHA-256: rejected as expected;
-- unknown metadata verification mode: rejected as expected;
+- unknown metadata mode: rejected as expected;
 - no commit, push or host installation has occurred for this branch yet.
 
 The only cleanup identified before commit is to catch `jsonschema.ValidationError` and report a concise `FAIL:` message rather than a Python traceback.
@@ -158,4 +158,23 @@ Generic compatibility code installed = NO
 Jenkins general shell/Docker authority = NO
 ```
 
-This file should be updated during the working session whenever a material Stage 6 change is completed, rejected, rolled back or left outstanding.
+## Daily summary
+
+### Completed today
+
+- Created and merged the `2026-08-28` daily operational record, TODO list and Prometheus Stage 6 continuation starting point in `home-lab-docs`.
+- Updated the `daily-actions` index so 27 and 28 August are visible in the standing operational record.
+- Established the daily-summary convention so each day records both work completed that day and work genuinely carried forward.
+- Added Jenkins dashboard/folder organisation as an explicit follow-up: each container should have its own Jenkins folder containing its related pipeline jobs, while shared/control-plane jobs remain separately grouped.
+
+### Carried forward
+
+- Finish the `stage6/persistent-directory-support` framework change, including concise JSON Schema failure handling, repeat fail-closed tests, final four-file diff review, commit, push, PR review and merge.
+- Explicitly onboard `prometheus` into the restricted Stage 6 inspector/executor SSH and sudo boundaries only after the generic framework change is merged.
+- Create and validate `config/services/prometheus-3.13.2.json` with exact rollback/candidate identities, persistent TSDB directory semantics and hashed config-file invariants.
+- Build and prove the Prometheus Jenkins human-approval path, then perform the `3.13.1 → 3.13.2` deployment only after every gate passes.
+- Tidy the Jenkins dashboard so container update pipelines are grouped by container/service in their own folders, preserving job history, credentials, triggers and the existing security boundary; keep Jenkins platform/control-plane utility jobs in a separate administrative grouping.
+- Publish Homelab Defender through the controlled external route and link it from the Engineering Portfolio.
+- Audit Grafana Host Overview coverage and resolve any collection/query gaps deliberately.
+
+This summary should be updated during the working session as carried-forward items are completed, deferred or otherwise resolved.
