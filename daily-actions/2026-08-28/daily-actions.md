@@ -165,15 +165,21 @@ Jenkins general shell/Docker authority = NO
 - Created and merged the `2026-08-28` daily operational record, TODO list and Prometheus Stage 6 continuation starting point in `home-lab-docs`.
 - Updated the `daily-actions` index so 27 and 28 August are visible in the standing operational record.
 - Established the daily-summary convention so each day records both work completed that day and work genuinely carried forward.
+- Added a standing daily-start rule to review the latest nightly homelab report, extract actionable findings, deduplicate them against existing work and record any new tasks in that day's TODO.
 - Added Jenkins dashboard/folder organisation as an explicit follow-up: each container should have its own Jenkins folder containing its related pipeline jobs, while shared/control-plane jobs remain separately grouped.
+- Added the Proxmox VM Infrastructure-as-Code project to the backlog, covering Terraform-provisioned VM infrastructure and Ansible configuration for PostgreSQL, TimescaleDB and Nginx.
+- Added a separate long-term roadmap item for phased migration of the current Docker platform onto Proxmox, with inventory, target architecture, migration waves, data movement, cutover, monitoring continuity and rollback planning.
 
 ### Carried forward
 
+- Review the latest nightly homelab report at the start of the working day and add any new evidence-backed actions to the current TODO.
 - Finish the `stage6/persistent-directory-support` framework change, including concise JSON Schema failure handling, repeat fail-closed tests, final four-file diff review, commit, push, PR review and merge.
 - Explicitly onboard `prometheus` into the restricted Stage 6 inspector/executor SSH and sudo boundaries only after the generic framework change is merged.
 - Create and validate `config/services/prometheus-3.13.2.json` with exact rollback/candidate identities, persistent TSDB directory semantics and hashed config-file invariants.
 - Build and prove the Prometheus Jenkins human-approval path, then perform the `3.13.1 → 3.13.2` deployment only after every gate passes.
 - Tidy the Jenkins dashboard so container update pipelines are grouped by container/service in their own folders, preserving job history, credentials, triggers and the existing security boundary; keep Jenkins platform/control-plane utility jobs in a separate administrative grouping.
+- Plan the Proxmox VM/IaC project for PostgreSQL, TimescaleDB and Nginx, including VM sizing, storage, networking, backup/restore, monitoring, secrets handling and acceptance criteria.
+- Build a phased roadmap for migrating the current Docker platform to Proxmox, using the VM/IaC project to establish reusable Terraform/Ansible patterns before production workload migration.
 - Publish Homelab Defender through the controlled external route and link it from the Engineering Portfolio.
 - Audit Grafana Host Overview coverage and resolve any collection/query gaps deliberately.
 
