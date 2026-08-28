@@ -25,18 +25,19 @@ daily-actions/YYYY-MM-DD/daily-actions.md
 
 A date folder may also contain `todo.md` and focused evidence/runbook notes for substantial workstreams. Record only evidence-backed work. Distinguish completed, fixed, resolved, open and carried-forward items, and do not carry completed work forward as outstanding.
 
-## Daily start rule
+## Daily report triage rule
 
-At the start of each homelab working day:
+The automated/nightly homelab report normally arrives at about **08:00 local time**.
 
-1. Review the latest nightly/automated homelab report before starting planned project work.
-2. Identify any new failures, warnings, security findings, backup/patch issues, monitoring gaps or other actionable follow-ups.
-3. Deduplicate those findings against the existing TODO/backlog so the same task is not added twice.
-4. Add genuine new actions to the current date's `todo.md`, with enough evidence/context to make the next safe action clear.
-5. Record in `daily-actions.md` whether the nightly report produced new tasks, confirmed an existing task, or required no action.
-6. Do not silently carry an unresolved nightly finding forward: either complete it, explicitly defer it with a reason, or keep it visible in the carried-forward summary.
+- If the report has already arrived when the homelab working session starts, review it before starting planned project work.
+- If work starts before the current day's report arrives, continue the planned safe work and review the report as soon as it lands; do not use the previous day's report as a substitute for today's triage.
+- Identify any new failures, warnings, security findings, backup/patch issues, monitoring gaps or other actionable follow-ups.
+- Deduplicate those findings against the existing TODO/backlog so the same task is not added twice.
+- Add genuine new actions to the current date's `todo.md`, with enough evidence/context to make the next safe action clear.
+- Record in `daily-actions.md` whether the report produced new tasks, confirmed an existing task, or required no action.
+- Do not silently carry an unresolved nightly finding forward: either complete it, explicitly defer it with a reason, or keep it visible in the carried-forward summary.
 
-This nightly-report triage is a recurring operational step and should appear in each day's working checklist.
+This nightly-report triage is a recurring daily step, but it is **arrival-driven rather than a reason to block safe work before 08:00**.
 
 ## Daily summary rule
 
