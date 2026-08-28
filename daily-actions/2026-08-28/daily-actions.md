@@ -63,7 +63,7 @@ created=2026-07-30T12:02:05.288407376Z
 platform=linux/arm64
 ```
 
-Candidate acquisition changed only the local Docker image cache. The running Prometheus container remained unchanged, running, restart count `0`, with `http://127.0.0.1:9090/-/ready` returning `200`.
+Candidate acquisition changed only the local Docker image cache. The running Prometheus container remained unchanged, running, restart count `0`, with readiness HTTP `200`.
 
 ## Source-authority prerequisite completed
 
@@ -158,13 +158,49 @@ Validation completed:
 - no host installation occurred;
 - no Prometheus deployment occurred.
 
-The source boundary is therefore ready for later controlled host installation, but TestServer remains on the previously installed Dashy-only boundary until that separate installation step is reviewed and performed.
+The source boundary is ready for controlled host installation, but TestServer remains on the previously installed Dashy-only boundary until that separate installation step is reviewed and performed.
+
+## Prometheus Stage 6 transaction manifest completed
+
+`config/services/prometheus-3.13.2.json` was created, validated, independently reviewed and merged through `homelab-container-version-control` PR #51.
+
+```text
+reviewed source commit=aefe087ba332de4c99cc2184d821aa2db1038b9d
+merge commit=0a8f44e818a479f89593ed2304b5b908be5dc3d6
+manifest SHA-256=1a9ed72fecc9318be6142b78c818ab5982376bf6efafccc258e953a610948b44
+```
+
+The reviewed transaction records:
+
+- rollback/current Prometheus `3.13.1` exact immutable identity;
+- candidate Prometheus `3.13.2` exact immutable identity and `digest-pinned` metadata mode;
+- `docker-env` authority revision `ce591602bc6300cad001eb445269f8f4b8933c53`;
+- authoritative Compose SHA-256 `bcf38b612b8319fef2e3d077f3a3e70599cbe0ddbd26a8789f35ca1fd2836b1d`;
+- `prometheus.yml` SHA-256 `7fabeed93b5833a4385e9f73b8aeba53a37bce6d721b4c0e918d9daf7c7a3297`;
+- `linux-hosts.yml` SHA-256 `b306d39a3ab520dd4db8bcae22f701047b5e1efd74e98a2a8633fc17f5a5adda`;
+- persistent TSDB directory represented with `source_kind: directory` and `sha256: null`;
+- exact network, published port, user, restart, no-device/no-socket/no-privilege runtime invariants;
+- TestServer host-side readiness `http://192.168.2.220:9090/-/ready`, expected HTTP `200`;
+- Jenkins/Jenkins-DinD protection, human approval, post-approval reinspection, one-shot authority and rollback requirements.
+
+Validation completed:
+
+- JSON Schema: PASS;
+- Stage 6 cross-field/security invariants: PASS;
+- exact one-file review scope: PASS;
+- staged and committed bytes matched the reviewed manifest SHA: PASS;
+- independent GitHub PR patch review: PASS;
+- live Prometheus remained exact `3.13.1`, restart count `0`, ready HTTP `200`;
+- no host Stage 6 files were installed;
+- no Prometheus deployment occurred.
+
+The live monitoring Compose file is still intentionally not synchronised to the reviewed authority. Current live SHA is `c91a078909a018e3134c4d1dbe9c68ea8cabbb482bf5f6ad1bb239ae837a24f8`, while the reviewed authority requires `bcf38b612b8319fef2e3d077f3a3e70599cbe0ddbd26a8789f35ca1fd2836b1d`. This remains a fail-closed installation prerequisite, not a deployment failure.
 
 ## Today’s next safe action
 
-Create and validate `config/services/prometheus-3.13.2.json` using the exact merged `docker-env` authority, immutable current/candidate identities, persistent TSDB directory semantics and freshly hashed Prometheus configuration files.
+Perform a separately reviewed, controlled TestServer installation of the merged generic Stage 6 code, Prometheus-specific restricted inspector/executor boundary, Prometheus transaction manifest, and reviewed monitoring Compose authority.
 
-Do not install the new Stage 6 source boundary on TestServer until the manifest and installation procedure have been reviewed together.
+The installation must prove that the default Compose rendering remains `prom/prometheus:v3.13.1`, that no container is recreated, that no one-shot authority is armed, and that Prometheus plus the protected Jenkins control-plane containers remain unchanged.
 
 ## Safety state at current point
 
@@ -173,11 +209,13 @@ Prometheus live version = 3.13.1
 Prometheus live ready = HTTP 200
 Prometheus candidate 3.13.2 local = YES
 Prometheus deployment performed = NO
-Prometheus Stage 6 manifest created = NO
+Prometheus Stage 6 manifest created = YES
+Prometheus Stage 6 manifest source merged = YES
 Prometheus Stage 6 enable state = ABSENT
 Prometheus boundary source merged = YES
 Prometheus executor permission installed = NO
 Prometheus inspector permission installed = NO
+Prometheus reviewed Compose authority installed = NO
 Generic compatibility source merged = YES
 Generic compatibility code installed = NO
 Jenkins general shell/Docker authority = NO
@@ -196,12 +234,12 @@ Jenkins general shell/Docker authority = NO
 - Added a separate long-term roadmap item for phased migration of the current Docker platform onto Proxmox, with inventory, target architecture, migration waves, data movement, cutover, monitoring continuity and rollback planning.
 - Completed the generic Stage 6 persistent-directory / digest-pinned compatibility change and merged `homelab-container-version-control` PR #49 at merge commit `5daee1d5f14b717180a4b87ffb5d52b73c7c043e`; all fail-closed and backward-compatibility gates passed, with no host installation and no Prometheus deployment.
 - Completed the Prometheus restricted Stage 6 source-boundary onboarding and merged `homelab-container-version-control` PR #50 at merge commit `6a2452001c008439188c5d78660b8fd0dcfe08eb`; exact literal inspector/executor command surfaces and sudoers allowlists passed independent review, with no host installation and no Prometheus deployment.
+- Completed and merged the Prometheus `3.13.2` Stage 6 transaction manifest through `homelab-container-version-control` PR #51 at merge commit `0a8f44e818a479f89593ed2304b5b908be5dc3d6`; manifest SHA-256 `1a9ed72fecc9318be6142b78c818ab5982376bf6efafccc258e953a610948b44`, exact immutable identities/config hashes/runtime invariants and host-side readiness all passed review, with no host installation and no Prometheus deployment.
 
 ### Carried forward
 
 - Review today's nightly homelab report when it arrives around 08:00 and add any new evidence-backed actions to the current TODO.
-- Create and validate `config/services/prometheus-3.13.2.json` with exact rollback/candidate identities, persistent TSDB directory semantics and hashed config-file invariants.
-- Review and perform the controlled TestServer installation of the merged generic Stage 6 code and Prometheus-specific inspector/executor boundary before any mutation is permitted.
+- Review and perform the controlled TestServer installation of the merged generic Stage 6 code, Prometheus manifest, Prometheus-specific inspector/executor boundary and reviewed monitoring Compose authority without recreating Prometheus.
 - Build and prove the Prometheus Jenkins human-approval path, then perform the `3.13.1 → 3.13.2` deployment only after every gate passes.
 - Tidy the Jenkins dashboard so container update pipelines are grouped by container/service in their own folders, preserving job history, credentials, triggers and the existing security boundary; keep Jenkins platform/control-plane utility jobs in a separate administrative grouping.
 - Plan the Proxmox VM/IaC project for PostgreSQL, TimescaleDB and Nginx, including VM sizing, storage, networking, backup/restore, monitoring, secrets handling and acceptance criteria.

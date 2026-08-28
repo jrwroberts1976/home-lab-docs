@@ -94,19 +94,36 @@ Jenkins must never receive unrestricted shell/Docker authority. The Jenkins cont
    - reviewed source is merged but has **not yet been installed on TestServer**;
    - no Prometheus deployment occurred.
 
-7. ▶ NEXT — Create and validate `config/services/prometheus-3.13.2.json`.
-   - rollback/current = `3.13.1`;
-   - candidate = `3.13.2`;
+7. ✅ COMPLETE — Create and validate `config/services/prometheus-3.13.2.json`.
+   - `homelab-container-version-control` PR #51 merged;
+   - reviewed source commit: `aefe087ba332de4c99cc2184d821aa2db1038b9d`;
+   - merge commit: `0a8f44e818a479f89593ed2304b5b908be5dc3d6`;
+   - reviewed manifest SHA-256: `1a9ed72fecc9318be6142b78c818ab5982376bf6efafccc258e953a610948b44`;
+   - rollback/current = exact Prometheus `3.13.1` immutable identity;
+   - candidate = exact Prometheus `3.13.2` immutable identity with `metadata_verification: digest-pinned`;
    - authority revision = `ce591602bc6300cad001eb445269f8f4b8933c53`;
-   - Compose SHA-256 = `bcf38b612b8319fef2e3d077f3a3e70599cbe0ddbd26a8789f35ca1fd2836b1d`;
-   - use `metadata_verification: digest-pinned` because the Prometheus image does not publish the OCI version/revision labels required by the original Dashy inspector path;
-   - represent Prometheus TSDB data as an exact persistent directory mount with `sha256: null`;
-   - keep file bind mounts content-hashed;
-   - collect exact SHA-256 values for `prometheus.yml` and `linux-hosts.yml` immediately before manifest review;
-   - retain network `homelab_apps`, user `1000:1000`, restart `unless-stopped`, no Docker socket, no devices and no privileged mode;
-   - use HTTP readiness `http://127.0.0.1:9090/-/ready` / expected `200` as the service health contract.
+   - reviewed Compose SHA-256 = `bcf38b612b8319fef2e3d077f3a3e70599cbe0ddbd26a8789f35ca1fd2836b1d`;
+   - `prometheus.yml` SHA-256 = `7fabeed93b5833a4385e9f73b8aeba53a37bce6d721b4c0e918d9daf7c7a3297`;
+   - `linux-hosts.yml` SHA-256 = `b306d39a3ab520dd4db8bcae22f701047b5e1efd74e98a2a8633fc17f5a5adda`;
+   - TSDB `/prometheus` bind is represented as `source_kind: directory` with `sha256: null`;
+   - network `homelab_apps`, published `192.168.2.220:9090 -> 9090/tcp`, user `1000:1000`, restart `unless-stopped`, no Docker socket, no devices and no privileged mode are pinned;
+   - host-side health contract is `http://192.168.2.220:9090/-/ready` with expected HTTP `200`;
+   - staged and committed bytes exactly matched the reviewed manifest SHA and validation passed;
+   - live Prometheus remained exact `3.13.1`, restart count `0`, ready HTTP `200`;
+   - live Compose SHA remains `c91a078909a018e3134c4d1dbe9c68ea8cabbb482bf5f6ad1bb239ae837a24f8`, so reviewed Compose authority is deliberately `PENDING_INSTALLATION`;
+   - no host Stage 6 files were installed and no Prometheus deployment occurred.
 
-8. ⬜ Build the Prometheus Jenkins human-approval path.
+8. ▶ NEXT — Install the reviewed Prometheus Stage 6 host boundary and synchronise the live monitoring Compose authority.
+   - install only the reviewed generic Stage 6 helper/source changes and literal Prometheus inspector/executor boundary from merged `homelab-container-version-control` main;
+   - synchronise `/home/james/docker/stacks/monitoring/docker-compose.yml` to the reviewed `docker-env` authority revision `ce591602bc6300cad001eb445269f8f4b8933c53` and exact SHA-256 `bcf38b612b8319fef2e3d077f3a3e70599cbe0ddbd26a8789f35ca1fd2836b1d`;
+   - prove the live Compose default still resolves to `prom/prometheus:v3.13.1` and therefore causes no container mutation;
+   - install the reviewed manifest at the expected Stage 6 host path with root-owned, fail-closed permissions;
+   - validate inspector/executor forced commands and sudoers exactly after installation;
+   - prove no wildcard/general shell/general Docker authority is introduced;
+   - prove Prometheus remains `3.13.1`, ready, restart count `0`, with Jenkins and Jenkins-DinD unchanged;
+   - do not arm or deploy during installation.
+
+9. ⬜ Build the Prometheus Jenkins human-approval path.
    - derive from the proven Dashy Stage 6 sequence rather than creating a new security model;
    - pre-approval read-only inspection;
    - exact current/candidate identity display;
@@ -119,14 +136,14 @@ Jenkins must never receive unrestricted shell/Docker authority. The Jenkins cont
    - rollback only if an actual consumed deployment fails;
    - disarm and retain immutable evidence.
 
-9. ⬜ Run a Prometheus read-only smoke test before any deployment.
+10. ⬜ Run a Prometheus read-only smoke test before any deployment.
    - prove the inspector can inspect `prometheus` but cannot inspect arbitrary services;
    - prove executor `ping` still works;
-   - prove Prometheus execution commands are unavailable before the reviewed host boundary is installed;
+   - prove Prometheus execution commands remain unusable unless the one-shot state is correctly armed;
    - prove Jenkins and Jenkins-DinD container IDs/restart counts remain unchanged;
    - prove live Prometheus remains exact `3.13.1` and ready.
 
-10. ⬜ Perform the human-approved Prometheus `3.13.1 → 3.13.2` deployment only after all preceding gates pass.
+11. ⬜ Perform the human-approved Prometheus `3.13.1 → 3.13.2` deployment only after all preceding gates pass.
    - capture before/after container state;
    - verify current TSDB/config mounts remain exact;
    - verify `/-/ready` returns `200` after recreate;
@@ -135,25 +152,25 @@ Jenkins must never receive unrestricted shell/Docker authority. The Jenkins cont
    - retain rollback path to exact `3.13.1` immutable image;
    - document final Jenkins build evidence and host state.
 
-11. ⬜ AFTER PROMETHEUS PILOT — assess `3.14.0` separately.
+12. ⬜ AFTER PROMETHEUS PILOT — assess `3.14.0` separately.
    - do not combine the 3.13.2 pilot with the later minor-version move;
    - first prove 3.13.2 through the complete Stage 6 path;
    - review 3.14.0 release/compatibility notes before a separate transaction manifest.
 
-12. ⬜ Publish Homelab Defender through a controlled external route and link it from the Engineering Portfolio.
+13. ⬜ Publish Homelab Defender through a controlled external route and link it from the Engineering Portfolio.
    - expose only Defender through the existing Cloudflare/reverse-proxy model;
    - keep Jenkins, registry and Kubernetes control paths private;
    - validate TLS/browser/game/monitoring externally;
    - add the public Defender URL to the portfolio only after the route is proven;
    - retain a quick route-disable rollback.
 
-13. ⬜ Audit Grafana Host Overview coverage.
+14. ⬜ Audit Grafana Host Overview coverage.
    - establish the authoritative intended host list;
    - compare Prometheus targets and emitted labels with the Grafana hostname variable;
    - distinguish collection gaps from dashboard-query gaps before changing Grafana;
    - validate the final host count and deliberate exclusions.
 
-14. ⬜ Tidy the Jenkins dashboard and organise container pipelines into folders.
+15. ⬜ Tidy the Jenkins dashboard and organise container pipelines into folders.
    - create a clear Jenkins folder for each managed container/service so its inspection, candidate/update, approval and deployment pipelines are grouped together;
    - use predictable folder/job naming so the dashboard quickly shows which pipelines belong to which container;
    - keep shared Jenkins platform/control-plane, credential-validation and infrastructure utility jobs in a separate administrative folder rather than mixing them with service pipelines;
@@ -162,7 +179,7 @@ Jenkins must never receive unrestricted shell/Docker authority. The Jenkins cont
    - identify and remove/archive obsolete temporary smoke/debug jobs only after their evidence is retained in Git/docs;
    - document the final Jenkins folder layout so future container onboarding follows the same structure.
 
-15. ⬜ Plan the Proxmox VM Infrastructure-as-Code project.
+16. ⬜ Plan the Proxmox VM Infrastructure-as-Code project.
    - target a VM environment on the Proxmox platform for PostgreSQL, TimescaleDB and Nginx;
    - provision VM/infrastructure resources with Terraform and configure the guest/services with Ansible;
    - define the target VM sizing, storage, networking, DNS, addressing and backup/restore model before implementation;
@@ -172,7 +189,7 @@ Jenkins must never receive unrestricted shell/Docker authority. The Jenkins cont
    - build the project as reviewed IaC in Git with a repeatable create/configure/validate/destroy or recovery workflow;
    - document estimated effort, prerequisites, implementation stages, acceptance tests and rollback/rebuild path before starting the build.
 
-16. ⬜ Plan the long-term migration of the Docker platform onto Proxmox.
+17. ⬜ Plan the long-term migration of the Docker platform onto Proxmox.
    - treat this as a phased platform migration, not a single big-bang move;
    - inventory the current TestServer Docker estate, Compose projects, networks, bind mounts/volumes, secrets, dependencies, ingress, DNS, monitoring and backup requirements;
    - classify services by migration risk and dependency order, keeping Jenkins/control-plane, DNS/routing/security and stateful services in separately reviewed waves;
@@ -196,13 +213,15 @@ Prometheus current = 3.13.1
 Prometheus candidate local = 3.13.2
 Prometheus ready HTTP = 200
 Prometheus deployment performed = NO
-Prometheus Stage 6 manifest created = NO
+Prometheus Stage 6 manifest created = YES
+Prometheus Stage 6 manifest source merged = YES
 Prometheus boundary source merged = YES
 Prometheus executor authority installed = NO
 Prometheus inspector authority installed = NO
+Prometheus reviewed Compose authority installed = NO
 Generic persistent-directory support merged = YES
 Generic persistent-directory support installed = NO
 Jenkins unrestricted Docker/shell authority = NO
 ```
 
-Do not deploy Prometheus until the manifest, reviewed host installation, Jenkins human-approval path and predeployment zero-drift inspection have all been separately reviewed and proven fail-closed.
+Do not deploy Prometheus until the reviewed host installation, Jenkins human-approval path and predeployment zero-drift inspection have all been separately reviewed and proven fail-closed.
