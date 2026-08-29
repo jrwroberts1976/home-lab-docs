@@ -1,250 +1,248 @@
 # Daily Actions — 28 August 2026
 
-## Starting position
+## Status
 
-Today continues the Stage 6 container-version-control work from the previous session.
+**CLOSED — end-of-day record.**
 
-The working objective remains to use Jenkins as a controlled orchestration layer for Docker container updates while keeping Git as the source of authority, immutable image identities as deployment intent, human approval as the mutation gate, and narrowly allow-listed service-scoped SSH/sudo commands as the execution boundary.
+The detailed working TODO and Prometheus starting-point note in this folder remain historical evidence of the state earlier in the day. This document records the final 28 August outcome and supersedes the earlier in-progress statements that Prometheus had not yet been deployed.
 
-No Prometheus deployment has occurred.
+## Main objective
 
-## Evidence carried forward from 27 August
+Continue Stage 6 container-version-control development without weakening the established security model:
 
-### Dashy
+- Git-reviewed authority;
+- immutable image identities;
+- separate inspector and executor identities;
+- explicit human approval before mutation;
+- exact post-approval zero-drift reinspection;
+- no deployment-time image pulls;
+- one-shot execution authority;
+- health validation and rollback rules;
+- protection of Jenkins, Jenkins-DinD and unrelated workloads;
+- no general shell or unrestricted Docker authority for Jenkins.
 
-The Dashy Stage 6 pilot completed successfully.
+## Completed — Prometheus generic Stage 6 pilot
 
-- current version: `4.6.0`;
-- immutable index digest: `sha256:40e3b27369002d4bce12cdffd5136b05924e1a7ea4e0d971a890557045fb1d59`;
-- local ARM64 image/config ID: `sha256:f7c93e5961154c8ee4a4bce7f4448d30b9ee46def5ed8eb3ebef3d111370de99`;
-- final Docker health: `healthy`;
-- restart count: `0`;
-- Stage 6 enable state removed/disarmed;
-- update-specific consumed marker retained;
-- rollback not required.
+Prometheus moved from application version `3.13.1` to `3.13.2` through the generic Stage 6 path.
 
-Dashy should remain untouched until a real newer release exists. A future release receives a new transaction manifest; the completed `dashy-4.6.0.json` record remains historical evidence.
-
-### LibreSpeed
-
-LibreSpeed was inspected as the intended next low-risk Stage 6 service, but there was no real update to apply.
-
-- current: `6.2.1`;
-- latest/current upstream checked: `6.2.1`;
-- health: `healthy`;
-- restart count: `0`;
-- deployment required: no.
-
-No no-op deployment should be performed simply to exercise the framework.
-
-### Prometheus
-
-Prometheus was selected as the next genuine update candidate.
-
-Current / rollback identity:
-
-```text
-version=3.13.1
-index_digest=sha256:3c42b892cf723fa54d2f262c37a0e1f80aa8c8ddb1da7b9b0df9455a35a7f893
-local_image_id=sha256:4b91f0c2630ca36c5ed0275657a92a2e9270790b48d3ce7117adf1b468fceaa5
-revision=73ff57ce2b8161059ac7fe5188f03f1c3d22b29a
-platform=linux/arm64
-```
-
-Candidate identity:
+Reviewed candidate identity:
 
 ```text
 version=3.13.2
 index_digest=sha256:508729e0e2d18e11fd742a5a5ca70e557b940a93948c3c95fd0123a6fd538b69
-platform_manifest_digest=sha256:819dcd34085a183b908a439fc9379f1b504c0431a837b5e5b2d37a259b21c179
+arm64_manifest=sha256:819dcd34085a183b908a439fc9379f1b504c0431a837b5e5b2d37a259b21c179
 local_image_id=sha256:26bf7bb2ea9e4394b01ea4bd704e802ad4544eea9b2bc95a5dad244b342142d5
-revision=bb5dff00cf8fdfbf5c65e0531aa835fa238a43a2
-created=2026-07-30T12:02:05.288407376Z
-platform=linux/arm64
 ```
 
-Candidate acquisition changed only the local Docker image cache. The running Prometheus container remained unchanged, running, restart count `0`, with readiness HTTP `200`.
+Jenkins Build #6 deployed the exact candidate successfully. The build was reported as historical `FAILURE` because the executor compared equivalent published-port JSON objects without canonical key ordering. The workload itself remained on the new candidate and healthy.
 
-## Source-authority prerequisite completed
-
-`docker-env` PR #19 added the Stage 6 image override for Prometheus and was merged.
+PR #58 fixed the false-negative by canonicalising JSON before comparison.
 
 ```text
-docker-env authority revision=ce591602bc6300cad001eb445269f8f4b8933c53
-Compose SHA-256=bcf38b612b8319fef2e3d077f3a3e70599cbe0ddbd26a8789f35ca1fd2836b1d
+PR58 merge=75a2694202c3c8aed2820a185451d5af3a57b3a8
 ```
 
-The authoritative Prometheus image line is:
+Controlled recovery installed the exact corrected executor, preserved the already-running Prometheus candidate, retained the consumed audit marker and removed the one-shot enable state without recreating the container.
 
-```yaml
-image: ${PROMETHEUS_IMAGE:-prom/prometheus:v3.13.1}
-```
-
-Therefore the normal/default runtime remains `3.13.1`, while Stage 6 can inject an exact immutable image reference when a reviewed update is approved.
-
-## Generic Stage 6 compatibility completed
-
-Prometheus exposed two valid service patterns that the original Dashy-focused generic implementation did not yet model correctly:
-
-1. Prometheus uses a persistent mutable TSDB bind-mounted directory. It must be verified as an exact path/type invariant, not content-hashed like an immutable config file.
-2. The Prometheus image does not expose the OCI version/revision labels expected by the original inspector. Exact immutable ref, config ID, architecture and RepoDigest remain available as cryptographic image identity while the binary revision is separately recorded from `prometheus --version`.
-
-The compatibility change was reviewed and merged through `homelab-container-version-control` PR #49.
+Final Prometheus state:
 
 ```text
-reviewed source commit=18e431aac7777a31a931053ca7b4a4198098d0b8
-merge commit=5daee1d5f14b717180a4b87ffb5d52b73c7c043e
+application_version=3.13.2
+live=YES
+healthy=YES
+one_shot_armed=NO
+rollback_required=NO
+Jenkins_unchanged=YES
+Jenkins_DinD_unchanged=YES
 ```
 
-The merged change scope is exactly:
+## Completed — read-only Docker socket Stage 6 extension
+
+Homepage required a narrowly reviewed Docker socket exception. Stage 6 was extended without generalising Docker socket access to ordinary services.
+
+PR #60 merged the socket framework contract:
 
 ```text
-config/service-update-manifest.schema.json
-ops/testserver/homelab-stage6-execute
-ops/testserver/homelab-stage6-inspect
-scripts/validate-stage6-service-manifest.py
+framework_source=0884f49e415c02356f4f8bde586ea5f285ee7772
 ```
 
-Validation completed:
+The exception remains fail-closed:
 
-- shell syntax: PASS;
-- Dashy manifest backward compatibility: PASS;
-- generic inspector source guard: PASS;
-- generic execution source guard: PASS;
-- persistent directory + `sha256: null`: PASS;
-- persistent directory + static SHA-256: rejected as expected;
-- file bind + missing SHA-256: rejected as expected;
-- unknown metadata mode: rejected as expected;
-- JSON Schema failures now return concise `FAIL:` output without traceback;
-- file bind mounts remain hashed by default;
-- persistent directory binds require exact directory type and no static hash;
-- inspector and executor reject symlink bind sources;
-- `digest-pinned` mode retains exact config ID, OS, architecture and RepoDigest gates;
-- no host installation occurred;
-- no Prometheus deployment occurred.
+- `risk_class=medium` required;
+- `runtime.docker_socket_allowed=true` required;
+- exactly one `/var/run/docker.sock` bind;
+- exact same source and destination;
+- mount must be `rw=false`;
+- source kind must be `socket`;
+- host source must be a Unix socket;
+- low-risk, writable, alternate-path, duplicate and policy-mismatch cases are rejected.
 
-## Prometheus restricted boundary source completed
+The reviewed socket-capable validator, inspector and executor were installed with exact hash verification and backup before replacement. No container was changed by the framework installation.
 
-Prometheus was explicitly onboarded into the reviewed Stage 6 source boundary through `homelab-container-version-control` PR #50.
+## Completed — Homepage 2.1.2 Stage 6 pilot
+
+The Homepage Compose authority was updated through `docker-env` PR #21 so the default image remains v2.0.0 while Stage 6 may inject only a reviewed exact image value.
 
 ```text
-reviewed source commit=a812ad61a62026dec00bee6eca2f738fb160559b
-merge commit=6a2452001c008439188c5d78660b8fd0dcfe08eb
+docker_env_authority=788b302c67fc21618d471ab7951ebf379d2a5593
+compose_sha256=9a1295c5c7848c578a9b339411b02b2320cb7bd4b78764fce1d6b661fe97287f
 ```
 
-The merged authority remains finite and literal:
+Reviewed candidate:
 
 ```text
-inspector: inspect dashy
-inspector: inspect prometheus
-executor: arm/deploy/rollback/disarm dashy
-executor: arm/deploy/rollback/disarm prometheus
+version=2.1.2
+index_digest=sha256:da9dca9ec258c628146bed1445da0853f2b88f0b10bafd97c091de807c363d60
+arm64_manifest=sha256:e422a1ec7834b5cfac54e9cb1804475f7a4d61bb0c04002ebc59542bd8b3350d
+local_image_id=sha256:3a2b25796deabbf5c77ed9efcca2e1cb270b64f00c70ca87cf797640e26705fe
+revision=5873f8e7d5d09567f15d437f75f8509e3b5d3d94
 ```
 
-Validation completed:
+The reviewed Homepage manifest was merged through PR #62 and deployed by Jenkins Build #8.
 
-- exactly seven source files changed;
-- Dashy authority retained;
-- Prometheus authority added only as literal service-scoped commands;
-- executor wrapper exposes exactly eight literal sudo calls;
-- inspector wrapper exposes exactly two literal sudo calls;
-- sudoers files contain the matching exact command allowlists;
-- no variable service/action forwarding was introduced;
-- malformed and unknown commands fail closed before sudo;
-- shell syntax: PASS;
-- sudoers syntax: PASS;
-- generic inspector/execution source guards: PASS;
-- independent GitHub PR patch review: PASS;
-- no host installation occurred;
-- no Prometheus deployment occurred.
+Build #8 proved:
 
-The source boundary is ready for controlled host installation, but TestServer remains on the previously installed Dashy-only boundary until that separate installation step is reviewed and performed.
+- exact reviewed source checkout;
+- pre-approval inspection;
+- human approval;
+- exact second inspection / zero drift;
+- executor unavailable until after approval and zero drift;
+- exact one-shot arm;
+- immutable candidate deployment;
+- health and runtime invariants;
+- rollback correctly skipped because deployment succeeded;
+- one-shot authority disarmed;
+- evidence archived.
 
-## Prometheus Stage 6 transaction manifest completed
-
-`config/services/prometheus-3.13.2.json` was created, validated, independently reviewed and merged through `homelab-container-version-control` PR #51.
+Independent post-deploy verification passed:
 
 ```text
-reviewed source commit=aefe087ba332de4c99cc2184d821aa2db1038b9d
-merge commit=0a8f44e818a479f89593ed2304b5b908be5dc3d6
-manifest SHA-256=1a9ed72fecc9318be6142b78c818ab5982376bf6efafccc258e953a610948b44
+homepage_version=2.1.2
+homepage_image=ghcr.io/gethomepage/homepage@sha256:da9dca9ec258c628146bed1445da0853f2b88f0b10bafd97c091de807c363d60
+homepage_image_id=sha256:3a2b25796deabbf5c77ed9efcca2e1cb270b64f00c70ca87cf797640e26705fe
+homepage_health=healthy
+homepage_restart_count=0
+homepage_docker_socket=read-only
+homepage_armed=false
+stage6_build=8
 ```
 
-The reviewed transaction records:
+Protected Jenkins, Jenkins-DinD and Prometheus containers remained unchanged.
 
-- rollback/current Prometheus `3.13.1` exact immutable identity;
-- candidate Prometheus `3.13.2` exact immutable identity and `digest-pinned` metadata mode;
-- `docker-env` authority revision `ce591602bc6300cad001eb445269f8f4b8933c53`;
-- authoritative Compose SHA-256 `bcf38b612b8319fef2e3d077f3a3e70599cbe0ddbd26a8789f35ca1fd2836b1d`;
-- `prometheus.yml` SHA-256 `7fabeed93b5833a4385e9f73b8aeba53a37bce6d721b4c0e918d9daf7c7a3297`;
-- `linux-hosts.yml` SHA-256 `b306d39a3ab520dd4db8bcae22f701047b5e1efd74e98a2a8633fc17f5a5adda`;
-- persistent TSDB directory represented with `source_kind: directory` and `sha256: null`;
-- exact network, published port, user, restart, no-device/no-socket/no-privilege runtime invariants;
-- TestServer host-side readiness `http://192.168.2.220:9090/-/ready`, expected HTTP `200`;
-- Jenkins/Jenkins-DinD protection, human approval, post-approval reinspection, one-shot authority and rollback requirements.
+## Completed — Stage 6 documentation checkpoint
 
-Validation completed:
-
-- JSON Schema: PASS;
-- Stage 6 cross-field/security invariants: PASS;
-- exact one-file review scope: PASS;
-- staged and committed bytes matched the reviewed manifest SHA: PASS;
-- independent GitHub PR patch review: PASS;
-- live Prometheus remained exact `3.13.1`, restart count `0`, ready HTTP `200`;
-- no host Stage 6 files were installed;
-- no Prometheus deployment occurred.
-
-The live monitoring Compose file is still intentionally not synchronised to the reviewed authority. Current live SHA is `c91a078909a018e3134c4d1dbe9c68ea8cabbb482bf5f6ad1bb239ae837a24f8`, while the reviewed authority requires `bcf38b612b8319fef2e3d077f3a3e70599cbe0ddbd26a8789f35ca1fd2836b1d`. This remains a fail-closed installation prerequisite, not a deployment failure.
-
-## Today’s next safe action
-
-Perform a separately reviewed, controlled TestServer installation of the merged generic Stage 6 code, Prometheus-specific restricted inspector/executor boundary, Prometheus transaction manifest, and reviewed monitoring Compose authority.
-
-The installation must prove that the default Compose rendering remains `prom/prometheus:v3.13.1`, that no container is recreated, that no one-shot authority is armed, and that Prometheus plus the protected Jenkins control-plane containers remain unchanged.
-
-## Safety state at current point
+The final Stage 6 checkpoint was refreshed and merged through `homelab-container-version-control` PR #63.
 
 ```text
-Prometheus live version = 3.13.1
-Prometheus live ready = HTTP 200
-Prometheus candidate 3.13.2 local = YES
-Prometheus deployment performed = NO
-Prometheus Stage 6 manifest created = YES
-Prometheus Stage 6 manifest source merged = YES
-Prometheus Stage 6 enable state = ABSENT
-Prometheus boundary source merged = YES
-Prometheus executor permission installed = NO
-Prometheus inspector permission installed = NO
-Prometheus reviewed Compose authority installed = NO
-Generic compatibility source merged = YES
-Generic compatibility code installed = NO
-Jenkins general shell/Docker authority = NO
+merge=dd7588fe5c9ee211471058946861ad21412b64dc
+```
+
+It records the Prometheus recovery, Homepage pilot, socket exception, estate-updater contract and next development sequence. Stale documentation PR #55 was closed unmerged as superseded.
+
+## Completed — three-host estate inventory
+
+Read-only inventories were captured for all three active execution domains:
+
+```text
+TestServer     Docker Compose   linux/arm64   30 running containers
+ids-01         Docker Compose   linux/amd64   17 running containers
+k3s-node-01    k3s/containerd   linux/arm64   11 long-running controllers
+```
+
+No inventory collection pulled an image, recreated a container, changed a Compose file, changed a Kubernetes resource, armed Stage 6 or performed a deployment.
+
+Key findings:
+
+- Prometheus is `3.13.2` on TestServer and `3.13.1` on ids-01, making it the strongest first cross-architecture Stage 6 proof;
+- Blackbox Exporter is already `0.28.0` on both Docker hosts and is a good same-version reporting case;
+- cAdvisor is privileged/device-backed on both Docker hosts and requires a separate runtime class;
+- Loki differs materially between hosts (`2.9.6` vs `3.7.6`) and must not be automatically converged;
+- TestServer WUD has a writable Docker socket while ids-01 WUD is read-only;
+- Kubernetes user workloads, k3s-managed components and network-critical MetalLB workloads were separated into distinct lifecycle classes;
+- `demo/whoami` was verified as genuinely digest-pinned in the Deployment, active ReplicaSet and Pod specs;
+- MetalLB is Helm-managed and its host-network components remain pinned/manual pending a dedicated Kubernetes network-critical contract.
+
+## Completed — estate updater Phase 1
+
+The first formal estate coverage catalogue and routing-only `homelab-update` front end were merged through PR #64.
+
+```text
+merge=2f9b3441f0581fdf27bd906fc876b7639a9da8fc
+```
+
+Phase 1 includes:
+
+- TestServer, ids-01 and k3s-node-01 from day one;
+- reviewed service/host/backend metadata;
+- caller validation for service, desired version, hosts and action;
+- rejection of arbitrary image, digest, Compose path and unknown options;
+- fail-closed `prepare`, `deploy` and `rollback` actions;
+- no SSH, Docker, kubectl, Jenkins or shell execution path;
+- `host_contact_performed=false` and `mutation_allowed=false` in the routing plan.
+
+TestServer source review passed all regression gates.
+
+## Completed — steady-state inspection readiness correction
+
+Before adding live host contact, review identified that a completed transition manifest is not automatically a valid steady-state inspection contract.
+
+Homepage is successfully **managed-tested**, but its existing transition manifest describes rollback v2.0.0 and candidate v2.1.2. The existing Stage 6 inspector is specifically a pre-approval transition inspector and expects the live workload to still be the rollback identity.
+
+PR #65 therefore corrected the estate model rather than misusing the transition inspector.
+
+```text
+merge=7d6ca7cb8693d4953889fc4093a2d086322cd76e
+```
+
+Homepage is now represented as:
+
+```text
+coverage=managed-tested
+inspect_ready=false
+blocker=consumed-transition-manifest-requires-steady-state-inspector
+```
+
+Prometheus remains separately blocked by its authority roll-forward requirement.
+
+## End-of-day Stage 6 state
+
+```text
+Prometheus 3.13.2 TestServer pilot = COMPLETE
+Homepage 2.1.2 TestServer pilot = COMPLETE
+Generic Docker Compose Stage 6 path = PROVEN
+Medium-risk read-only Docker socket contract = PROVEN
+Human approval / zero-drift gate = PROVEN
+One-shot arm / consume / disarm = PROVEN
+Three-host estate inventory = COMPLETE
+Estate updater Phase 1 routing-only front end = MERGED
+Steady-state inspection readiness model = CORRECTED
+Phase 2 steady-state inspector = NOT YET IMPLEMENTED
+ids-01 Stage 6 execution backend = NOT YET INSTALLED
+k3s Stage 6 backend = NOT YET IMPLEMENTED
 ```
 
 ## Daily summary
 
 ### Completed today
 
-- Created and merged the `2026-08-28` daily operational record, TODO list and Prometheus Stage 6 continuation starting point in `home-lab-docs`.
-- Updated the `daily-actions` index so 27 and 28 August are visible in the standing operational record.
-- Established the daily-summary convention so each day records both work completed that day and work genuinely carried forward.
-- Clarified the nightly-report triage rule: the current day's report is reviewed when it arrives, normally around 08:00 local time, and safe planned work can continue beforehand rather than substituting yesterday's report.
-- Added Jenkins dashboard/folder organisation as an explicit follow-up: each container should have its own Jenkins folder containing its related pipeline jobs, while shared/control-plane jobs remain separately grouped.
-- Added the Proxmox VM Infrastructure-as-Code project to the backlog, covering Terraform-provisioned VM infrastructure and Ansible configuration for PostgreSQL, TimescaleDB and Nginx.
-- Added a separate long-term roadmap item for phased migration of the current Docker platform onto Proxmox, with inventory, target architecture, migration waves, data movement, cutover, monitoring continuity and rollback planning.
-- Completed the generic Stage 6 persistent-directory / digest-pinned compatibility change and merged `homelab-container-version-control` PR #49 at merge commit `5daee1d5f14b717180a4b87ffb5d52b73c7c043e`; all fail-closed and backward-compatibility gates passed, with no host installation and no Prometheus deployment.
-- Completed the Prometheus restricted Stage 6 source-boundary onboarding and merged `homelab-container-version-control` PR #50 at merge commit `6a2452001c008439188c5d78660b8fd0dcfe08eb`; exact literal inspector/executor command surfaces and sudoers allowlists passed independent review, with no host installation and no Prometheus deployment.
-- Completed and merged the Prometheus `3.13.2` Stage 6 transaction manifest through `homelab-container-version-control` PR #51 at merge commit `0a8f44e818a479f89593ed2304b5b908be5dc3d6`; manifest SHA-256 `1a9ed72fecc9318be6142b78c818ab5982376bf6efafccc258e953a610948b44`, exact immutable identities/config hashes/runtime invariants and host-side readiness all passed review, with no host installation and no Prometheus deployment.
+- Completed the Prometheus `3.13.1 -> 3.13.2` generic Stage 6 pilot and controlled false-negative recovery.
+- Added and installed the narrow medium-risk read-only Docker socket framework extension.
+- Completed the Homepage `2.0.0 -> 2.1.2` Stage 6 pilot through Jenkins Build #8 with independent post-deploy verification.
+- Refreshed and merged the final Stage 6 documentation checkpoint; closed stale PR #55.
+- Captured read-only estate inventories for TestServer, ids-01 and k3s-node-01.
+- Classified Docker, Kubernetes, platform-managed, special-risk, local-build and pinned/manual workload classes.
+- Created and merged the three-host estate updater Phase 1 catalogue and routing-only front end.
+- Corrected the model so `managed-tested` and current `inspect-ready` state are distinct.
 
-### Carried forward
+### Carried forward to 29 August
 
-- Review today's nightly homelab report when it arrives around 08:00 and add any new evidence-backed actions to the current TODO.
-- Review and perform the controlled TestServer installation of the merged generic Stage 6 code, Prometheus manifest, Prometheus-specific inspector/executor boundary and reviewed monitoring Compose authority without recreating Prometheus.
-- Build and prove the Prometheus Jenkins human-approval path, then perform the `3.13.1 → 3.13.2` deployment only after every gate passes.
-- Tidy the Jenkins dashboard so container update pipelines are grouped by container/service in their own folders, preserving job history, credentials, triggers and the existing security boundary; keep Jenkins platform/control-plane utility jobs in a separate administrative grouping.
-- Plan the Proxmox VM/IaC project for PostgreSQL, TimescaleDB and Nginx, including VM sizing, storage, networking, backup/restore, monitoring, secrets handling and acceptance criteria.
-- Build a phased roadmap for migrating the current Docker platform to Proxmox, using the VM/IaC project to establish reusable Terraform/Ansible patterns before production workload migration.
-- Publish Homelab Defender through the controlled external route and link it from the Engineering Portfolio.
-- Audit Grafana Host Overview coverage and resolve any collection/query gaps deliberately.
+- Build the new **steady-state read-only inspection contract** rather than reusing the pre-approval transition inspector.
+- Start the steady-state inspector with Homepage on TestServer, with no arm/deploy/rollback capability.
+- Resolve shared authority roll-forward debt for Prometheus and Dashy before expecting their old transition manifests to inspect successfully.
+- Add the ids-01 read-only Stage 6 backend and use Prometheus `3.13.2` as the first amd64/cross-host proof after review.
+- Add a read-only Kubernetes inspection backend for k3s-node-01, beginning with digest-pinned `demo/whoami`.
+- Continue workload onboarding only through explicit reviewed runtime classes; do not weaken Docker socket, privileged/device, host-network, stateful or network-critical policies to increase coverage.
+- Review the 29 August nightly homelab report when it arrives around 08:00 and add only new evidence-backed actions.
+- Keep Jenkins dashboard organisation, Proxmox VM/IaC planning, Docker-to-Proxmox migration planning, Homelab Defender publication and Grafana Host Overview audit in the secondary backlog until the current Stage 6 priority reaches a clean checkpoint.
 
-This summary should be updated during the working session as carried-forward items are completed, deferred or otherwise resolved.
+**28 August is closed.**
