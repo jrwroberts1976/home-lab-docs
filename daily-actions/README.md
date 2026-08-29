@@ -61,6 +61,7 @@ The summary should be updated during the day as work moves from carried-forward/
 
 ## Reports
 
+- [2026-08-29](2026-08-29/daily-actions.md)
 - [2026-08-28](2026-08-28/daily-actions.md)
 - [2026-08-27](2026-08-27/todo.md)
 - [2026-08-26](2026-08-26/daily-actions.md)
@@ -94,8 +95,11 @@ daily-actions/
 ├── 2026-08-27/
 │   ├── todo.md
 │   └── stage*.md
-└── 2026-08-28/
+├── 2026-08-28/
+│   ├── daily-actions.md
+│   ├── todo.md
+│   └── stage6-prometheus-starting-point.md
+└── 2026-08-29/
     ├── daily-actions.md
-    ├── todo.md
-    └── stage6-prometheus-starting-point.md
+    └── todo.md
 ```
