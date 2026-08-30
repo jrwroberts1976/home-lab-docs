@@ -2,13 +2,7 @@
 
 ## Starting position
 
-29 August closed with Stage 6 formally complete and the Proxmox migration project active.
-
-The disposable VM proof has reached this validated chain:
-
-```text
-Git -> OpenTofu -> Proxmox -> cloud-init -> DHCP -> SSH -> Ansible inventory -> sudo/root
-```
+29 August closed with Stage 6 formally complete and the Proxmox migration project active. The disposable Debian VM had been created through OpenTofu and reached the first Ansible connectivity/sudo proof, but its monitoring, patching, reboot and recovery baseline still needed to be completed.
 
 Current disposable VM:
 
@@ -21,101 +15,124 @@ OS:          Debian 13 (trixie)
 CPU:         2 vCPU
 Memory:      2048 MB
 Disk:        24 GB local-lvm
-On boot:     false
 State:       running
 ```
 
-No production workload has been migrated to Proxmox yet. TestServer remains the live source platform.
+No production workload has been migrated to Proxmox. TestServer remains the live source platform.
 
-## Current Proxmox IaC checkpoint
+## Proxmox IaC authority
 
-Repository: `jrwroberts1976/proxmox`
+Repository: `jrwroberts1976/proxmox`  
+Branch: `iac/bootstrap-opentofu`
 
-Active branch at the 29 August close:
-
-```text
-iac/bootstrap-opentofu
-```
-
-Latest pushed proof commit recorded during the work:
+Significant checkpoints reached today include:
 
 ```text
-95bd863 Add disposable Proxmox VM Ansible inventory
+c4fa06e Add Debian patch management baseline
+941047f Add controlled Debian patch workflow
 ```
 
-The branch contains the OpenTofu provider bootstrap, disposable VM definition, lifecycle start change and Ansible lab inventory.
+The branch was pushed and local/remote authority was verified at `941047f` during the reboot/recovery proof.
 
-### Proven
+## Completed today
 
-- Proxmox least-privilege API access from TestServer.
-- OpenTofu `1.12.6` on TestServer.
-- BPG Proxmox provider pinned to `0.111.1`.
-- Official Debian 13 cloud image downloaded and checksum-pinned.
-- VM 100 created through OpenTofu.
-- VM configuration inspected before first boot.
-- `on_boot=false` retained.
-- DHCP and SSH key authentication proven.
-- cloud-init completed with no fatal errors.
-- Repository Ansible inventory works.
-- Ansible `ping` works.
-- Ansible `become`/sudo path reaches UID 0.
+### VM monitoring, logging and security baseline
 
-### Open technical debt
+- [x] Proved the Ansible baseline and repeatable/idempotent operation.
+- [x] Proved QEMU guest-agent operation.
+- [x] Proved node_exporter and Prometheus coverage for `debian-iac-test-01` under `linux-hosts`.
+- [x] Proved Alloy systemd-journal forwarding to central Loki.
+- [x] Proved CrowdSec consumes the VM SSH stream from Loki and correctly parses/whitelists private-network SSH traffic.
+- [x] Proved the standard Grafana Linux host alert baseline covers the VM.
 
-1. The first Ansible baseline dry-run needs to be repeated after making service-start tasks skip in check mode.
-2. The baseline playbook is not yet committed/pushed.
-3. The baseline has not yet been applied to the guest.
-4. Proxmox warned that `iothread=true` is ignored with the current `virtio-scsi-pci` controller.
-5. cloud-init reports a recoverable deprecation warning for the legacy `user` field.
-6. OpenTofu state is currently local to TestServer; production state backup/recovery design is not yet complete.
-7. Disposable VM destroy/rebuild and backup/restore proofs remain outstanding.
+### Patch-management baseline
 
-## Priority for today
+- [x] Added `unattended-upgrades` as the automated security-patching mechanism.
+- [x] Restricted automatic installation to Debian security origins.
+- [x] Explicitly disabled automatic reboot.
+- [x] Added the patch-status collector, systemd service and hourly timer.
+- [x] Exported pending updates, security updates, reboot-required state, unattended-upgrades state and patch timestamps through node_exporter.
+- [x] Proved those metrics in Prometheus.
+- [x] Added Grafana alert `Patch collector stale` with a two-hour freshness threshold and five-minute hold.
+- [x] Added Grafana alert `Security updates available` with a two-hour hold.
+- [x] Merged the Grafana alert definitions to `jrwroberts1976/grafana-alerting` and deployed only the two intended live rules.
 
-Complete the disposable IaC VM proof before designing or creating the production Docker VM.
+### Controlled patch/reboot workflow
 
-The safe order is:
+- [x] Added `ansible/playbooks/patch.yml`.
+- [x] Default behaviour is audit-only.
+- [x] `patch_apply=true` is required to install updates.
+- [x] `patch_reboot=true` is separately required before a reboot is permitted.
+- [x] The playbook rejects reboot approval unless patch application is also approved.
+- [x] Audit-only run passed with `failed=0`.
+- [x] Apply-without-reboot run passed with `failed=0`.
+- [x] Baseline service verification covers QEMU guest agent, node_exporter, Alloy and the patch-status timer.
 
-1. clean Ansible check-mode proof;
-2. commit the baseline configuration;
-3. apply the baseline;
-4. prove idempotence and monitoring/guest-agent operation;
-5. correct the OpenTofu disk/controller warning;
-6. prove zero unintended drift;
-7. define state/backup recovery;
-8. destroy and rebuild the disposable VM from source;
-9. prove restore/recovery before production migration.
+### Deliberate reboot and recovery proof
 
-## Migration safety boundary
+Pre-reboot boot ID:
 
-- Do not migrate Homepage or any other live service until the disposable proof is complete.
-- Do not remove or repurpose TestServer during the proof.
-- Keep Pi-hole/Unbound DNS independent of Proxmox.
-- Keep `ids-01` security services independent of Proxmox.
-- Keep Jenkins/Jenkins DinD protected and do not make Jenkins the only recovery path for infrastructure.
-- Keep OpenTofu state and credentials out of Git.
-- Require an off-host backup path before any production workload migration.
-- Prometheus and Loki remain late-migration services so observability remains available during earlier waves.
+```text
+ff3b030b-f673-4c9a-b7f7-985476e16f91
+```
 
-## Daily report triage
+Post-reboot boot ID:
 
-The automated/nightly homelab report normally arrives at about 08:00 local time.
+```text
+57bd9094-345f-42ea-92c1-a7f23cc66cd8
+```
 
-- If the 29 August report was not reviewed separately, review it and record any genuine evidence-backed follow-up.
-- Review the 30 August report when it arrives.
-- Deduplicate findings against `todo.md`.
-- Do not infer clean security, backup, patching or monitoring state from project validation alone.
+- [x] Ansible deliberately rebooted the VM and reported `rebooted=true`.
+- [x] VM returned successfully.
+- [x] Boot-ID change proved a real reboot occurred.
+- [x] QEMU guest agent recovered.
+- [x] node_exporter recovered.
+- [x] Alloy recovered.
+- [x] patch-status timer recovered.
+- [x] unattended-upgrades recovered.
+- [x] patch metrics reported zero pending/security updates and zero reboot requirement.
+- [x] Prometheus saw `up=1` after reboot.
+- [x] Patch metric age was fresh after reboot.
+- [x] Loki contained post-reboot systemd-journal entries from the VM.
 
-## Daily summary
+## End-of-day position
 
-### Completed today
+The **VM operating baseline is complete**: provisioning, Ansible configuration, monitoring, logging, CrowdSec integration, patch policy, patch metrics, Grafana alerts and reboot recovery are all proven.
 
-- None recorded yet. Update this section only as evidence-backed work completes on 30 August.
+The **overall disposable-VM acceptance is not yet complete** because the recovery/rebuild gates remain outstanding.
 
-### Carried forward
+### Remaining P0 work
 
-- Finish and prove the Ansible baseline.
-- Correct the OpenTofu storage-controller warning.
-- Define OpenTofu state recovery and Proxmox backup/restore strategy.
-- Complete disposable VM destroy/rebuild and recovery proof.
-- Only then begin the production Docker VM build and low-risk service migration sequence.
+1. Correct the OpenTofu `iothread` / SCSI-controller warning through IaC.
+2. Define/prove an off-host backup destination.
+3. Back up VM 100 and validate the backup.
+4. Capture pre-destroy equivalence evidence.
+5. Destroy VM 100 through OpenTofu.
+6. Recreate VM 100 entirely from Git/OpenTofu/cloud-init/Ansible.
+7. Prove functional equivalence after rebuild.
+8. Restore the backup separately and prove recovery.
+9. Produce the full “Build a New Proxmox VM From Scratch” runbook.
+
+## New planned work recorded today
+
+### Jenkins parameterised runbook pipeline
+
+After the reference VM reaches 100%, build a Jenkins pipeline where approved runbooks/playbooks are selected through build parameters. Begin with safe/audit actions, preserve manual execution, and require explicit approval for disruptive operations.
+
+### Container upgrade and rollback process
+
+Manually prove a standard upgrade flow before Jenkins automation: identify current/target image identity, review release notes, verify backup/rollback readiness, upgrade only the intended container, validate application/monitoring/logging, observe, record Git authority and prove rollback.
+
+### Containers that were not upgraded
+
+Create an exception inventory for skipped containers and classify the reason: current, pinned, local build, platform limitation, incompatible target, major migration, stateful/database safeguards, deprecated image, previous failure or unclear ownership. Every skipped container must end with an explicit `upgrade`, `migrate`, `replace`, `remain pinned`, or `retire` decision.
+
+### Zabbix platform
+
+The previously separate PostgreSQL + TimescaleDB + Nginx Proxmox VM idea is now part of the Zabbix project. After the reference VM is fully proven, build the Zabbix platform through OpenTofu + Ansible and apply the same monitoring, logging, security, patching, backup and recovery standards.
+
+## Stopping-point decision
+
+30 August is closed at a safe boundary. Do not start the Zabbix build or production workload migration until the disposable VM destroy/rebuild and backup/restore proofs are complete.
+
+See [`todo.md`](todo.md) for the carried-forward actions and [`../../project-register.md`](../../project-register.md) for the master programme backlog.
