@@ -10,41 +10,47 @@ It should be kept alongside the technical service documentation and updated when
 
 > **Scope:** This is a service-purpose inventory, not a replacement for `docker ps`. Container names, image versions, ports and runtime health should be verified against the live hosts when performing an operational change.
 
+## Documentation coverage rule
+
+Every row in this inventory must link to a Service Overview. Multiple rows may share an overview when they represent multiple instances or components of the same logical service, such as `portainer` + `portainer-agent`, `jenkins` + `jenkins-docker`, or Prometheus on both hosts.
+
+A new container should not be considered fully documented until its inventory row and Service Overview coverage are both present.
+
 ## Container inventory
 
-| Host | Container / service | Purpose in the network | Primary role |
-|---|---|---|---|
-| main | `prometheus` | Collects and stores time-series metrics from the homelab, including hosts, Docker, security controls, service health and Kubernetes state. | Monitoring / metrics |
-| main | `loki` | Stores application and infrastructure logs for centralised log search and investigation. | Logging |
-| main | `cadvisor` | Exposes Docker container resource and runtime metrics to Prometheus. | Monitoring / Docker telemetry |
-| main | `blackbox-exporter` | Performs HTTP/HTTPS, TCP and ICMP-style external/service probes used by Prometheus. | Availability monitoring |
-| main | `wud` | Watches container images for available updates and provides image currency information. | Container lifecycle / updates |
-| main | `crowdsec` | Detects hostile behaviour and provides threat-prevention decisions for the homelab. | Security / threat prevention |
-| main | `birdnet` | Provides BirdNET-based bird-sound detection used by the homelab monitoring/learning environment. | Application / learning |
-| main | `uptime-kuma` | Provides service availability and uptime monitoring. | Availability monitoring |
-| main | `autokuma` | Automates Uptime Kuma monitor management from homelab service definitions. | Availability automation |
-| main | `nginx-proxy-manager` | Provides reverse-proxy and TLS termination for published web services. | Network / reverse proxy |
-| main | `authelia` | Provides authentication and access-control protection for services behind the reverse proxy. | Security / authentication |
-| main | `duckdns` | Maintains the external DuckDNS record used for dynamic public addressing. | Network / DNS |
-| main | `portainer` | Provides Docker management and operational visibility through a web interface. | Docker management |
-| main | `portainer-agent` | Provides Docker endpoint access for Portainer management. | Docker management |
-| main | `dozzle` | Provides live Docker log viewing for operational troubleshooting. | Logging / operations |
-| main | `filebrowser` | Provides web-based access to selected files and directories. | File services |
-| main | `smokeping` | Measures network latency and packet-loss behaviour over time. | Network monitoring |
-| main | `librespeed` | Provides internal network throughput testing. | Network testing |
-| main | `jenkins` | Runs the Jenkins CI/CD controller for the engineering delivery lab. | CI/CD |
-| main | `jenkins-docker` | Provides the Docker-in-Docker build environment used by the Jenkins delivery lab. | CI/CD / container builds |
-| main | `engineering-portfolio` | Hosts the engineering portfolio application/site. | Web application |
-| main | `cloudflare-ddns` | Maintains Cloudflare DNS records for services using dynamic addressing. | Network / DNS |
-| main | `maintenance-page` | Provides the maintenance/availability page used during controlled service changes. | Web / change management |
-| ids-01 | `prometheus` | Stores the metrics used by the live Grafana service, including the `kubernetes-state` target for Homelab Defender. | Monitoring / metrics |
-| ids-01 | `grafana` | Provides the live homelab dashboards, central alert evaluation and email notification service. | Monitoring / visualisation / alerting |
-| ids-01 | `loki` | Provides the Loki datasource used by the live Grafana service for central log investigation and log-backed alerting. | Logging |
-| ids-01 | `blackbox-exporter` | Provides availability probes from the ids-01 monitoring stack. | Availability monitoring |
-| ids-01 | `wud` | Watches ids-01 container images and provides image-update information. | Container lifecycle / updates |
-| ids-01 | `cadvisor` | Exposes Docker/container resource metrics from the IDS host to Prometheus. | Monitoring / Docker telemetry |
-| ids-01 | `pihole` | Provides secondary DNS filtering and security-policy enforcement for DNS resilience. | DNS / security |
-| ids-01 | `unbound` | Provides recursive DNS resolution upstream of the secondary Pi-hole. | DNS / resolver |
+| Host | Container / service | Purpose in the network | Primary role | Overview |
+|---|---|---|---|---|
+| main | `prometheus` | Collects and stores time-series metrics from the homelab, including hosts, Docker, security controls, service health and Kubernetes state. | Monitoring / metrics | [Prometheus](prometheus.md) |
+| main | `loki` | Stores application and infrastructure logs for centralised log search and investigation. | Logging | [Loki](loki.md) |
+| main | `cadvisor` | Exposes Docker container resource and runtime metrics to Prometheus. | Monitoring / Docker telemetry | [cAdvisor](cadvisor.md) |
+| main | `blackbox-exporter` | Performs HTTP/HTTPS, TCP and ICMP-style external/service probes used by Prometheus. | Availability monitoring | [Blackbox Exporter](blackbox-exporter.md) |
+| main | `wud` | Watches container images for available updates and provides image currency information. | Container lifecycle / updates | [WUD](wud.md) |
+| main | `crowdsec` | Detects hostile behaviour and provides threat-prevention decisions for the homelab. | Security / threat prevention | [CrowdSec](crowdsec.md) |
+| main | `birdnet` | Provides BirdNET-based bird-sound detection used by the homelab monitoring/learning environment. | Application / learning | [BirdNET-Go](birdnet-go.md) |
+| main | `uptime-kuma` | Provides service availability and uptime monitoring. | Availability monitoring | [Uptime Kuma](uptime-kuma.md) |
+| main | `autokuma` | Automates Uptime Kuma monitor management from homelab service definitions. | Availability automation | [AutoKuma](autokuma.md) |
+| main | `nginx-proxy-manager` | Provides reverse-proxy and TLS termination for published web services. | Network / reverse proxy | [Nginx Proxy Manager](nginx-proxy-manager.md) |
+| main | `authelia` | Provides authentication and access-control protection for services behind the reverse proxy. | Security / authentication | [Authelia](authelia.md) |
+| main | `duckdns` | Maintains the external DuckDNS record used for dynamic public addressing. | Network / DNS | [DuckDNS](duckdns.md) |
+| main | `portainer` | Provides Docker management and operational visibility through a web interface. | Docker management | [Portainer](portainer.md) |
+| main | `portainer-agent` | Provides Docker endpoint access for Portainer management. | Docker management | [Portainer](portainer.md) |
+| main | `dozzle` | Provides live Docker log viewing for operational troubleshooting. | Logging / operations | [Dozzle](dozzle.md) |
+| main | `filebrowser` | Provides web-based access to selected files and directories. | File services | [File Browser](filebrowser.md) |
+| main | `smokeping` | Measures network latency and packet-loss behaviour over time. | Network monitoring | [SmokePing](smokeping.md) |
+| main | `librespeed` | Provides internal network throughput testing. | Network testing | [LibreSpeed](librespeed.md) |
+| main | `jenkins` | Runs the Jenkins CI/CD controller for the engineering delivery lab. | CI/CD | [Jenkins](jenkins.md) |
+| main | `jenkins-docker` | Provides the Docker-in-Docker build environment used by the Jenkins delivery lab. | CI/CD / container builds | [Jenkins](jenkins.md) |
+| main | `engineering-portfolio` | Hosts the engineering portfolio application/site. | Web application | [Engineering Portfolio](engineering-portfolio.md) |
+| main | `cloudflare-ddns` | Maintains Cloudflare DNS records for services using dynamic addressing. | Network / DNS | [Cloudflare DDNS](cloudflare-ddns.md) |
+| main | `maintenance-page` | Provides the maintenance/availability page used during controlled service changes. | Web / change management | [Maintenance Page](maintenance-page.md) |
+| ids-01 | `prometheus` | Stores the metrics used by the live Grafana service, including the `kubernetes-state` target for Homelab Defender. | Monitoring / metrics | [Prometheus](prometheus.md) |
+| ids-01 | `grafana` | Provides the live homelab dashboards, central alert evaluation and email notification service. | Monitoring / visualisation / alerting | [Grafana](grafana.md) |
+| ids-01 | `loki` | Provides the Loki datasource used by the live Grafana service for central log investigation and log-backed alerting. | Logging | [Loki](loki.md) |
+| ids-01 | `blackbox-exporter` | Provides availability probes from the ids-01 monitoring stack. | Availability monitoring | [Blackbox Exporter](blackbox-exporter.md) |
+| ids-01 | `wud` | Watches ids-01 container images and provides image-update information. | Container lifecycle / updates | [WUD](wud.md) |
+| ids-01 | `cadvisor` | Exposes Docker/container resource metrics from the IDS host to Prometheus. | Monitoring / Docker telemetry | [cAdvisor](cadvisor.md) |
+| ids-01 | `pihole` | Provides secondary DNS filtering and security-policy enforcement for DNS resilience. | DNS / security | [Pi-hole](pihole.md) |
+| ids-01 | `unbound` | Provides recursive DNS resolution upstream of the secondary Pi-hole. | DNS / resolver | [Unbound](unbound.md) |
 
 ## Monitoring topology
 
@@ -241,6 +247,7 @@ When adding a new container, document:
 - monitoring/health endpoint where applicable;
 - whether it is internet-facing, LAN-only or infrastructure-only;
 - dependency on another service;
-- backup/recovery importance.
+- backup/recovery importance;
+- Service Overview link.
 
-The objective is to make the Docker estate understandable without having to infer purpose from image names, ports or container labels.
+The objective is to make the Docker estate understandable without having to infer purpose from image names, ports or container labels, and to ensure every listed service has an owned documentation page.
