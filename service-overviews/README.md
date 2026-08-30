@@ -6,6 +6,7 @@ This section explains the services that make up the homelab, how they fit togeth
 
 - [Homelab Defender](homelab-defender.md) — Jenkins-delivered Kubernetes application ownership, runtime architecture, monitoring path, release identity, Grafana alerting and current telemetry limitations.
 - [Jenkins Operations](../jenkins/README.md) — operational ownership, delivery boundaries, platform baselines, controlled updates, validation and recovery planning for Jenkins, DinD, Trivy, registry publication and K3s deployment.
+- [OpenTofu — Infrastructure as Code](opentofu.md) — explains what OpenTofu is, why the homelab is adopting Infrastructure as Code, how OpenTofu, Proxmox, Ansible and Jenkins fit together, and the state, security, recovery and change-control model.
 - [Grafana Alerting](grafana-alerting.md) — central alert evaluation on `ids-01`, Git-managed rule definitions, provisioning-API deployment, protected API-token use, SMTP-secret delivery and notification validation.
 - [Docker Container Inventory](docker-container-inventory.md) — human-readable host/container purpose inventory and monitoring-service relationships.
 - [AI Security Review](ai-security-review.md) — documents `homelab-security-reader.py`, its Loki and Prometheus evidence sources, the Greenbone AI review path, and ingestion-health requirements.
