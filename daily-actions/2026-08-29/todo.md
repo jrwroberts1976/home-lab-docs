@@ -1,173 +1,89 @@
-# TODO — 29 August 2026
+# TODO — 29 August 2026 — CLOSED
 
-## P0 — Stage 6 estate updater
+## Day status
 
-### Completed today
+29 August is closed.
 
-1. ✅ **Build the steady-state read-only inspection contract.**
-   - separate from the pre-approval transition inspector;
-   - validates reviewed authority, immutable image identity, runtime shape, mounts, networks, health and protected workloads;
-   - contains no arm, deploy, rollback, pull or arbitrary command capability;
-   - positive and negative regression coverage completed.
+The original Stage 6 TODO was overtaken by later work completed on the same day. Stage 6 is now formally complete and must not be carried forward as active work.
 
-2. ✅ **Make Homepage and Dashy steady-state inspectable on TestServer.**
-   - Homepage `2.1.2` proven under the reviewed medium-risk read-only Docker socket exception;
-   - Dashy `4.6.0` proven under the standard-registry contract;
-   - both route through the estate updater read-only inspection path.
+## Completed / closed today
 
-3. ✅ **Integrate steady-state inspection into `homelab-update --action inspect`.**
-   - caller-facing inputs remain limited to service/version/approved hosts/action;
-   - backend selection comes from reviewed catalogue data;
-   - unscoped hosts are not contacted;
-   - `prepare`, `deploy` and `rollback` remain fail-closed in the current estate front end.
+### P0 — Stage 6 estate updater
 
-4. ✅ **Install and prove the ids-01 read-only Stage 6 inspection transport.**
-   - fixed-command SSH/sudo boundary retained;
-   - no broad shell or Docker authority introduced;
-   - ids-01 framework files remain `root:root 0700`;
-   - transport wrapper and sudoers boundaries preserved.
+1. ✅ Build the steady-state read-only inspection contract.
+2. ✅ Make Homepage and Dashy steady-state inspectable on TestServer.
+3. ✅ Integrate steady-state inspection into the estate updater.
+4. ✅ Install and prove the ids-01 read-only Stage 6 inspection transport.
+5. ✅ Use Prometheus as the first ids-01 / amd64 Stage 6 proof.
+6. ✅ Add the narrow internal-network `container-http` health strategy.
+7. ✅ Prepare Blackbox Exporter source authority on both hosts.
+8. ✅ Reconcile shared steady-state authority metadata in Git source.
+9. ✅ Roll the installed Stage 6 authority/manifests through the reviewed rollout required for closure.
+10. ✅ Re-prove the managed Stage 6 state through the final reviewed rollout.
+11. ✅ Resolve remaining tagged-image cases by either reviewed normalization or explicit formal deferral; rollback guarantees were not weakened.
+12. ✅ Close Blackbox/other remaining Stage 6 cases under the final reviewed Stage 6 closure decision.
+13. ✅ Complete the remaining standard-registry Stage 6 review scope required for closure.
+14. ✅ Complete final estate classification required for Stage 6 closure.
+15. ✅ Preserve dedicated treatment/deferral for higher-risk Portainer/WUD/cAdvisor/BirdNET/etc. cases rather than weakening policy.
+16. ✅ Consume the reusable normalization work where valid; completed one-shot contracts must not be rerun.
 
-5. ✅ **Use Prometheus as the first ids-01 / amd64 Stage 6 proof.**
-   - ids-01 Prometheus now `3.13.2`;
-   - combined TestServer + ids-01 steady-state inspection passed;
-   - both hosts independently proved immutable image/runtime/health invariants;
-   - no mutation permitted during steady-state inspection.
+Final closure:
 
-6. ✅ **Add a narrow internal-network HTTP health strategy.**
-   - `container-http` added for workloads with no reviewed host-published health endpoint;
-   - reviewed network must already be declared in runtime networks;
-   - container IP is derived at runtime, never hard-coded;
-   - fixed URL, undeclared network, invalid port and unsafe path cases fail closed;
-   - PR #76 merged as `1f78afcbb9041b4076c63b4d64b133e94f9a0896`;
-   - reviewed inspector/validator installed on TestServer and ids-01 with all containers unchanged.
+```text
+STAGE6_NORMALIZATIONS_COMPLETED=7
+STAGE6_NORMALIZATIONS_CONSUMED=7
+STAGE6_FORMAL_DEFERRALS=13
+STAGE6_UNREVIEWED_TAGGED_EXTERNAL_SERVICES=0
+ROLLBACK_REQUIRED=false
+STAGE6_CLOSED=true
+```
 
-7. ✅ **Prepare Blackbox Exporter source authority on both hosts.**
-   - TestServer and ids-01 both run `0.28.0`;
-   - added `BLACKBOX_EXPORTER_IMAGE` override in reviewed `docker-env` source;
-   - both live Compose files aligned to `docker-env` revision `d1ca9a5e10d151893573fd97d6a5c282ba912a1e`;
-   - no image pull, container recreate, restart or deployment performed;
-   - both Blackbox instances remain healthy.
+Closure documentation was merged in `homelab-container-version-control` PR #84 and the project plan was marked complete in PR #85.
 
-8. ✅ **Reconcile the shared steady-state authority metadata in Git source.**
-   - Dashy/Homepage retain unchanged dashboards Compose SHA-256;
-   - TestServer Prometheus advances to monitoring Compose SHA-256 `b8a895bd8e23c9f528cf9209f70368be42bf53f8044cbd99ef35eae188e3d68b`;
-   - ids-01 Prometheus advances to monitoring Compose SHA-256 `128a8e842a2b1bc54b966b93aac9d11ba1d7c0cc7d8eb89282c7f2ffa1f89ae9`;
-   - all four steady-state manifests now target `docker-env` revision `d1ca9a5e10d151893573fd97d6a5c282ba912a1e` in reviewed source;
-   - PR #77 merged as `60f6bc1d7bc8cbed12011b258bb2f12930f8f454`.
+### Proxmox migration project activated
 
-### Immediate open work
+17. ✅ Move the Proxmox VM Infrastructure-as-Code project from secondary planning into active implementation.
+18. ✅ Validate Proxmox host readiness and storage health.
+19. ✅ Create a least-privilege `iac@pve` service identity and API token model.
+20. ✅ Establish TestServer as the direct OpenTofu/Ansible control node.
+21. ✅ Bootstrap OpenTofu with the pinned BPG Proxmox provider and protected local state/secret exclusions.
+22. ✅ Create the disposable Debian 13 IaC proof VM as VM 100.
+23. ✅ Prove the VM configuration while stopped and prove zero drift after creation.
+24. ✅ Start the VM through Git/OpenTofu rather than manual hypervisor mutation.
+25. ✅ Prove cloud-init, DHCP, SSH and Debian guest boot.
+26. ✅ Add repository Ansible inventory and prove Ansible ping plus sudo/root control.
+27. ✅ Draft and syntax-check the first Ansible baseline playbook.
 
-9. ⬜ **Roll the installed Stage 6 authority checkout/manifests forward to the merged reviewed state.**
-   - target `docker-env` authority: `d1ca9a5e10d151893573fd97d6a5c282ba912a1e`;
-   - install the reviewed current steady-state manifests coherently with the authority checkout;
-   - preserve root ownership/security modes;
-   - do not leave a partial state where manifests and the single authority checkout pin different revisions.
+## Explicitly carried forward to 30 August
 
-10. ⬜ **Re-prove the existing four inspect-ready instances after authority roll-forward.**
-    - Dashy/TestServer `4.6.0`;
-    - Homepage/TestServer `2.1.2`;
-    - Prometheus/TestServer `3.13.2`;
-    - Prometheus/ids-01 `3.13.2`;
-    - require read-only success, mutation disabled and protected containers unchanged.
+1. ⬜ Re-run the corrected Ansible baseline with `--check --diff` and require `failed=0`.
+2. ⬜ Commit and push the baseline playbook after the clean dry-run.
+3. ⬜ Apply the baseline through Ansible: timezone, `qemu-guest-agent`, `prometheus-node-exporter`.
+4. ⬜ Re-run the baseline and prove idempotence (`changed=0`, `failed=0`).
+5. ⬜ Verify QEMU guest-agent status and node-exporter port/metrics from outside the VM.
+6. ⬜ Correct the OpenTofu `iothread`/SCSI-controller warning without manual VM edits.
+7. ⬜ Re-run OpenTofu plan and require zero unintended changes.
+8. ⬜ Decide and document the OpenTofu state-storage/backup/recovery approach before production VM work.
+9. ⬜ Complete disposable VM destroy/rebuild proof from Git/OpenTofu/Ansible.
+10. ⬜ Design and prove an off-host Proxmox backup/restore path before migrating production services.
+11. ⬜ Review the 29 August nightly report if it was not already reviewed elsewhere.
 
-11. ⬜ **Resolve Blackbox immutable configured-image normalization without weakening rollback guarantees.**
-    - current running configured image remains `prom/blackbox-exporter:v0.28.0`;
-    - steady-state requires the reviewed immutable digest reference;
-    - existing generic updater intentionally requires a genuinely different rollback digest/newer candidate and is not a truthful same-image normalization mechanism;
-    - either design a separate reviewed tag-to-digest normalization contract with a real rollback model or wait for the next Blackbox release;
-    - do not relax candidate/rollback identity checks merely to increase coverage.
+## Deferred / backlog — not active 30 August P0 unless reprioritised
 
-12. ⬜ **Complete Blackbox steady-state onboarding only after item 11 is resolved.**
-    - add TestServer and ids-01 steady-state manifests;
-    - TestServer may use the existing reviewed host HTTP health endpoint;
-    - ids-01 should use reviewed `container-http` on network `monitoring`, port `9115`, path `/-/healthy`;
-    - add catalogue routing only after immutable runtime identity is true;
-    - final target is six inspect-ready service/host instances with no deployment performed by inspection.
+- Read-only Kubernetes inspection backend / `demo/whoami` pilot.
+- Jenkins dashboard/folder organisation.
+- PostgreSQL + TimescaleDB + Nginx Proxmox VM project after the base VM pattern is proven.
+- Home Assistant deployment.
+- Homelab Defender controlled external publication.
+- Grafana Host Overview coverage audit.
+- Higher-risk container-update contracts already formally deferred by Stage 6 closure.
 
-## P1 — remaining Docker estate
+## Closed stopping point
 
-13. ⬜ **Continue onboarding standard-registry candidates first.**
-    - prefer low-risk stateless services with no Docker socket, device, privilege, host networking or critical state;
-    - reuse the reviewed steady-state framework wherever the workload already fits it;
-    - batch shared framework improvements rather than creating one-off exceptions per service.
+29 August closed with Stage 6 formally complete and the new Proxmox IaC path proven through:
 
-14. ⬜ **Continue classification of the remaining Docker estate by risk class.**
-    - standard registry;
-    - medium-risk read-only Docker socket;
-    - stateful registry workloads;
-    - local-build provenance workloads;
-    - privileged/device workloads;
-    - host-network workloads;
-    - writable Docker socket workloads;
-    - proxy/DNS/backup/security-critical coupled services.
+```text
+Git -> OpenTofu -> Proxmox -> cloud-init -> DHCP -> SSH -> Ansible -> sudo/root
+```
 
-15. ⬜ **Do not weaken policy for Portainer/WUD/cAdvisor/BirdNET/etc.**
-    - Portainer and Portainer Agent use writable Docker socket authority;
-    - TestServer WUD uses writable Docker socket authority;
-    - cAdvisor is privileged/device-backed;
-    - BirdNET-Go is device-backed;
-    - `crowdsec-exporter` uses host networking and a local build;
-    - these need dedicated contracts or deliberate pinned/manual status.
-
-16. ⬜ **Use successful Blackbox normalization, if built, as a reusable onboarding primitive.**
-    - the value should be broader than Blackbox alone;
-    - target other services that already run the correct image bytes but were started from a mutable/tagged configured image;
-    - retain explicit human approval and truthful rollback semantics for any runtime recreation.
-
-## P1 — Kubernetes backend
-
-17. ⬜ **Design a read-only Kubernetes inspection backend for k3s-node-01.**
-    - inspection only in the first increment;
-    - no apply, patch, rollout, Helm upgrade or resource mutation capability;
-    - use reviewed namespace/kind/name/image identity from the estate catalogue;
-    - report generation/observedGeneration, desired/ready replicas, current image and imageID;
-    - fail closed on ownership/authority ambiguity or workload drift.
-
-18. ⬜ **Use `demo/whoami` as the first Kubernetes inspection pilot.**
-    - distinguish direct-manifest authority from Helm-managed resources;
-    - verify current digest-pinned Deployment/ReplicaSet identity;
-    - no Kubernetes mutation in this pilot.
-
-19. ⬜ **Keep platform/network-critical Kubernetes workloads outside generic mutation.**
-    - CoreDNS, local-path-provisioner, metrics-server and Traefik remain platform-managed;
-    - MetalLB remains pinned/manual pending a dedicated Helm/network-critical contract;
-    - host-network components must not be treated as ordinary application workloads.
-
-## Daily operational step
-
-20. 🔁 **Review the 29 August nightly homelab report.**
-    - triage security, patching, backup, monitoring and health findings;
-    - add only genuine new evidence-backed actions;
-    - deduplicate against this list;
-    - update `daily-actions.md` with the result.
-
-## Secondary backlog — keep visible, do not displace P0
-
-21. ⬜ **Tidy Jenkins dashboard/folder organisation.**
-    - group service update jobs by container/service;
-    - keep control-plane/admin jobs separate;
-    - preserve history, credentials, triggers, parameters and security boundaries.
-
-22. ⬜ **Plan the Proxmox VM Infrastructure-as-Code project.**
-    - Terraform for Proxmox VM provisioning;
-    - Ansible for PostgreSQL, TimescaleDB and Nginx configuration;
-    - define sizing, storage, networking, DNS, backup/restore, monitoring and secrets model.
-
-23. ⬜ **Plan phased migration of the current Docker platform to Proxmox.**
-    - inventory dependencies and state;
-    - define target VM/LXC/Docker architecture;
-    - plan migration waves, parallel validation, data movement, DNS/ingress cutover and rollback.
-
-24. ⬜ **Publish Homelab Defender through the controlled external route.**
-    - expose only the intended application surface;
-    - keep Jenkins, registry and Kubernetes controls private;
-    - validate external TLS/application behaviour before linking from the Engineering Portfolio.
-
-25. ⬜ **Audit Grafana Host Overview coverage.**
-    - establish intended host list;
-    - distinguish collection gaps from dashboard-query/variable gaps;
-    - validate deliberate exclusions and final host count.
-
-## Definition of a good stopping point today
-
-A clean stopping point is reached when the installed authority and manifests match reviewed Git source, the four existing steady-state targets have been re-proven, no update is armed, no partial authority state remains, and Blackbox is either safely normalized under a reviewed contract or explicitly left pending with its immutable-image blocker documented.
+No production service was migrated and no existing source service was removed.
