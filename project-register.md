@@ -1,9 +1,9 @@
 # Homelab Master Project Register
 
-**Last reviewed:** 2026-08-25  
+**Last reviewed:** 2026-08-30  
 **Purpose:** single place to track active, parked, pending-verification and planned work across the homelab and closely related engineering projects.
 
-This register is intentionally broader than the day-to-day `README.md` todo list. It is the master programme view and should be updated when a project is started, paused, completed, or materially re-prioritised.
+This is the master programme view. Daily work remains recorded under `daily-actions/`, while implementation-specific repositories remain authoritative for their own code and detailed plans.
 
 ## Status legend
 
@@ -11,432 +11,459 @@ This register is intentionally broader than the day-to-day `README.md` todo list
 |---|---|
 | 🔵 Current | Main workstream currently being progressed |
 | 🟡 Active backlog | Open work that remains in scope |
-| ⏸ Parked | Intentionally paused until another dependency completes |
+| ⏸ Parked | Intentionally paused until a dependency completes |
 | 🧪 Pending verification | Implementation is substantially complete but needs a real-world or scheduled validation |
-| ✅ Complete | Closed; remove from active planning once documentation is final |
+| ✅ Complete | Closed or completed work retained only where useful for context |
 
-## Priority order
+## Programme rules
 
-1. **Finish Jenkins Gradle Delivery Lab**
-2. **Resume HP ProDesk / Proxmox migration**
-3. **Complete BIOS → monitoring → IaC foundation → test VM → backup/restore proof**
-4. **Continue Docker/container version-control work**
-5. **Rework resilient DNS / Pi 4 BirdNET placement**
-6. **Introduce Home Assistant**
-7. **Begin production Docker workload migration**
-8. Continue security, monitoring, documentation and recovery improvements in parallel
+1. Git is the source of truth for reproducible infrastructure and operational automation.
+2. OpenTofu, Ansible and Jenkins must never become dependent on undocumented GUI-only changes.
+3. Jenkins may automate proven procedures, but a manual recovery route must remain available.
+4. Monitoring, logging, patching, security and backup are part of the build definition, not afterthoughts.
+5. Production migration follows proof on disposable or low-risk workloads first.
+6. Backups for Proxmox workloads must have an off-host recovery path.
+7. Destructive or disruptive operations require explicit approval and a rollback path.
+8. Plaintext secrets must not be committed to Git.
 
----
+## Current priority order
 
-# 1. Jenkins Gradle Delivery Lab — 🔵 CURRENT
-
-**Repository:** `jrwroberts1976/jenkins-gradle-delivery-lab`
-
-- [ ] Finish the current Jenkins work before resuming the Proxmox project.
-- [ ] Complete and validate the Jenkins pipeline end-to-end.
-- [ ] Validate Gradle test stage.
-- [ ] Validate package stage.
-- [ ] Validate container build stage.
-- [ ] Validate Trivy/container security scanning.
-- [ ] Validate gated `PUBLISH_CONTAINER` behaviour.
-- [ ] Run a clean pipeline from start to finish.
-- [ ] Confirm Docker/DinD/socket arrangement is correct and documented.
-- [ ] Finish project documentation.
-- [ ] Document rebuild/recovery procedure.
-- [ ] Decide how Jenkins will later invoke Proxmox Infrastructure as Code.
-- [ ] Ensure Jenkins automates the workflow without becoming the only recovery path.
-
-**Exit gate:** Jenkins build/test/container workflow is stable, documented and reproducible.
+1. **Finish the Proxmox disposable reference VM to 100%.**
+2. **Write the full “Build a New Proxmox VM From Scratch” runbook.**
+3. **Build a parameterised Jenkins runbook pipeline.**
+4. **Prove a repeatable container-upgrade and rollback process manually.**
+5. **Classify and resolve containers that were not upgraded.**
+6. **Automate the proven container-upgrade process through Jenkins.**
+7. **Build the Zabbix platform VM using the proven Proxmox pattern.**
+8. Continue the wider Proxmox migration, DNS resilience, Home Assistant, k3s, monitoring, security and documentation backlog.
 
 ---
 
-# 2. HP ProDesk / Proxmox Migration — ⏸ PARKED UNTIL JENKINS FINISHES
+# 1. Proxmox disposable reference VM — 🔵 CURRENT
 
-**Repository:** `jrwroberts1976/proxmox`
+**Repository:** `jrwroberts1976/proxmox`  
+**Reference VM:** `debian-iac-test-01` / VM ID `100`
 
-## Host bootstrap
+## Proven build baseline
 
-- [x] Install Proxmox VE 9.2.
-- [x] Disable PVE Enterprise repository.
-- [x] Disable Ceph Enterprise repository.
-- [x] Enable `pve-no-subscription`.
-- [x] Fully patch the host.
-- [x] Prove headless reboot/recovery.
-- [x] Configure management address `192.168.2.70/24`.
-- [x] Add ASUS DHCP reservation for `192.168.2.70`.
-- [x] Hardware inventory.
-- [x] NVMe SMART baseline.
-- [x] Validate 1 Gbps full-duplex Ethernet.
-- [x] Validate NTP/Chrony time synchronisation.
-- [x] Validate Intel VT-x.
-- [x] Validate Intel VT-d/IOMMU and IRQ remapping.
-- [x] Capture CPU/PCH/NVMe temperature baseline.
-- [x] Confirm `prometheus-node-exporter` is installed and serving metrics on port 9100.
+- [x] Create the Debian VM through OpenTofu.
+- [x] Configure CPU, RAM, disk, NIC and cloud-init through IaC.
+- [x] Bootstrap SSH access and Ansible inventory.
+- [x] Apply the Ansible baseline and prove idempotence.
+- [x] Install and prove QEMU guest agent.
+- [x] Install node_exporter and register the VM under Prometheus `linux-hosts`.
+- [x] Forward systemd journal logs through Alloy to central Loki.
+- [x] Feed VM SSH events from Loki into CrowdSec and prove parser/whitelist behaviour.
+- [x] Prove the standard Grafana Linux alert baseline covers the VM.
+- [x] Configure security-only unattended upgrades.
+- [x] Explicitly disable automatic reboot.
+- [x] Export patch-status metrics to Prometheus.
+- [x] Deploy Grafana alerts for stale patch collection and outstanding security updates.
+- [x] Build a controlled Ansible patch workflow with audit/apply/reboot controls.
+- [x] Prove audit-only patch execution.
+- [x] Prove apply-without-reboot execution.
+- [x] Perform a deliberate VM reboot and prove recovery through SSH, QEMU agent, node_exporter, Alloy/Loki, unattended-upgrades, patch timer and Prometheus.
 
-## Firmware
+## Remaining acceptance work
 
-- [ ] Verify latest supported HP Q23 BIOS for the ProDesk 400 G4 DM.
-- [ ] Download only the official HP firmware package.
-- [ ] Update BIOS if appropriate.
-- [ ] Recheck VT-x after BIOS update.
-- [ ] Recheck VT-d/IOMMU after BIOS update.
-- [ ] Recheck headless boot after BIOS update.
-- [ ] Recheck thermal baseline after BIOS update.
-
-## Monitoring
-
-- [ ] Add `192.168.2.70:9100` to Prometheus.
-- [ ] Confirm Prometheus target reports `UP`.
-- [ ] Add Proxmox host to Grafana.
-- [ ] CPU/load panels.
-- [ ] RAM/swap panels.
-- [ ] Disk/NVMe capacity and I/O panels.
-- [ ] Network throughput/error panels.
-- [ ] CPU/PCH/NVMe temperature panels.
-- [ ] Monitor NVMe unsafe-shutdown counter; baseline is 103.
-- [ ] Add appropriate availability, thermal and storage alerts.
-
-## Infrastructure as Code foundation
-
-- [ ] Establish repository structure for IaC.
-- [ ] Select OpenTofu/Terraform Proxmox provider.
-- [ ] Create restricted Proxmox API credentials.
-- [ ] Store secrets outside Git and enforce `.gitignore`/SOPS policy as appropriate.
-- [ ] Create reusable VM definitions/modules.
-- [ ] Establish cloud-init templates.
-- [ ] Establish Ansible inventory.
-- [ ] Build common Linux Ansible role.
-- [ ] Automate users, SSH, packages, updates and base hardening.
-- [ ] Automate node_exporter deployment/configuration.
-- [ ] Build Docker-host Ansible role.
-- [ ] Document manual IaC workflow.
-- [ ] Integrate IaC execution into Jenkins only after the manual path is proven.
-
-## IaC proof
-
-- [ ] Create the first disposable Debian VM through code, not the GUI.
-- [ ] Configure it with cloud-init.
-- [ ] Configure it with Ansible.
-- [ ] Add monitoring automatically.
-- [ ] Destroy it through IaC.
-- [ ] Recreate it from Git.
+- [ ] Correct the OpenTofu `iothread` / SCSI-controller warning without manual Proxmox drift.
+- [ ] Decide and prove the off-host backup destination for VM 100.
+- [ ] Create and validate a backup of VM 100.
+- [ ] Capture pre-destroy evidence needed for equivalence comparison.
+- [ ] Destroy VM 100 through OpenTofu only.
+- [ ] Recreate VM 100 entirely from Git/OpenTofu/cloud-init/Ansible.
 - [ ] Prove the rebuilt VM is functionally equivalent.
+- [ ] Re-prove SSH, QEMU agent, node_exporter, Prometheus, Grafana alerts, Alloy/Loki, CrowdSec, unattended upgrades and patch monitoring after rebuild.
+- [ ] Restore the backup as a separate recovery proof.
+- [ ] Prove the restored VM boots, is reachable and passes the health baseline.
+- [ ] Close the disposable VM proof only after destroy/rebuild and restore both pass.
 
-## Backup and recovery
-
-- [ ] Decide external Proxmox backup destination.
-- [ ] Configure VM backup jobs.
-- [ ] Back up disposable test VM.
-- [ ] Delete test VM.
-- [ ] Restore test VM.
-- [ ] Validate restored VM.
-- [ ] Document disaster-recovery procedure.
-- [ ] Ensure no critical backup relies only on the Proxmox NVMe.
-
-## Security
-
-- [ ] Review Proxmox firewall policy.
-- [ ] Review SSH configuration.
-- [ ] Review whether `rpcbind` / port 111 is required.
-- [ ] Remove unnecessary exposed services where safe.
-- [ ] Add Proxmox host to Greenbone scanning.
-- [ ] Run baseline vulnerability scan.
-- [ ] Scan IaC-created VMs.
-
-## Capacity
-
-- [ ] Decide RAM upgrade path from current 8 GB.
-- [ ] Likely target: 32 GB using 2 x 16 GB DDR4 SO-DIMM.
-- [ ] Decide storage expansion before Loki/Prometheus migration.
-- [ ] Measure actual 24x7 electricity consumption.
-
-**Rule:** production VMs should be created through IaC rather than manually in the Proxmox GUI.
+**Exit gate:** the VM can be built, patched, monitored, rebooted, backed up, destroyed, rebuilt from Git and independently restored without relying on undocumented GUI changes.
 
 ---
 
-# 3. Docker / Container Version Control — 🟡 ACTIVE BACKLOG
+# 2. New Proxmox VM build runbook — 🟡 NEXT
+
+Produce a detailed end-to-end guide using the reference VM as the proven implementation.
+
+- [ ] Document prerequisites and required repositories.
+- [ ] Document VM naming, VM-ID and IP/reservation decisions.
+- [ ] Document OpenTofu provider/authentication setup without exposing secrets.
+- [ ] Document cloud-image acquisition/checksum handling.
+- [ ] Document VM resource definition and cloud-init configuration.
+- [ ] Document plan/review/apply gates.
+- [ ] Document first boot, DHCP/SSH and guest-agent verification.
+- [ ] Document Ansible inventory and baseline application.
+- [ ] Document node_exporter and Prometheus registration.
+- [ ] Document Alloy/Loki enrolment.
+- [ ] Document CrowdSec integration where applicable.
+- [ ] Document patch policy, metrics and Grafana alert enrolment.
+- [ ] Document controlled patch/reboot workflow.
+- [ ] Document deliberate reboot/recovery proof.
+- [ ] Document backup, destroy/rebuild and restore acceptance tests.
+- [ ] Provide a concise new-VM checklist alongside the full runbook.
+
+**Exit gate:** another VM can be built from scratch by following the documentation without reconstructing decisions from chat history.
+
+---
+
+# 3. Jenkins parameterised runbook pipeline — 🟡 PLANNED
+
+Build a Jenkins pipeline that invokes approved operational runbooks/playbooks through controlled build parameters.
+
+- [ ] Define the approved runbook catalogue.
+- [ ] Add a build parameter for runbook/playbook selection.
+- [ ] Add target host/group parameters where appropriate.
+- [ ] Start with read-only/audit actions.
+- [ ] Add syntax/validation gates before execution.
+- [ ] Add safe parameter defaults.
+- [ ] Separate patch approval from reboot approval.
+- [ ] Require explicit approval for destructive/disruptive operations.
+- [ ] Capture command, target, Git revision and result as build evidence.
+- [ ] Protect credentials in Jenkins.
+- [ ] Ensure logs do not expose secrets.
+- [ ] Keep every Jenkins action reproducible manually from the command line.
+- [ ] Add OpenTofu plan/validation operations only after the manual path is proven.
+- [ ] Do not make Jenkins the sole recovery route.
+
+**Initial candidate runbooks:** Linux patch audit, controlled patch apply, approved reboot/recovery validation, service-health checks and later container-upgrade operations.
+
+---
+
+# 4. Container upgrade and rollback process — 🟡 HIGH PRIORITY
+
+The existing container-version-control work establishes authority and candidate discovery; the next requirement is to prove the actual upgrade procedure safely.
 
 **Repository:** `jrwroberts1976/homelab-container-version-control`
 
-- [ ] Continue Stage 0 inventory of TestServer and ids-01 Compose declarations.
-- [ ] Compare declared image tags/digests with actually running containers.
-- [ ] Classify drift.
-- [ ] Classify floating tags.
-- [ ] Classify unmanaged containers.
-- [ ] Inventory secret locations without committing secrets.
-- [ ] Establish version-pinning policy.
-- [ ] Establish controlled update workflow.
-- [ ] Add drift detection.
-- [ ] Decide how WUD fits into the governed update path.
-- [ ] Bring remaining production Compose definitions into Git.
-- [ ] Document rollback and recovery.
-- [ ] Use the maintenance-page stack as a production pilot pattern.
+- [ ] Select representative low-risk/stateless container candidates.
+- [ ] Record current image tag/digest and runtime identity before each test.
+- [ ] Identify the proposed target version/digest.
+- [ ] Review release notes and breaking changes.
+- [ ] Confirm configuration/data backup or rollback point.
+- [ ] Pull/stage the candidate image without changing production first where practical.
+- [ ] Run candidate security/Trivy checks where applicable.
+- [ ] Recreate only the intended container/service.
+- [ ] Validate container health.
+- [ ] Validate application functionality.
+- [ ] Check startup/migration logs.
+- [ ] Validate monitoring and alerting.
+- [ ] Validate Loki/log ingestion where applicable.
+- [ ] Observe the upgraded service for an agreed period.
+- [ ] Record the deployed version/digest in Git.
+- [ ] Prove rollback to the previous known-good image/version.
+- [ ] Repeat on at least one stateful or higher-risk service with the additional backup/migration controls it needs.
+- [ ] Write the resulting container-upgrade SOP.
 
-**Related BAU:** one successful scheduled WUD scan with `0 errors` remains as final verification of the recent DNS/WUD repair.
+**Exit gate:** upgrades and rollbacks are repeatable, evidence-backed and safe enough to automate.
 
 ---
 
-# 4. Docker Workload Migration to Proxmox — 🟡 PLANNED
+# 5. Containers not upgraded / exception backlog — 🟡 HIGH PRIORITY
+
+Create a complete list of containers skipped or excluded from earlier upgrade work and record why.
+
+Classify each skipped container as one of:
+
+- already current;
+- deliberately pinned;
+- locally built image;
+- architecture/platform limitation;
+- no compatible newer image;
+- major-version migration required;
+- stateful/database service requiring special controls;
+- abandoned/deprecated upstream image;
+- previous upgrade failure;
+- unclear ownership or image authority.
+
+For every exception:
+
+- [ ] Record current container/service/image/version.
+- [ ] Record the reason it was skipped.
+- [ ] Decide `upgrade`, `migrate`, `replace`, `remain pinned`, or `retire`.
+- [ ] Record the evidence and owner/source-of-truth repository.
+- [ ] For intentional pins, document the review date/condition for revisiting them.
+- [ ] For migration-required services, create a dedicated migration task/runbook.
+- [ ] Ensure no container silently falls outside the governed version-control process.
+
+---
+
+# 6. Jenkins automation of container upgrades — 🟡 PLANNED
+
+Start only after the manual container upgrade/rollback process is proven.
+
+- [ ] Expose candidate selection through controlled Jenkins parameters.
+- [ ] Generate a non-secret deployment plan before mutation.
+- [ ] Require authority/clean-Git checks.
+- [ ] Require current runtime and target digest evidence.
+- [ ] Require security/Trivy gate where defined.
+- [ ] Require backup/rollback readiness.
+- [ ] Require human approval before deployment.
+- [ ] Upgrade only the selected service.
+- [ ] Run service/application/monitoring/logging validation.
+- [ ] Provide an explicit rollback operation.
+- [ ] Record outcome and deployed image authority.
+
+---
+
+# 7. Zabbix platform on Proxmox — 🟡 PLANNED
+
+This project includes the previously separate PostgreSQL + TimescaleDB + Nginx VM idea. It is not a separate project anymore.
+
+**Dependency:** start after the reference Proxmox VM build is 100% complete.
+
+- [ ] Define Zabbix architecture and sizing.
+- [ ] Provision the VM through OpenTofu.
+- [ ] Bootstrap through cloud-init.
+- [ ] Configure the host through Ansible.
+- [ ] Deploy PostgreSQL.
+- [ ] Deploy TimescaleDB.
+- [ ] Deploy Nginx.
+- [ ] Deploy the required Zabbix server/frontend/agent components.
+- [ ] Manage configuration and secrets through the approved Git/SOPS model.
+- [ ] Apply the standard Linux monitoring baseline.
+- [ ] Apply Alloy/Loki logging.
+- [ ] Apply CrowdSec/security controls where appropriate.
+- [ ] Apply security-only unattended upgrades and patch-status monitoring.
+- [ ] Use the controlled patch/reboot workflow.
+- [ ] Add application/database-specific monitoring and alerts.
+- [ ] Define database backup and recovery.
+- [ ] Back up the VM off-host.
+- [ ] Perform reboot/recovery testing.
+- [ ] Perform restore testing.
+- [ ] Make the complete Zabbix platform rebuildable from Git.
+
+---
+
+# 8. Proxmox backup and disaster recovery — 🟡 ACTIVE BACKLOG
+
+- [ ] Select a physically separate backup destination.
+- [ ] Decide whether Proxmox Backup Server or standard Proxmox backup jobs are used initially.
+- [ ] Define retention policy.
+- [ ] Define encryption requirements.
+- [ ] Define backup schedules.
+- [ ] Configure backup monitoring and alerting.
+- [ ] Prove a disposable VM backup.
+- [ ] Prove independent restore.
+- [ ] Document the complete recovery procedure.
+- [ ] Ensure no production workload relies solely on backup storage inside the Proxmox host.
+
+---
+
+# 9. Proxmox host monitoring — 🟡 ACTIVE BACKLOG
+
+- [ ] Add/confirm `192.168.2.70:9100` in Prometheus.
+- [ ] Confirm persistent target `UP`.
+- [ ] Add the Proxmox host to Grafana host dashboards.
+- [ ] Add CPU/RAM/load/filesystem panels.
+- [ ] Add disk-I/O/network panels.
+- [ ] Add CPU/package, PCH and NVMe temperatures.
+- [ ] Add host-down alerting.
+- [ ] Add disk-space alerting.
+- [ ] Add temperature alerting.
+- [ ] Add SMART/NVMe reporting where practical.
+- [ ] Track the NVMe unsafe-shutdown baseline for increases.
+- [ ] Evaluate a Proxmox API exporter once node-level monitoring is stable.
+
+---
+
+# 10. Proxmox host security and firmware — 🟡 ACTIVE BACKLOG
+
+## Security
+
+- [ ] Review Proxmox firewall configuration and policy.
+- [ ] Review SSH and administrative access.
+- [ ] Review whether `rpcbind` / port 111 is required.
+- [ ] Remove unnecessary exposure where safe.
+- [ ] Add the host to Greenbone scanning.
+- [ ] Capture and accept/remediate the vulnerability baseline.
+- [ ] Confirm the management UI is not externally exposed.
+- [ ] Finish the documented host patch/update procedure.
+
+## Firmware/readiness
+
+- [ ] Verify the latest supported HP Q23 BIOS for the exact ProDesk model.
+- [ ] Update using official HP firmware if appropriate.
+- [ ] Re-prove VT-x and VT-d/IOMMU after any BIOS change.
+- [ ] Re-prove headless boot.
+- [ ] Revalidate networking.
+- [ ] Revalidate temperatures and SMART health.
+
+---
+
+# 11. Reusable Proxmox IaC foundation — 🟡 ACTIVE BACKLOG
+
+- [ ] Decide durable OpenTofu state storage/recovery.
+- [ ] Formalise VM naming conventions.
+- [ ] Formalise VM-ID allocation.
+- [ ] Formalise production IP-address allocation.
+- [ ] Create a reusable VM module.
+- [ ] Turn the current Ansible baseline into a reusable Linux role.
+- [ ] Create reusable monitoring/logging/patch enrolment roles where useful.
+- [ ] Add formatting, linting and validation tooling.
+- [ ] Preserve the documented manual OpenTofu/Ansible recovery path.
+
+---
+
+# 12. Docker workload migration to Proxmox — 🟡 PLANNED
 
 - [ ] Inventory every current Docker workload.
 - [ ] Classify each service as `migrate`, `keep`, `rebuild`, or `retire`.
-- [ ] Build Debian Docker VM through IaC.
-- [ ] Configure Docker host through Ansible.
+- [ ] Build the production Docker VM through the proven IaC pattern.
+- [ ] Configure Docker through Ansible.
 - [ ] Put Compose definitions into Git.
-- [ ] Establish persistent-data layout.
+- [ ] Establish persistent-data layout and backup policy.
 - [ ] Establish secret-handling model.
-- [ ] Establish backup strategy.
-- [ ] Migrate low-risk services first.
-- [ ] Validate each migration independently.
-- [ ] Keep old instance available until new instance passes acceptance testing.
-- [ ] Move Grafana later in the migration.
-- [ ] Move Loki later in the migration.
-- [ ] Move Prometheus only after the replacement monitoring path is proven.
-- [ ] Review the future role of the existing TestServer Pi.
+- [ ] Migrate low-risk/stateless services first.
+- [ ] Validate functionality, monitoring, logging and rollback per service.
+- [ ] Keep the old instance until acceptance is complete.
+- [ ] Migrate Grafana later.
+- [ ] Migrate Loki later.
+- [ ] Migrate Prometheus only after replacement observability is proven.
+- [ ] Review the final role of TestServer after migration.
+
+Suggested early order: Homepage/Dashy-style presentation services, Dozzle and other low-risk utilities, WUD-related tooling, other stateless services, then Uptime Kuma before observability-core services.
 
 ---
 
-# 5. DNS Resilience / Raspberry Pi Reorganisation — 🟡 PLANNED
+# 13. Home automation — 🟡 PLANNED
 
-## Pi 4 — garden room
-
-Target role: **BirdNET-Go + Pi-hole + Unbound + monitoring** over wired Cat 6.
-
-- [ ] Prepare Pi 4 for final role.
-- [ ] Install/configure BirdNET-Go.
-- [ ] Configure Pi-hole.
-- [ ] Configure Unbound.
-- [ ] Add monitoring/exporters.
-- [ ] Test BirdNET-Go and DNS concurrently.
-- [ ] Check CPU/RAM/thermal behaviour under combined load.
-- [ ] Move Pi 4 to garden room.
-- [ ] Verify wired Cat 6 link after relocation.
-- [ ] Verify BirdNET audio capture.
-- [ ] Verify DNS after relocation.
-
-## Pi 3
-
-- [ ] Configure/retain independent Pi-hole.
-- [ ] Configure Unbound.
-- [ ] Add monitoring.
-- [ ] Ensure it has no dependency on Pi 4 or Proxmox.
-
-## Resilience validation
-
-- [ ] Synchronise required blocklists/local DNS/policy.
-- [ ] Advertise both DNS servers through DHCP.
-- [ ] Configure Proxmox eventually to use both resolvers.
-- [ ] Power down Pi 3 and prove DNS survives.
-- [ ] Restore Pi 3.
-- [ ] Power down Pi 4 and prove DNS survives.
-- [ ] Restore Pi 4.
-- [ ] Document recovery/failover procedure.
-
----
-
-# 6. Home Automation — 🟡 PLANNED
-
-- [ ] Deploy Home Assistant OS as a dedicated Proxmox VM.
-- [ ] Provision via IaC where practical.
-- [ ] Configure backups.
-- [ ] Perform restore test.
+- [ ] Deploy Home Assistant OS on Proxmox.
+- [ ] Provision through IaC where practical.
 - [ ] Integrate Tapo devices.
-- [ ] Investigate Tapo energy-monitoring data.
-- [ ] Decide which home-automation metrics should flow to Prometheus/Grafana.
-- [ ] Add service monitoring and alerts.
+- [ ] Investigate Tapo energy data and Grafana integration.
+- [ ] Add monitoring/alerts where practical.
+- [ ] Configure off-host backups.
+- [ ] Perform restore testing.
 - [ ] Document operation and recovery.
 
 ---
 
-# 7. Pi-hole Policy Alert Latency — 🟡 PAUSED
+# 14. DNS resilience / Pi 4 garden-room role — 🟡 PLANNED
 
-Known historical end-to-end baseline: approximately **3m04s**.
+## Pi 4 target
 
-- [ ] Resume Pi-hole Policy Alert Latency Improvement Runbook.
-- [ ] Re-establish current latency baseline.
-- [ ] Measure collector latency.
-- [ ] Measure Prometheus scrape contribution.
-- [ ] Measure Grafana evaluation contribution.
-- [ ] Measure notification grouping contribution.
-- [ ] Reduce collector delay if practical.
-- [ ] Review scrape interval trade-offs.
-- [ ] Review Grafana evaluation interval.
-- [ ] Review notification grouping policy.
-- [ ] Repeat end-to-end test.
-- [ ] Document final configuration and measured result.
+**BirdNET-Go + Pi-hole + Unbound + monitoring over wired Cat 6.**
 
----
+- [ ] Prepare the Pi 4 for the garden-room role.
+- [ ] Validate BirdNET-Go.
+- [ ] Configure/validate Pi-hole + Unbound alongside BirdNET-Go.
+- [ ] Add/retain monitoring.
+- [ ] Check CPU/RAM/thermal behaviour under combined load.
+- [ ] Move the Pi 4 to the garden room and prove the wired link.
 
-# 8. Pi-hole Maintenance / Reporting — 🟡 ACTIVE BACKLOG
+## Resilience
 
-- [ ] Remove synthetic Pi-hole enforcement-probe traffic from raw seven-day client/category Prometheus totals while retaining all five active DNS block tests.
-- [ ] Maintain weekly automatic blocklist updates.
-- [ ] Confirm list-update metrics and enforcement-health metrics.
-- [ ] Continue category enforcement monitoring for general/adult/gambling/threat/bypass policies.
-- [ ] Maintain Pi-hole dashboard/reporting.
-- [ ] Maintain weekly email reporting.
-- [ ] Ensure both future DNS nodes receive equivalent monitoring.
+- [ ] Keep the Pi 3 as the other independent Pi-hole/Unbound node.
+- [ ] Synchronise required DNS/blocking configuration.
+- [ ] Re-test failover with either DNS node unavailable.
+- [ ] Keep DNS independent of Proxmox.
+- [ ] Document final failover/recovery procedure.
 
 ---
 
-# 9. Monitoring / Grafana / Prometheus / Loki — 🟡 ONGOING
+# 15. k3s-node-01 follow-up — 🟡 ACTIVE BACKLOG
 
-- [ ] Add Proxmox to Prometheus/Grafana.
-- [ ] Continue Network Host Overview dashboard work.
-- [ ] Finish/validate hostname-variable behaviour.
-- [ ] Build installed-software/version/update dashboard.
-- [ ] Add weekly software/update email report.
-- [ ] Review cAdvisor usage and whether it remains justified.
-- [ ] Review CrowdSec monitoring/usage.
-- [ ] Investigate CrowdSec reporting synchronisation / DNS resolution.
-- [ ] Continue Alloy migration review.
-- [ ] Decide where Promtail can be retired after Alloy replacement is proven.
-- [ ] Review elevated Promtail/cAdvisor CPU where applicable.
-- [ ] Restore and verify Suricata 24-hour collection after collection timeout.
-- [ ] Improve Suricata dashboards.
-- [ ] Add Greenbone → Loki ingestion health check.
-- [ ] Continue homelab Hardware Health dashboard validation.
-- [ ] Tapo → Grafana proof of concept.
+- [ ] Standardise security-only unattended upgrades after the disposable VM patch model is fully accepted.
+- [ ] Keep automatic reboot disabled.
+- [ ] Add patch-status metrics and alerting.
+- [ ] Add the controlled patch/reboot workflow.
+- [ ] Add Kubernetes-specific reboot gates: k3s service healthy, node Ready, workloads recovered.
+- [ ] Resume and complete the unfinished k3s Secrets Encryption work.
+- [ ] Prove encrypted-at-rest status and restart behaviour.
+- [ ] Merge/close any remaining secret-encryption branch cleanly.
 
 ---
 
-# 10. Security / Greenbone / IDS — 🟡 ONGOING
+# 16. Monitoring, Grafana and security housekeeping — 🟡 ONGOING
 
-- [ ] Review current automated Greenbone findings.
-- [ ] Continue daily/weekly scan automation validation.
-- [ ] Finish any remaining Greenbone AI/security-reader runtime work.
-- [ ] Review accepted-risk handling/suppression.
-- [ ] Add Proxmox and future VMs to Greenbone.
-- [ ] Add further internal scanning/pentesting capability to `ids-01`.
-- [ ] Continue security baseline hardening.
-- [ ] Review CrowdSec usage.
-- [ ] Review unnecessary network services/ports.
-- [ ] Secure/retire switch HTTP management if still applicable.
+- [ ] Reconcile `grafana-alerting` Git definitions with live Grafana where drift remains.
+- [ ] Reconcile the older Git `Linux Host Down` definition with the newer host-preserving live rule.
+- [ ] Selectively merge useful recovered patch-dashboard panels rather than bulk-restoring old dashboards.
+- [ ] Continue the Network Host Overview work.
+- [ ] Review cAdvisor usage.
+- [ ] Review CrowdSec monitoring/reporting.
+- [ ] Finish Alloy migration review and retire Promtail only when safe.
+- [ ] Restore/verify Suricata 24-hour collection and improve dashboards.
+- [ ] Add Greenbone → Loki ingestion health checking.
+- [ ] Continue vulnerability scanning and accepted-risk handling.
 - [ ] Keep `ids-01` independent from Proxmox.
 
 ---
 
-# 11. k3s Secrets Encryption — 🟡 UNFINISHED
+# 17. Pi-hole, router and unknown-device follow-up — 🟡 ONGOING
 
-- [ ] Resume investigation into secret-encryption start-stage failures.
-- [ ] Inspect k3s server logs around encryption errors.
-- [ ] Determine why start-stage validation fails.
-- [ ] Validate persistent encryption configuration.
-- [ ] Validate restart behaviour.
-- [ ] Confirm encryption status.
-- [ ] Confirm Kubernetes Secrets are encrypted at rest.
-- [ ] Complete without unnecessary manual workload mutation.
-- [ ] Document final result and recovery implications.
-
----
-
-# 12. Unknown Client / Blocked-MAC Monitoring — 🧪 PENDING VERIFICATION
-
-Known investigated client: `192.168.2.159`; blocked MAC `be:ba:54:d7:ec:6f`.
-
-- [x] Blocked-MAC monitoring implementation completed.
-- [ ] Validate on a real blocked-MAC trigger.
-- [ ] Keep MAC blocked unless positively identified.
-- [ ] Alert if the device returns.
-- [ ] Improve generic unknown-MAC alerting.
-- [ ] Correlate Pi-hole, ASUS DHCP and Suricata evidence.
-- [ ] Capture DNS/network activity if the device returns.
-- [ ] Close investigation when identification/confidence is sufficient.
+- [ ] Resume Pi-hole policy-alert latency work when higher-priority Proxmox/Jenkins work permits.
+- [ ] Maintain blocklist/update/enforcement monitoring and weekly reporting.
+- [ ] Remove synthetic enforcement-probe traffic from raw client/category totals where still outstanding.
+- [ ] Validate blocked-MAC monitoring on a real trigger.
+- [ ] Keep the investigated blocked MAC blocked unless positively identified.
+- [ ] Get useful ASUS router syslog into Alloy/Loki.
+- [ ] Retain DHCP/client events and correlate them with Pi-hole and Suricata.
+- [ ] Add useful unknown-device alerting.
 
 ---
 
-# 13. ASUS Router / Network Log Ingestion — 🟡 BACKLOG
+# 18. Documentation, recovery, secrets and portfolio — 🟡 ONGOING
 
-- [ ] Get useful ASUS router syslog into the logging platform.
-- [ ] Route logs through Alloy/Loki.
-- [ ] Confirm DHCP/client events are retained.
-- [ ] Build queries/dashboard for new clients.
-- [ ] Correlate router logs with Pi-hole and Suricata.
-- [ ] Add alerting for genuinely unknown devices.
-
----
-
-# 14. Secrets, Backup and Configuration Management — 🟡 ONGOING
-
-- [ ] Complete `.env`/secret backup to USB.
-- [ ] Maintain interim protected backup under `/home/james` where required.
-- [ ] Verify secrets/config backups can actually be restored.
-- [ ] Continue moving Compose/fig definitions into Git.
+- [ ] Keep this project register aligned with actual state.
+- [ ] Keep dated daily-action records current.
+- [ ] Maintain SOP/SCP/Service Overview indexes.
+- [ ] Keep important script/service/timer inventories current.
+- [ ] Continue SOPS/age recovery testing and documentation.
+- [ ] Verify secret/configuration backups can actually be restored.
 - [ ] Keep plaintext secrets out of Git.
-- [ ] Continue SOPS/age recovery documentation and testing.
-- [ ] Document locations/recovery of critical configuration.
-- [ ] Apply the same rules to Proxmox IaC.
+- [ ] Continue homelab data-dictionary work.
+- [ ] Continue Engineering Portfolio/public project documentation.
+- [ ] Use completed homelab projects as evidence of engineering, operations and leadership practice.
 
 ---
 
-# 15. Engineering Portfolio / Public Project Documentation — 🟡 BACKLOG
+# Pending-verification items to close opportunistically
 
-- [ ] Continue `projects.jrwroberts.co.uk` documentation.
-- [ ] Add/finish Greenbone/OpenVAS project material.
-- [ ] Finish ITIL experience article.
-- [ ] Include RACI material and links to related leadership/project content.
-- [ ] Portfolio/contact form work.
-- [ ] Replace the default Astro starter README in the Engineering Portfolio repo with a project-specific README.
-- [ ] Keep production deployment/maintenance workflow documentation current.
-- [ ] Continue using homelab projects as evidence of engineering, operations and leadership practice.
-
----
-
-# 16. Homelab Documentation / Data Dictionary — 🟡 ONGOING
-
-- [ ] Continue homelab data dictionary.
-- [ ] Keep SOP/SCP/Service Overview indexes current.
-- [ ] Classify legacy root-level operational docs progressively without breaking links.
-- [ ] Keep important scripts inventory current.
-- [ ] Keep service/timer inventories current as hosts change.
-- [ ] Keep daily action records in dated folders.
-- [ ] Keep this project register aligned with actual project state.
-
----
-
-# 17. Video Decode Investigation — 🟡 MONITORING
-
-- [ ] Leave increased logging enabled long enough to catch another event.
-- [ ] Record the exact timestamp if playback corruption occurs again.
-- [ ] Query Loki around the event.
-- [ ] Determine whether the issue is decode, stream, client or server related.
-- [ ] Restore normal log level once sufficient evidence is captured.
-
----
-
-# 18. Career / Job Search — 🟡 ONGOING, NON-HOMELAB
-
-Target: leadership-oriented roles that are remote or within roughly 30 minutes of Bournemouth.
-
-- [ ] Continue checking suitable vacancies.
-- [ ] Prioritise engineering/IT leadership roles.
-- [ ] Apply selectively to strong matches.
-- [ ] Track applications/interviews/feedback.
-- [ ] Keep portfolio and homelab engineering evidence current for applications.
-
----
-
-# Pending-verification items to close quickly
-
-These are good candidates for short follow-up checks because most implementation work is already complete:
-
-- [ ] Scheduled WUD scan completes with `0 errors`.
-- [ ] High CPU Usage Grafana alert validates on next real trigger.
+- [ ] Scheduled WUD scan completes with `0 errors` after the repaired DNS path.
+- [ ] High CPU Usage Grafana alert validates on the next real trigger.
 - [ ] Blocked-MAC monitoring validates on a real trigger.
 - [ ] Suricata 24-hour collection returns to expected operation.
 
 ---
 
+# Near-term execution sequence
+
+```text
+Finish VM 100 completely
+        |
+        v
+Full new-VM build runbook
+        |
+        v
+Jenkins parameterised runbook pipeline
+        |
+        v
+Manually prove container upgrade + rollback
+        |
+        v
+Resolve skipped-container exceptions
+        |
+        v
+Automate container upgrades in Jenkins
+        |
+        v
+Build Zabbix platform VM
+        |
+        v
+Wider Proxmox migration and remaining backlog
+```
+
 # Programme-level acceptance criteria
 
-The wider homelab programme can be considered materially complete when:
+The wider homelab programme is materially mature when:
 
-- Jenkins CI/CD is stable and documented.
-- Proxmox is patched, monitored, secured, backed up and recoverable.
-- New infrastructure is declared in Git and reproducible through IaC.
-- Docker workload definitions and image versions are controlled in Git.
-- DNS survives loss of either physical DNS node and does not depend on Proxmox.
-- Home Assistant is deployed with backup/restore coverage.
-- Production workloads can be rebuilt or restored without relying on undocumented manual steps.
-- Monitoring, security scanning and alerting cover the new platform.
-- Operational documentation, recovery procedures and project state are current.
+- important infrastructure is reproducible from Git/IaC;
+- Jenkins automates proven workflows without becoming a single point of recovery;
+- container image versions and upgrades are governed, tested and rollback-capable;
+- Proxmox workloads have off-host backup and tested restore paths;
+- DNS survives the loss of either physical DNS node and remains independent of Proxmox;
+- monitoring, logging, patching and security cover new infrastructure before production use;
+- production services can be rebuilt or restored without undocumented manual steps;
+- documentation accurately reflects the live platform.
