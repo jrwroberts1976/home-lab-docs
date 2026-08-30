@@ -2,151 +2,179 @@
 
 ## Starting position
 
-The 28 August record was closed with Prometheus, Homepage and Dashy proven through the Stage 6 work completed to that point. The main priority for 29 August remained the **one updater for the estate** programme, starting with a read-only steady-state inspection path and then extending that model across hosts without widening mutation authority.
+The day began with Stage 6 container-version-control work still active. The immediate focus was to finish the reviewed estate-updater rollout without weakening immutable-image, rollback or protected-workload controls.
 
-## Current Stage 6 checkpoint
-
-Current `homelab-container-version-control` reviewed main after today's merges:
-
-```text
-container-http framework merge     = 1f78afcbb9041b4076c63b4d64b133e94f9a0896  (PR #76)
-steady authority transition merge  = 60f6bc1d7bc8cbed12011b258bb2f12930f8f454  (PR #77)
-```
-
-Current reviewed `docker-env` authority target:
-
-```text
-d1ca9a5e10d151893573fd97d6a5c282ba912a1e
-```
-
-Current Docker runtime scope proven during today's work:
-
-```text
-TestServer   linux/arm64   30 containers
-ids-01       linux/amd64   31 containers
-```
-
-Existing steady-state inspect-ready service/host instances remain:
-
-```text
-Dashy/TestServer          4.6.0
-Homepage/TestServer       2.1.2
-Prometheus/TestServer     3.13.2
-Prometheus/ids-01         3.13.2
-```
+By the end of the day Stage 6 was formally closed and work had moved on to the Proxmox Infrastructure-as-Code migration proof.
 
 ## Completed today
 
-### Steady-state inspection framework
+### Stage 6 container-version-control closure
 
-- Completed the read-only Stage 6 steady-state inspection model rather than reusing the pre-approval transition inspector.
-- Preserved reviewed authority, immutable image identity, runtime shape, mounts, networks, health and protected-container invariants.
-- Kept mutation authority out of the steady-state inspector: no pull, arm, deploy, rollback, recreate or arbitrary command surface.
-- Integrated steady-state routing into the estate updater while keeping `prepare`, `deploy` and `rollback` fail-closed in the current front end.
-- Proved Homepage, Dashy and Prometheus steady-state inspection on TestServer.
+Stage 6 was completed and formally closed on 29 August.
 
-### ids-01 / cross-architecture inspection
-
-- Installed and proved the narrow ids-01 Stage 6 read-only inspection transport.
-- Preserved the separate fixed-command SSH/sudo trust boundary rather than granting broad shell or Docker authority.
-- Brought ids-01 Prometheus to the proven `3.13.2` state and completed two-host steady-state inspection for Prometheus.
-- Proven combined Prometheus inspection result: both TestServer and ids-01 inspect-ready, no mutation allowed, no deployment performed.
-
-### Blackbox Exporter onboarding preparation
-
-- Selected Blackbox Exporter as the next low-risk, standard-registry cross-host workload.
-- Confirmed both hosts currently run `0.28.0`.
-- Confirmed TestServer and ids-01 use the common repository/index digest:
+Final reviewed closure evidence:
 
 ```text
-prom/blackbox-exporter@sha256:e753ff9f3fc458d02cca5eddab5a77e1c175eee484a8925ac7d524f04366c2fc
+STAGE6_REVIEW_COMPLETE=true
+STAGE6_NORMALIZATIONS_COMPLETED=7
+STAGE6_NORMALIZATIONS_CONSUMED=7
+STAGE6_FORMAL_DEFERRALS=13
+STAGE6_UNREVIEWED_TAGGED_EXTERNAL_SERVICES=0
+SMOKEPING_DEFERRED=true
+SMOKEPING_AUTHORITY_RECONCILED=true
+ROLLBACK_REQUIRED=false
+STAGE6_CLOSED=true
 ```
 
-- Added the reviewed `BLACKBOX_EXPORTER_IMAGE` Compose override to both TestServer and ids-01 source paths in `docker-env` PR #23.
-- Aligned both live Compose files with `docker-env` revision `d1ca9a5e10d151893573fd97d6a5c282ba912a1e` without pulling an image, recreating a container or restarting a service.
-- TestServer Blackbox remains healthy through `192.168.2.220:9115/-/healthy`.
-- ids-01 Blackbox remains healthy through its `monitoring` Docker network without publishing port 9115 to the host.
+- Seven image-normalization contracts were completed and consumed.
+- Thirteen tagged services were formally deferred with explicit technical reasons rather than weakening policy.
+- Zero unreviewed tagged external services remained.
+- SmokePing authority was reconciled while keeping its unsupported named-volume case deferred.
+- Jenkins and Jenkins DinD remained protected.
+- No rollback was required.
+- Closure evidence was merged in `homelab-container-version-control` PR #84.
+- The project-plan timeline was updated to **Complete — 29 Aug, ahead of plan** in PR #85.
+- Final Stage 6 project-plan merge commit: `7daa2f60615ccca11ddc964ae5eba269bb564626`.
 
-### `container-http` framework extension
+The earlier open Stage 6 roll-forward, re-proof and normalization TODOs are therefore superseded by the reviewed closure record and must not be carried forward as active daily work.
 
-- Added a narrow declarative `container-http` steady-state health strategy for services such as ids-01 Blackbox that expose health only inside a reviewed Docker network.
-- The manifest may provide only a reviewed network, numeric container port, path and expected status; a fixed URL is rejected.
-- The inspector derives the current container IP from `NetworkSettings.Networks[$network].IPAddress`; no container IP is hard-coded.
-- Negative tests reject undeclared networks, invalid/boolean ports, unsafe paths and fixed URLs.
-- Full steady-state regression suite passed with no host contact or mutation during source validation.
-- PR #76 merged as `1f78afcbb9041b4076c63b4d64b133e94f9a0896`.
-- Installed the reviewed inspector and validator on both hosts.
-  - TestServer retains `root:root 0755`.
-  - ids-01 retains its stronger `root:root 0700` boundary.
-- Runtime verification after installation proved all 30 TestServer containers and all 31 ids-01 containers unchanged.
+### Proxmox host readiness
 
-### Shared authority reconciliation
+The HP ProDesk Proxmox host was validated as ready for the first disposable IaC proof.
 
-- The Blackbox image-variable source change legitimately changed the shared monitoring Compose hashes, making the older steady-state authority metadata stale.
-- Survey proved the target `docker-env` revision descends from both previous reviewed authority baselines.
-- Dashy and Homepage Compose content is unchanged and therefore retains SHA-256:
+- Proxmox VE remained healthy with no failed services after removing the irrelevant OpenIPMI failure state.
+- Pending Proxmox library updates were applied without requiring a reboot.
+- NVMe SMART/health remained good: no critical warning, 6% used, no media/data integrity errors.
+- The 480 GB Kingston SATA SSD passed SMART and an extended self-test; suitable for VM/application data, but not as the sole backup destination.
+- No pre-existing VMs or LXCs existed before the proof.
+
+### Proxmox least-privilege IaC access
+
+Created a dedicated Proxmox service identity rather than using root/Administrator access for IaC.
+
+- User: `iac@pve`.
+- Narrow custom roles created for VM, storage and node operations.
+- ACLs limited to `/vms`, `local`, `local-lvm` and node `PROXMOX`.
+- API token `iac@pve!opentofu` created with `privsep=0`, inheriting only the already-limited service-account permissions.
+- Token material kept outside Git with restrictive filesystem permissions.
+- The Proxmox 9 bridge permission requirement was discovered safely during first apply and resolved by granting the reviewed SDN-use permission for `vmbr0`; no broad Administrator role was added.
+
+### OpenTofu control node and repository bootstrap
+
+TestServer was established as the temporary direct recovery/control node.
+
+- OpenTofu `1.12.6` installed on TestServer (`linux_arm64`).
+- Existing Ansible, Git, curl, jq and Python tooling retained.
+- Proxmox repository cloned to `/home/james/projects/proxmox`.
+- Branch `iac/bootstrap-opentofu` created and pushed.
+- Runtime state, plans, tfvars, environment files, credentials and private keys excluded from Git.
+- BPG Proxmox provider pinned to `0.111.1`; lock file committed.
+- Provider initialization and validation passed.
+- API authentication from TestServer passed using exported environment variables without exposing the token.
+
+### Disposable Debian IaC VM proof
+
+OpenTofu successfully created the first disposable VM after the least-privilege ACL issue was corrected.
+
+VM proof state:
 
 ```text
-9a1295c5c7848c578a9b339411b02b2320cb7bd4b78764fce1d6b661fe97287f
+VM ID:       100
+Name:        debian-iac-test-01
+Node:        PROXMOX
+CPU:         2 vCPU
+Memory:      2048 MB
+Disk:        24 GB local-lvm
+Bridge:      vmbr0
+Cloud-init:  DHCP, user james, SSH public key
+On boot:     false
 ```
 
-- TestServer monitoring Compose now correctly targets:
+- Official Debian 13 Trixie generic cloud image downloaded and checksum-pinned.
+- First failed VM-create attempt stopped cleanly at a Proxmox `SDN.Use` permission check; the image was retained in OpenTofu state and no orphan VM was created.
+- Fresh plan then showed exactly `1 to add, 0 to change, 0 to destroy`.
+- VM 100 was created successfully and initially left stopped for inspection.
+- API inspection proved the expected CPU, memory, disk, cloud-init drive, network and `onboot=0` configuration.
+- OpenTofu reported no configuration drift after creation.
+- VM start was subsequently changed through Git/OpenTofu rather than by manual `qm start`.
+- Start apply completed `0 added, 1 changed, 0 destroyed`.
+
+A non-fatal Proxmox warning remains to be corrected: `iothread=true` is ignored with the current `virtio-scsi-pci` controller. This is configuration debt, not a failed VM boot.
+
+### Guest boot, cloud-init and network proof
+
+The first guest boot completed successfully.
+
+- DHCP lease: `192.168.2.120`.
+- MAC: `BC:24:11:71:7E:65`.
+- SSH key authentication as `james` succeeded.
+- Hostname: `debian-iac-test-01`.
+- OS: Debian GNU/Linux 13 (trixie), x86-64, KVM.
+- Kernel: `6.12.95+deb13-cloud-amd64`.
+- Clock synchronized by NTP.
+- 24 GB virtual disk expanded correctly to the root filesystem.
+- cloud-init completed with no errors; only a recoverable deprecation warning for the legacy `user` field was reported.
+
+### Ansible control proof
+
+The Ansible control path from TestServer was proven without manually configuring the guest.
+
+- Ad-hoc Ansible ping succeeded over SSH.
+- Repository inventory `ansible/inventories/lab.yml` created and committed.
+- Python interpreter pinned to `/usr/bin/python3.13` for deterministic Ansible execution.
+- Repository-inventory ping succeeded.
+- `become`/sudo proof returned UID `0`.
+
+Proven chain:
 
 ```text
-b8a895bd8e23c9f528cf9209f70368be42bf53f8044cbd99ef35eae188e3d68b
+Git -> OpenTofu -> Proxmox -> cloud-init -> DHCP -> SSH -> Ansible inventory -> sudo/root
 ```
 
-- ids-01 monitoring Compose now correctly targets:
+### First Ansible baseline playbook preparation
 
-```text
-128a8e842a2b1bc54b966b93aac9d11ba1d7c0cc7d8eb89282c7f2ffa1f89ae9
-```
+A first baseline playbook was drafted to manage:
 
-- PR #77 changed only the four existing steady-state manifests: Dashy/Homepage authority revision only, and both Prometheus manifests authority revision plus reviewed Compose hash.
-- PR #77 merged as `60f6bc1d7bc8cbed12011b258bb2f12930f8f454`.
+- timezone `Europe/London`;
+- `qemu-guest-agent`;
+- `prometheus-node-exporter`.
 
-## Current safety boundary
+Syntax validation passed.
 
-At this checkpoint:
+The first `--check --diff` run correctly exposed a check-mode sequencing issue: the package install is only simulated, so the following service task cannot find `qemu-guest-agent`. The service tasks were therefore guarded with `when: not ansible_check_mode`, and syntax validation passed again. A clean second dry-run still needs to be executed on 30 August before any baseline changes are applied.
 
-- the reviewed source authority transition is merged, but the installed Stage 6 authority checkout/manifests still need to be advanced and re-proven;
-- no update is armed;
-- no image was pulled as part of the framework/authority work;
-- no container was changed by the `container-http` framework installation;
-- the estate front end still exposes steady-state inspection only for the reviewed inspect-ready paths;
-- Jenkins/Jenkins-DinD remain protected on TestServer;
-- Grafana/Loki remain protected during ids-01 Stage 6 work;
-- Blackbox Exporter remains `inspect_ready=false` for a deliberate reason described below.
+## Safety / rollback position at close
 
-## Blackbox remaining blocker
-
-Blackbox is technically healthy and its source authority is ready, but the running containers still report the configured image as the tagged form:
-
-```text
-prom/blackbox-exporter:v0.28.0
-```
-
-The steady-state contract correctly requires the running configured image to be the reviewed immutable digest reference. The existing generic transition framework also deliberately requires a genuinely different rollback digest/newer candidate and therefore is not suitable for simply recreating the same Blackbox image under a digest reference.
-
-Do **not** weaken those validation/rollback guarantees merely to make Blackbox show as inspect-ready. The safe choices are:
-
-1. design and regression-test a separate narrow same-image tag-to-digest normalization contract with a truthful rollback model; or
-2. leave Blackbox pending until its next real version upgrade, then bring it under the normal Stage 6 immutable transition path.
-
-## Next safe actions
-
-1. Advance the installed Stage 6 `docker-env` authority checkout to `d1ca9a5e10d151893573fd97d6a5c282ba912a1e` together with the reviewed steady-state manifests.
-2. Re-run Dashy, Homepage and both Prometheus steady-state inspections and prove the original four inspect-ready instances remain good after authority roll-forward.
-3. Decide whether to build the reusable same-image immutable-normalization contract or wait for the next Blackbox release.
-4. If normalization is implemented, add reviewed Blackbox steady-state manifests/catalogue routing and prove a combined TestServer + ids-01 inspection with no mutation.
-5. Continue onboarding the remaining Docker estate by risk class rather than weakening policy to increase the inspect-ready count.
+- Existing TestServer services were not migrated or cut over.
+- DNS and security services remain independent of Proxmox.
+- VM 100 is explicitly disposable and remains part of the proof phase only.
+- No production workload depends on VM 100.
+- OpenTofu state remains local to TestServer and excluded from Git; production state/backup strategy is still to be decided.
+- The source Docker platform remains available for future service-by-service migration and rollback.
 
 ## Daily report triage
 
-The 29 August nightly homelab report review is still an explicit operational step in `todo.md`. Record its findings separately when reviewed; do not infer a clean report from Stage 6 project validation.
+No evidence was recorded in this daily-actions record that the 29 August nightly report was reviewed. Do not infer a clean report. If it was not reviewed separately, treat that as an operational follow-up on 30 August alongside the new day's report triage.
 
 ## Daily summary
 
-Today moved Stage 6 from a TestServer-focused pilot into a working cross-host read-only inspection framework. The steady-state model, ids-01 transport, multi-host Prometheus proof and internal-network HTTP health strategy are now implemented and reviewed. The shared authority debt created by the Blackbox Compose-source change has been corrected in Git source through PR #77.
+### Completed today
 
-The immediate remaining work is operational roll-forward and re-proof of the existing four managed instances. Blackbox itself is deliberately left pending rather than compromising immutable identity or rollback guarantees.
+- Stage 6 container-version-control rollout formally closed ahead of plan: 7 completed/consumed normalizations, 13 formal deferrals and zero unreviewed tagged external services.
+- Proxmox host readiness and least-privilege IaC access established.
+- OpenTofu control path bootstrapped on TestServer and committed to the Proxmox repository.
+- Disposable Debian VM 100 created, inspected and started through OpenTofu.
+- Cloud-init, DHCP, SSH and Debian guest boot validated.
+- Ansible inventory, connectivity and sudo/root control validated.
+- First baseline playbook drafted and syntax-checked.
+
+### Carried forward
+
+- Re-run the corrected Ansible baseline in `--check --diff` mode and require `failed=0` before applying it.
+- Commit/push the baseline playbook, apply it, then prove idempotence.
+- Install/prove QEMU guest agent and Prometheus node exporter through Ansible.
+- Correct the Proxmox `iothread`/SCSI-controller warning through OpenTofu.
+- Reconcile the cloud-init deprecated `user` field where supported by the provider.
+- Decide and document the OpenTofu state-storage/backup approach before production infrastructure.
+- Complete disposable-VM destroy/rebuild and backup/restore proof before building the production Docker VM.
+- Review the 29 August nightly report if it was not already reviewed elsewhere.
