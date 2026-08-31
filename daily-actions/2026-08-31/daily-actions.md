@@ -1,6 +1,6 @@
 # Daily Homelab Actions — 31 August 2026
 
-> **Day closed at 10:12 BST.** Planned P0 work is complete. Remaining monitoring/consolidation work is deliberately carried forward and is not active work for the rest of 31 August.
+> **Daytime closeout completed at 10:12 BST.** Planned P0 work was complete at that point. The day was later reopened for a separate evening Stage 6 container-version-control session; that evening session is now also closed and is recorded in the addendum at the end of this page.
 
 ## Proxmox host observability
 
@@ -236,7 +236,7 @@ The 31 August documentation work includes:
 - `daily-actions/2026-08-31/todo.md` — current Proxmox and Prometheus-consolidation work;
 - this daily action record.
 
-The documentation was merged to `home-lab-docs/main` through PR #53.
+The daytime documentation was merged to `home-lab-docs/main` through PR #53.
 
 ## Secondary Pi-hole post-reboot incident — completed
 
@@ -273,7 +273,7 @@ The live Grafana alert rule still needs to be inspected/finished to determine wh
 
 ## Repository consolidation — completed
 
-All outstanding pull requests targeting `main` found during the closeout were merged across:
+All outstanding pull requests targeting `main` found during the daytime closeout were merged across:
 
 ```text
 jrwroberts1976/proxmox
@@ -283,7 +283,7 @@ jrwroberts1976/engineering-portfolio
 
 This included the Proxmox Ansible service-role foundation, Linux/Grafana monitoring documentation, Alloy installation and observability runbooks, Linux security-hardening Ansible work, the homelab infrastructure-topology documentation and the engineering-portfolio Astro patch update.
 
-Several older Proxmox PRs were drafts created from the same earlier `main` baseline. Their README changes conflicted after sequential merges. Their content was preserved using Git tree/merge commits rather than dropping earlier README additions. Final live GitHub checks showed no open PRs targeting `main` in those three repositories.
+Several older Proxmox PRs were drafts created from the same earlier `main` baseline. Their README changes conflicted after sequential merges. Their content was preserved using Git tree/merge commits rather than dropping earlier README additions. Final live GitHub checks showed no open PRs targeting `main` in those three repositories at that checkpoint.
 
 ## Configuration-authority risk
 
@@ -291,9 +291,9 @@ Several older Proxmox PRs were drafts created from the same earlier `main` basel
 
 This must be corrected as part of the later Prometheus consolidation work before TestServer Prometheus is retired.
 
-## Daily summary
+## Daily summary — daytime session
 
-### Completed today
+### Completed during the daytime session
 
 - Added the physical Proxmox host to the Grafana-facing Prometheus on `ids-01` and proved `up=1` in Prometheus and Grafana Explore.
 - Corrected the Proxmox Network Hosts identity by stable MAC and generated the `proxmox-1c55d2.json` dashboard.
@@ -307,9 +307,9 @@ This must be corrected as part of the later Prometheus consolidation work before
 - Added and enabled the secondary Pi-hole boot reconciliation unit for future reboots.
 - Merged the 31 August infrastructure topology and network-discovery documentation to `home-lab-docs/main`.
 - Consolidated all outstanding PRs targeting `main` across `proxmox`, `home-lab-docs` and `engineering-portfolio`, resolving overlapping README conflicts without losing prior content.
-- Closed the 31 August task list at 10:12 BST with all planned P0 work complete.
+- Closed the original 31 August daytime task list at 10:12 BST with all planned P0 work complete.
 
-### Carried forward
+### Carried forward from the daytime session
 
 - Finish the Grafana `Patch collector stale` alert investigation; the collector freshness metric itself is currently healthy.
 - Reconcile Grafana alert-rule Git/runtime drift, especially the `Linux Host Down` expression.
@@ -318,6 +318,111 @@ This must be corrected as part of the later Prometheus consolidation work before
 - After parity is proven, make ids-01 the single Prometheus authority and retire TestServer Prometheus.
 - Complete the separate VM 100 backup/restore and later IaC destroy/rebuild/equivalence proof.
 
-## Day closeout
+## Evening addendum — Stage 6 container-version-control
 
-**31 August 2026 is closed.** The carried-forward items above are intentionally deferred to a future homelab working session and should not be treated as unfinished work expected later today.
+The day was later reopened for a separate Stage 6 Docker/Compose update-automation session.
+
+A detailed evidence record is maintained in:
+
+- [`stage6-container-update-closeout.md`](stage6-container-update-closeout.md)
+
+### Loki 3.7.7
+
+The generic multi-host Jenkins Stage 6 route was proven by deploying Loki `3.7.7` on `ids-01` with reviewed host routing, pinned host key, pre-approval inspection, human approval, zero-drift reinspection, exact immutable deployment, protected-container checks and disarm.
+
+The deployment succeeded and independently verified healthy. It also exposed the larger closure requirement: a healthy updated runtime is not fully closed until Git Compose authority, estate catalogue and steady-state records are promoted and verified.
+
+### Generic framework improvements
+
+Live requalification of Dozzle drove three narrow framework improvements:
+
+- reviewed `container-http` health support for services that are reachable only on an internal Docker network;
+- support for an explicitly reviewed empty Docker runtime user without weakening exact equality;
+- `container-http` terminal-health support in the Stage 6 transition/disarm helper.
+
+The `container-http` implementation dynamically resolves the target container IP on a reviewed Docker network and does not hard-code a runtime address.
+
+### Dozzle 10.8.0
+
+Dozzle was successfully requalified from `10.7.2` to `10.8.0` as a medium-risk, read-only-Docker-socket Stage 6 service.
+
+Jenkins build #13 successfully performed the approval/zero-drift/deployment portion and deployed the exact immutable 10.8.0 candidate. The build subsequently failed at disarm because the transition helper had not yet implemented `container-http` terminal health.
+
+The deployed application itself was healthy. The transition helper was fixed and reviewed, then the already-deployed Dozzle update was disarmed without recreating the container.
+
+`docker-env` PR #32 promoted the durable Compose authority to the exact immutable image. Both the live and root-owned authority checkouts were synchronised to:
+
+```text
+ba183402d11b8a2def59bf7f50893c1667aff9ac
+```
+
+`homelab-container-version-control` PR #96 promoted the Dozzle catalogue entry and added the steady-state definition, with merged framework/catalogue commit:
+
+```text
+95f4a0f32828547488370f372e314c76e263239c
+```
+
+The steady-state manifest was installed as:
+
+```text
+/etc/homelab-stage6/steady-state/dozzle.json
+```
+
+The final read-only steady-state inspection passed with:
+
+```text
+SUCCESS_CLOSED: Dozzle 10.8.0 fully closed and steady-state verified
+```
+
+Final runtime identity at evening closeout:
+
+```text
+container=8d1ba35013044b14dc05c80895670956fbd37d1885d4a6b9af7aa875af0b6228
+configured_image=amir20/dozzle@sha256:243666b0593ff33ed1373901575236f0d6bed8a2d6b451cdae4345969a7b6d5c
+image_id=sha256:eca1774c3ff18eb6ff177d0d557b2ff37da5df6f7c617450b4eca48327f20ce8
+restart=0
+state=running
+```
+
+Dozzle must not be redeployed merely to obtain a clean historical Jenkins result; the one-shot update has already been consumed.
+
+### Remaining Jenkins BAU gaps
+
+The Dozzle deployment proved the component pieces, but it did **not** produce a clean end-to-end Jenkins `SUCCESS_CLOSED` build. Build #13 remains historically failed because closure/disarm was recovered after the build.
+
+Two Jenkins changes are therefore the next priority:
+
+1. move exact immutable candidate acquisition into Jenkins before human approval, using a dedicated restricted candidate-acquisition identity rather than the powerful deployment executor credential;
+2. add a non-mutating closed-state verification action so an already-completed service such as Dozzle can be verified by Jenkins without a second recreation.
+
+The desired non-mutating result is conceptually:
+
+```text
+SUCCESS_VERIFIED_CLOSED
+```
+
+The deployment executor must remain unavailable until after approval and zero-drift reinspection. Deployment itself must continue to use `--pull never`.
+
+### Alloy checkpoint
+
+Initial read-only Stage 6 evidence collection for TestServer Alloy passed. The existing `/-/ready` and `/-/healthy` endpoints provide strong health evidence.
+
+The evening session deliberately stopped before Alloy candidate acquisition or deployment. Alloy should remain unchanged until the Jenkins candidate-acquisition path and Dozzle closed-state verification path are implemented and tested.
+
+Alloy is intended to become the first fresh update used to prove the complete target Jenkins flow, including Jenkins-owned candidate pull and final automated closure.
+
+## Final day closeout
+
+**31 August 2026 is closed again after the evening Stage 6 session.**
+
+The exact restart point for the next Stage 6 session is:
+
+```text
+1. restricted Jenkins candidate-acquisition credential/forced command
+2. candidate pull + verification before approval
+3. non-mutating Jenkins VERIFY_CLOSED path
+4. verify Dozzle through Jenkins without recreation
+5. resume Alloy only after that passes
+```
+
+No further container mutation is required tonight.
