@@ -61,6 +61,7 @@ The summary should be updated during the day as work moves from carried-forward/
 
 ## Reports
 
+- [2026-08-31](2026-08-31/daily-actions.md)
 - [2026-08-30](2026-08-30/daily-actions.md)
 - [2026-08-29](2026-08-29/daily-actions.md)
 - [2026-08-28](2026-08-28/daily-actions.md)
@@ -104,7 +105,10 @@ daily-actions/
 │   ├── daily-actions.md
 │   ├── todo.md
 │   └── stage6-seven-inspect-ready-closeout.md
-└── 2026-08-30/
+├── 2026-08-30/
+│   ├── daily-actions.md
+│   └── todo.md
+└── 2026-08-31/
     ├── daily-actions.md
     └── todo.md
 ```
