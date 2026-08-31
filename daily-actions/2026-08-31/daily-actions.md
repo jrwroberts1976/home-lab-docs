@@ -1,5 +1,7 @@
 # Daily Homelab Actions — 31 August 2026
 
+> **Day closed at 10:12 BST.** Planned P0 work is complete. Remaining monitoring/consolidation work is deliberately carried forward and is not active work for the rest of 31 August.
+
 ## Proxmox host observability
 
 ### Prometheus metrics — completed
@@ -225,16 +227,63 @@ Git source:   min(up{job="linux-hosts"}) < 1
 
 The live expression is the desired per-host behaviour. Git/runtime authority should be reconciled separately so the repository represents the deployed rule accurately.
 
-### Documentation — completed in working branch
+### Documentation — completed and merged
 
-The `home-lab-docs` branch `docs/infrastructure-topology-20260831` now contains:
+The 31 August documentation work includes:
 
 - `infrastructure-topology.md` — host/service placement, authority and data-flow topology;
 - `scripts/homelab-network-discovery.md` — detailed documentation for the LAN discovery collector;
 - `daily-actions/2026-08-31/todo.md` — current Proxmox and Prometheus-consolidation work;
 - this daily action record.
 
-PR #53 tracks the documentation changes.
+The documentation was merged to `home-lab-docs/main` through PR #53.
+
+## Secondary Pi-hole post-reboot incident — completed
+
+After the reboot, `pihole-secondary` retained its configured Compose `NetworkMode` and host port configuration but had no runtime Docker network attachment and no runtime published ports. This prevented resolution of the `unbound` alias and removed the host DNS/HTTP publication even though the container itself was present.
+
+The secondary Pi-hole was force-recreated through its Compose project, restoring:
+
+- attachment to `pihole-secondary_default`;
+- resolution of the `unbound` service alias;
+- direct Unbound DNS on port `5335`;
+- DNS publication on TCP/UDP `53`;
+- HTTP publication on host port `8081`;
+- working external DNS queries;
+- Nebula Sync health and successful synchronisation;
+- Pi-hole blocklist and enforcement health metrics.
+
+A boot reconciliation unit was added and enabled:
+
+```text
+/etc/systemd/system/pihole-secondary-reconcile.service
+```
+
+The unit starts Unbound and force-recreates the Pi-hole service after Docker/network-online at boot. A deliberate extra reboot was not performed solely to test the unit; it should be observed on the next normal reboot.
+
+## Patch collector stale alert — carried forward
+
+The live patch collector freshness metrics were inspected after the Grafana `Patch collector stale` warning.
+
+`homelab_patch_check_timestamp_seconds` was fresh for all monitored Linux hosts, with ages measured in minutes rather than the alert's two-hour threshold. This means the collector itself was not stale at the time of inspection.
+
+The separate `homelab_patch_last_success_timestamp_seconds` metric was much older on some hosts and is not an appropriate substitute for collector freshness. Current dashboards already use `homelab_patch_check_timestamp_seconds` for patch collector age.
+
+The live Grafana alert rule still needs to be inspected/finished to determine whether its Prometheus query, reduce/threshold expression or label handling is responsible. The follow-up must use the live Grafana rule/API or provisioning source rather than editing SQLite directly.
+
+## Repository consolidation — completed
+
+All outstanding pull requests targeting `main` found during the closeout were merged across:
+
+```text
+jrwroberts1976/proxmox
+jrwroberts1976/home-lab-docs
+jrwroberts1976/engineering-portfolio
+```
+
+This included the Proxmox Ansible service-role foundation, Linux/Grafana monitoring documentation, Alloy installation and observability runbooks, Linux security-hardening Ansible work, the homelab infrastructure-topology documentation and the engineering-portfolio Astro patch update.
+
+Several older Proxmox PRs were drafts created from the same earlier `main` baseline. Their README changes conflicted after sequential merges. Their content was preserved using Git tree/merge commits rather than dropping earlier README additions. Final live GitHub checks showed no open PRs targeting `main` in those three repositories.
 
 ## Configuration-authority risk
 
@@ -254,12 +303,21 @@ This must be corrected as part of the later Prometheus consolidation work before
 - Proved the end-to-end `PROXMOX journal -> Alloy -> ids-01 Loki` path using marker `PROXMOX_ALLOY_TEST_1788157720`.
 - Proved the live Grafana CPU, memory, root-disk and host-down alert rules cover `PROXMOX`.
 - Confirmed the live Host Down rule already preserves per-host identity with `up{job="linux-hosts"} == 0`.
-- Added infrastructure topology and network-discovery script documentation to `home-lab-docs` PR #53.
+- Recovered the secondary Pi-hole after its post-reboot Docker network/port attachment failure and restored DNS, Unbound, Nebula Sync and monitoring health.
+- Added and enabled the secondary Pi-hole boot reconciliation unit for future reboots.
+- Merged the 31 August infrastructure topology and network-discovery documentation to `home-lab-docs/main`.
+- Consolidated all outstanding PRs targeting `main` across `proxmox`, `home-lab-docs` and `engineering-portfolio`, resolving overlapping README conflicts without losing prior content.
+- Closed the 31 August task list at 10:12 BST with all planned P0 work complete.
 
 ### Carried forward
 
+- Finish the Grafana `Patch collector stale` alert investigation; the collector freshness metric itself is currently healthy.
 - Reconcile Grafana alert-rule Git/runtime drift, especially the `Linux Host Down` expression.
 - Restore `debian-iac-test-01` to the ids-01 Prometheus target set if still missing.
 - Establish Git authority for the active ids-01 Prometheus configuration.
 - After parity is proven, make ids-01 the single Prometheus authority and retire TestServer Prometheus.
 - Complete the separate VM 100 backup/restore and later IaC destroy/rebuild/equivalence proof.
+
+## Day closeout
+
+**31 August 2026 is closed.** The carried-forward items above are intentionally deferred to a future homelab working session and should not be treated as unfinished work expected later today.
