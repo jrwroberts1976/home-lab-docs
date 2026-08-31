@@ -31,7 +31,7 @@ flowchart LR
 
     subgraph PVE[PROXMOX - 192.168.2.70\nHypervisor]
         NODEPVE[node_exporter\n:9100]
-        ALLOYPVE[Alloy\nplanned]
+        ALLOYPVE[Alloy v1.19.2]
         VM100[VM 100\ndebian-iac-test-01\n192.168.2.120]
     end
 
@@ -57,7 +57,7 @@ flowchart LR
     NODEDNS -->|metrics| PROM
     TEST -->|host metrics| PROM
 
-    ALLOYPVE -.->|systemd journal| LOKI
+    ALLOYPVE -->|systemd journal| LOKI
     VM100 -->|Alloy journal| LOKI
 
     DISC -->|homelab_network_device_*| PROM
@@ -66,6 +66,7 @@ flowchart LR
     LOKI --> CROWD
 
     TOFU --> PVE
+    ANS --> PVE
     ANS --> VM100
     RESTIC -->|encrypted off-host backup| REST
 ```
@@ -76,7 +77,7 @@ flowchart LR
 |---|---|---|---|---|---|
 | `ids-01` | `192.168.2.242` | Central observability, security and recovery | Grafana, Prometheus, Loki, CrowdSec, network discovery, generated Network Hosts dashboards, Restic REST repository, secondary Pi-hole services | Grafana/Loki/Prometheus runtime under `/home/james/docker/data/monitoring`; discovery state under `/var/lib/homelab-network-discovery`; Restic repository served from ids-01 | **Intended observability authority** |
 | `TestServer` | `192.168.2.220` | Automation/control node and main Docker application host | OpenTofu, Ansible, application Docker estate, Restic backup client, supporting scripts/collectors | Git projects under `/home/james/projects`; Docker source checkout under `/home/james/docker`; OpenTofu state under `/home/james/projects/proxmox/tofu` | **IaC/control authority**; Prometheus here is transitional/legacy |
-| `PROXMOX` | `192.168.2.70` | Hypervisor | Proxmox VE, node_exporter, VM hosting | PVE local storage / LVM; node_exporter systemd service | **Hypervisor authority** |
+| `PROXMOX` | `192.168.2.70` | Hypervisor | Proxmox VE, node_exporter, Alloy v1.19.2, VM hosting | PVE local storage/LVM; node_exporter systemd service; Alloy managed from `jrwroberts1976/proxmox` Ansible | **Hypervisor authority** |
 | `debian-iac-test-01` | `192.168.2.120` | Disposable reference VM | QEMU guest agent, node_exporter, Alloy, Debian security patching | Provisioned by OpenTofu and configured by Ansible from `jrwroberts1976/proxmox` | Reference IaC acceptance VM |
 | `k3s-node-01` | `192.168.2.195` | Kubernetes node | k3s workloads, node_exporter | Host-local k3s state plus Git-controlled workload sources | Kubernetes workload host |
 | `dietpi` | `192.168.2.48` | Primary DNS filtering/resolution | Pi-hole, Unbound, node_exporter | Pi-hole/Unbound host configuration | Primary DNS authority |
@@ -108,11 +109,13 @@ Linux / Proxmox hosts
 - Grafana runs on `ids-01` in container `grafana` and is exposed on port `3001`.
 - Grafana's Prometheus datasource is `http://prometheus:9090`, resolving to the Prometheus container on the ids-01 Docker network.
 - Loki runs on `ids-01` and is exposed on port `3100`.
-- The Proxmox host can reach `http://192.168.2.242:3100/ready` successfully.
-- `PROXMOX` already runs `prometheus-node-exporter`, enabled and active on `*:9100`.
-- `PROXMOX` does **not yet** have Alloy installed, so its systemd journal is not currently forwarded to Loki.
-- The ids-01 Prometheus `linux-hosts.yml` currently contains TestServer, k3s-node-01, dietpi and ids-01, but was found to be missing both `PROXMOX` and `debian-iac-test-01` during the 31 August 2026 review.
-- TestServer also has a Prometheus runtime and was able to scrape `PROXMOX`; that path is useful as reachability evidence but is **not** the intended Grafana-facing authority.
+- `PROXMOX` runs `prometheus-node-exporter`, enabled and active on `*:9100`.
+- `PROXMOX` is now present in the ids-01 Prometheus `linux-hosts` target set as `192.168.2.70:9100` with labels `host="PROXMOX"`, `role="proxmox-host"`, `os="proxmox"`.
+- The ids-01 Prometheus API proved `up{job="linux-hosts",host="PROXMOX"} = 1`.
+- `PROXMOX` runs Grafana Alloy v1.19.2, enabled and active, deployed through the Git-controlled Proxmox Ansible configuration.
+- Alloy forwards the Proxmox systemd journal to Loki on `ids-01` with `host="PROXMOX"`, `role="proxmox-host"`, `job="systemd-journal"`.
+- End-to-end journal ingestion was proved with marker `PROXMOX_ALLOY_TEST_1788157720`, emitted on `PROXMOX` and returned by Loki on `ids-01`.
+- TestServer also has a Prometheus runtime and was able to scrape `PROXMOX`; that path is useful as reachability evidence but is **not** the intended Grafana-facing authority and is scheduled for later retirement after parity is proven.
 
 ## Network discovery and Network Hosts dashboards
 
@@ -142,17 +145,21 @@ homelab-network-host-dashboards.py
 Grafana -> Network Hosts
 ```
 
-The Proxmox host is already present in discovery with:
+The Proxmox host is present in discovery with:
 
 ```text
 MAC:      80:E8:2C:1C:55:D2
 IP:       192.168.2.70
-Hostname: APL-SD-C9243FXC
+Hostname: PROXMOX
 Vendor:   Hewlett Packard
 Online:   1
 ```
 
-The remaining issue is therefore **friendly-name enrichment**, not discovery. The desired display name is `PROXMOX`.
+The hostname is enforced through the collector's existing manual-hostname override mechanism, keyed by stable MAC identity. After reconciliation, the generated Grafana dashboard is:
+
+```text
+/home/james/docker/data/monitoring/grafana/provisioning/network-hosts-json/generated-hosts/proxmox-1c55d2.json
+```
 
 ## Proxmox control and recovery path
 
@@ -169,9 +176,19 @@ jrwroberts1976/proxmox Git repository
              |
              +--> TestServer Ansible
                      |
+                     +--> PROXMOX host observability
+                     |
                      v
                     VM 100
 ```
+
+A dedicated TestServer SSH identity is used for Proxmox Ansible management:
+
+```text
+/home/james/.ssh/proxmox-automation
+```
+
+Only the public key is installed on `root@PROXMOX`; the private key remains local to TestServer and is not stored in Git.
 
 OpenTofu state is deliberately local to TestServer and excluded from Git:
 
@@ -217,15 +234,11 @@ fatal: not a git repository
 
 This means the active ids-01 Docker/Prometheus runtime configuration is not currently backed by a local Git checkout at `/home/james/docker`.
 
-This is a configuration-authority gap. Runtime changes to ids-01 Prometheus must not be treated as durable until their source-of-truth location is identified or brought under Git control.
+This is a configuration-authority gap. The live PROXMOX Prometheus target is proven operational, but the ids-01 Prometheus source-of-truth must still be identified or brought under Git control before TestServer Prometheus is retired.
 
 ### TestServer Prometheus is not the intended Grafana authority
 
-A temporary branch on the TestServer Docker repository added `PROXMOX` to the TestServer Prometheus `linux-hosts.yml` and successfully proved:
-
-```text
-up{job="linux-hosts",host="PROXMOX"} = 1
-```
+A temporary branch on the TestServer Docker repository added `PROXMOX` to the TestServer Prometheus `linux-hosts.yml` and successfully proved reachability.
 
 However, Grafana on ids-01 queries the ids-01 Prometheus container, not TestServer Prometheus. The temporary TestServer change should therefore not become the long-term monitoring design.
 
@@ -235,28 +248,25 @@ However, Grafana on ids-01 queries the ids-01 Prometheus container, not TestServ
 |---|---|---:|---|
 | Linux hosts / VMs | ids-01 Prometheus | HTTP `9100` scrape targets | Host metrics |
 | PROXMOX | ids-01 Prometheus | HTTP `192.168.2.70:9100` | Hypervisor OS metrics |
-| Alloy agents | ids-01 Loki | HTTP `3100` | Journald/system logs |
+| PROXMOX Alloy | ids-01 Loki | HTTP `3100` | Proxmox systemd journal |
+| Other Alloy agents | ids-01 Loki | HTTP `3100` | Journald/system logs |
 | ids-01 network discovery | ids-01 Prometheus | node_exporter textfile metrics | LAN inventory |
 | ids-01 Prometheus | Grafana | Docker network `prometheus:9090` | Metrics dashboards/alerts |
 | ids-01 Loki | Grafana | Docker network `loki:3100` | Log dashboards/search |
 | ids-01 Loki | CrowdSec | Loki source | Security event processing |
 | TestServer OpenTofu | PROXMOX API | HTTPS/API | VM provisioning |
-| TestServer Ansible | managed VMs | SSH | Configuration management |
+| TestServer Ansible | PROXMOX / managed VMs | SSH | Host/VM configuration management |
 | TestServer Restic | ids-01 Restic REST server | HTTPS `8000` | Off-host backup |
 
-## Immediate topology corrections
+## Remaining topology corrections
 
-The next corrections required to make runtime match the intended topology are:
+The remaining corrections required to make runtime match the intended topology are:
 
-1. Add `PROXMOX` (`192.168.2.70:9100`) to the **ids-01** Prometheus `linux-hosts` target set.
-2. Restore `debian-iac-test-01` (`192.168.2.120:9100`) to the **ids-01** Prometheus target set.
-3. Prove both appear in Grafana Explore through the ids-01 Prometheus datasource.
-4. Confirm the existing generic CPU, memory, disk and host-down alerts cover those targets.
-5. Improve the Linux Host Down rule so the failing `host` label is retained.
-6. Add Alloy to `PROXMOX` and forward the systemd journal to ids-01 Loki with labels `host="PROXMOX"`, `role="proxmox-host"`, `job="systemd-journal"`.
-7. Correct the network-discovery friendly name from `APL-SD-C9243FXC` to `PROXMOX`.
-8. Identify or establish Git authority for the active ids-01 Docker/Prometheus configuration.
-9. Retire/avoid duplicate Grafana-facing Prometheus authority on TestServer once ids-01 coverage is proven.
+1. Prove the existing generic CPU, memory, disk and host-down alerts cover `PROXMOX` through the ids-01 Prometheus datasource.
+2. Improve the Linux Host Down rule so the failing `host` label is retained.
+3. Restore `debian-iac-test-01` (`192.168.2.120:9100`) to the ids-01 Prometheus target set if it remains absent.
+4. Identify or establish Git authority for the active ids-01 Docker/Prometheus configuration.
+5. Compare TestServer and ids-01 Prometheus jobs/targets, migrate any remaining unique coverage, then retire the TestServer Prometheus instance after parity is proven.
 
 ## Related repositories
 
