@@ -48,6 +48,63 @@ Alloy runs as the dedicated `alloy` service user rather than as an unrestricted 
 
 TestServer has its own host-specific log-collection path. Alloy configuration must therefore be treated as host-specific where inputs, paths and permissions differ; the `ids-01` configuration must not simply be copied over another host.
 
+## TestServer Stage 6 requalification checkpoint — 31 August 2026
+
+The TestServer Docker Alloy service was selected as the next likely generic Stage 6 candidate after the successful Dozzle 10.8.0 closure.
+
+Read-only requalification evidence was collected successfully. The TestServer service has a read-only Docker socket and strong application health endpoints:
+
+```text
+http://192.168.2.220:12345/-/ready
+http://192.168.2.220:12345/-/healthy
+```
+
+Both endpoints were already proven to return HTTP `200` with healthy/ready responses.
+
+WUD had identified a TestServer Alloy update from `1.18.0` to `1.19.2`, but the 31 August evening session deliberately stopped before candidate acquisition or deployment.
+
+Therefore at closeout:
+
+- only read-only Alloy Stage 6 evidence had been collected;
+- no Alloy deployment was performed;
+- no Alloy container was recreated or restarted as part of the Stage 6 test;
+- the 1.19.2 candidate was **not** intentionally pulled as part of the closeout workflow;
+- Alloy remains held until the Jenkins candidate-acquisition and closed-state verification work is completed.
+
+Alloy is intended to become the first fresh service used to prove the completed Jenkins flow after Dozzle is verified non-mutatingly through Jenkins.
+
+The desired future flow is:
+
+```text
+Jenkins selects reviewed Alloy update
+        |
+        v
+restricted candidate-acquisition credential pulls exact immutable candidate
+        |
+        v
+candidate identity + no-container-mutation proof
+        |
+        v
+pre-approval inspection
+        |
+        v
+human approval + zero drift
+        |
+        v
+post-approval executor deploys with --pull never
+        |
+        v
+health / rollback / disarm
+        |
+        v
+authority + catalogue + steady-state closure
+        |
+        v
+SUCCESS_CLOSED
+```
+
+Do not manually stage the Alloy candidate merely to get ahead of this Jenkins work; candidate acquisition is specifically being moved into the Jenkins operating model.
+
 ## Important log sources
 
 The `ids-01` collector handles multiple source types because not every service writes logs in the same way.
@@ -320,9 +377,13 @@ A recovered collector should be considered healthy only after:
 6. Treat host-specific paths and source sets as host-specific configuration.
 7. Verify the destination stream after every meaningful source change.
 8. A running collector is not sufficient evidence; prove fresh ingestion in Loki.
+9. For the pending TestServer Stage 6 update, wait for Jenkins-owned candidate acquisition rather than manually pre-staging the candidate.
 
 ## Related documentation
 
+- [31 August Stage 6 container-update closeout](../daily-actions/2026-08-31/stage6-container-update-closeout.md)
+- [Jenkins](jenkins.md)
+- [Loki](loki.md)
 - [Service Overviews index](README.md)
 - [Docker Container Inventory](docker-container-inventory.md)
 - [AI Security Review](ai-security-review.md)
