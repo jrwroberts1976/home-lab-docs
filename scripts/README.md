@@ -2,6 +2,10 @@
 
 This directory contains repository copies of operational scripts used by the home lab. Runtime paths are recorded separately because the repository path is not necessarily where a script executes.
 
+## Script manual
+
+For a complete operator-facing description of every script in this directory and its `dietpi/` subtree, including synopsis, side effects, dependencies and safety notes, see [`MANPAGE.md`](MANPAGE.md).
+
 | Repository file | Runtime host | Runtime path / purpose |
 | --- | --- | --- |
 | `homelab-network-discovery.py` | `ids-01` | `/usr/local/bin/homelab-network-discovery.py` — discovers LAN devices, maintains MAC-based inventory and writes Node Exporter textfile metrics. |
