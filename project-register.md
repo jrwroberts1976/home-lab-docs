@@ -1,6 +1,6 @@
 # Homelab Master Project Register
 
-**Last reviewed:** 2026-08-30  
+**Last reviewed:** 2026-08-31  
 **Purpose:** single place to track active, parked, pending-verification and planned work across the homelab and closely related engineering projects.
 
 This is the master programme view. Daily work remains recorded under `daily-actions/`, while implementation-specific repositories remain authoritative for their own code and detailed plans.
@@ -30,12 +30,18 @@ This is the master programme view. Daily work remains recorded under `daily-acti
 
 1. **Finish the Proxmox disposable reference VM to 100%.**
 2. **Write the full “Build a New Proxmox VM From Scratch” runbook.**
-3. **Build a parameterised Jenkins runbook pipeline.**
-4. **Prove a repeatable container-upgrade and rollback process manually.**
-5. **Classify and resolve containers that were not upgraded.**
-6. **Automate the proven container-upgrade process through Jenkins.**
+3. **Complete the Stage 6 Jenkins candidate-acquisition and closed-state-verification path before any fresh container update.**
+4. **Use Alloy as the first fresh service to prove the complete Jenkins update -> closure workflow.**
+5. **Requalify the remaining previously deferred containers against the actual Stage 6 framework.**
+6. **Build the parameterised Jenkins runbook pipeline for broader approved operational runbooks.**
 7. **Build the Zabbix platform VM using the proven Proxmox pattern.**
 8. Continue the wider Proxmox migration, DNS resilience, Home Assistant, k3s, monitoring, security and documentation backlog.
+
+### Immediate Stage 6 restart point
+
+Dozzle `10.8.0` is fully closed and must not be redeployed simply to obtain a green historical Jenkins build. The next Stage 6 session starts by adding a restricted Jenkins candidate-acquisition identity and a non-mutating `VERIFY_CLOSED` path, verifying Dozzle through Jenkins without recreation, and only then resuming Alloy.
+
+See `daily-actions/2026-08-31/stage6-container-update-closeout.md` for the exact checkpoint.
 
 ---
 
@@ -130,79 +136,117 @@ Build a Jenkins pipeline that invokes approved operational runbooks/playbooks th
 
 ---
 
-# 4. Container upgrade and rollback process — 🟡 HIGH PRIORITY
-
-The existing container-version-control work establishes authority and candidate discovery; the next requirement is to prove the actual upgrade procedure safely.
+# 4. Container upgrade and rollback process — 🧪 SUBSTANTIALLY PROVEN
 
 **Repository:** `jrwroberts1976/homelab-container-version-control`
 
-- [ ] Select representative low-risk/stateless container candidates.
-- [ ] Record current image tag/digest and runtime identity before each test.
-- [ ] Identify the proposed target version/digest.
-- [ ] Review release notes and breaking changes.
-- [ ] Confirm configuration/data backup or rollback point.
-- [ ] Pull/stage the candidate image without changing production first where practical.
-- [ ] Run candidate security/Trivy checks where applicable.
-- [ ] Recreate only the intended container/service.
-- [ ] Validate container health.
-- [ ] Validate application functionality.
-- [ ] Check startup/migration logs.
-- [ ] Validate monitoring and alerting.
-- [ ] Validate Loki/log ingestion where applicable.
-- [ ] Observe the upgraded service for an agreed period.
-- [ ] Record the deployed version/digest in Git.
-- [ ] Prove rollback to the previous known-good image/version.
-- [ ] Repeat on at least one stateful or higher-risk service with the additional backup/migration controls it needs.
-- [ ] Write the resulting container-upgrade SOP.
+The Stage 6 work has moved beyond a manual-only proof. Real reviewed deployments have now exercised the generic framework on both TestServer and `ids-01`.
 
-**Exit gate:** upgrades and rollbacks are repeatable, evidence-backed and safe enough to automate.
+## Proven by 31 August
+
+- [x] Record exact current and target image identities in reviewed manifests.
+- [x] Pull/stage an exact immutable candidate without changing running containers through the reviewed candidate-acquisition helper.
+- [x] Prove pre-approval runtime/authority/health state read-only.
+- [x] Require human approval.
+- [x] Reinspect and require exact zero drift after approval.
+- [x] Expose executor authority only after approval/zero drift.
+- [x] Recreate only the intended Compose service with `--no-deps --no-build --pull never --force-recreate`.
+- [x] Validate exact candidate identity and service health.
+- [x] Protect unrelated Jenkins/control-plane containers by ID/restart-count checks.
+- [x] Keep an explicit reviewed rollback route.
+- [x] Prove generic multi-host deployment with Loki `3.7.7` on `ids-01`.
+- [x] Requalify and deploy Dozzle `10.8.0` on TestServer.
+- [x] Extend health support with reviewed internal Docker-network `container-http` checks.
+- [x] Promote Dozzle to exact immutable Git Compose authority.
+- [x] Promote Dozzle catalogue and steady-state records.
+- [x] Complete final read-only Dozzle steady-state verification with `SUCCESS_CLOSED`.
+
+## Still required before the process is considered fully automated/mature
+
+- [ ] Move candidate acquisition into Jenkins using a dedicated restricted credential rather than a separate manual host step.
+- [ ] Complete automatic post-deployment Compose authority/catalogue/steady-state closure inside Jenkins.
+- [ ] Prove the complete fresh flow in one Jenkins run with `SUCCESS_CLOSED`.
+- [ ] Prove a rollback on a deliberately safe candidate-failure/rejection scenario without compromising a production service.
+- [ ] Repeat against at least one stateful or higher-risk service using its additional backup/migration controls.
+- [ ] Write the final BAU container-upgrade SOP after the automated path is proven.
+
+**Important:** Dozzle is already fully closed. Its historical Jenkins build #13 must not be rerun merely to obtain a green build because the one-shot update has been consumed.
+
+**Exit gate:** a fresh service can be selected in Jenkins, the exact candidate acquired safely, approved, deployed/rolled back as required, promoted into durable authority/catalogue/steady state and read-only verified without routine manual SSH follow-up.
 
 ---
 
-# 5. Containers not upgraded / exception backlog — 🟡 HIGH PRIORITY
+# 5. Containers not upgraded / requalification backlog — 🟡 HIGH PRIORITY
 
-Create a complete list of containers skipped or excluded from earlier upgrade work and record why.
+Previously deferred/skipped services must be re-tested against the current Stage 6 framework rather than permanently excluded based on older limitations.
 
-Classify each skipped container as one of:
+Dozzle demonstrates why this matters: it was initially deferred because it had no published host port/healthcheck, but a narrow reviewed `container-http` extension made it safely manageable without weakening the framework.
 
-- already current;
-- deliberately pinned;
-- locally built image;
-- architecture/platform limitation;
-- no compatible newer image;
-- major-version migration required;
-- stateful/database service requiring special controls;
-- abandoned/deprecated upstream image;
-- previous upgrade failure;
-- unclear ownership or image authority.
+For every previously skipped container:
 
-For every exception:
-
-- [ ] Record current container/service/image/version.
-- [ ] Record the reason it was skipped.
+- [ ] Record current container/service/image/version and runtime shape.
+- [ ] Re-test it against the current generic framework before declaring a blocker.
+- [ ] Record the exact remaining blocker if generic management still cannot support it.
 - [ ] Decide `upgrade`, `migrate`, `replace`, `remain pinned`, or `retire`.
-- [ ] Record the evidence and owner/source-of-truth repository.
+- [ ] Prefer narrow reviewed framework extensions over broad security relaxations.
+- [ ] Keep privileged/device-backed/writable-Docker-socket/control-plane services in higher-risk categories until explicit controls are proven.
 - [ ] For intentional pins, document the review date/condition for revisiting them.
 - [ ] For migration-required services, create a dedicated migration task/runbook.
 - [ ] Ensure no container silently falls outside the governed version-control process.
 
+Known next low-risk candidate: TestServer Alloy, whose read-only requalification evidence passed on 31 August. It remains untouched until the Jenkins candidate-acquisition and Dozzle `VERIFY_CLOSED` work is complete.
+
 ---
 
-# 6. Jenkins automation of container upgrades — 🟡 PLANNED
+# 6. Jenkins automation of container upgrades — 🔵 CURRENT STAGE 6 WORKSTREAM
 
-Start only after the manual container upgrade/rollback process is proven.
+The generic deployment core is now real and proven; remaining work is to complete the business-as-usual Jenkins workflow and remove routine manual closure steps.
 
-- [ ] Expose candidate selection through controlled Jenkins parameters.
-- [ ] Generate a non-secret deployment plan before mutation.
-- [ ] Require authority/clean-Git checks.
-- [ ] Require current runtime and target digest evidence.
-- [ ] Require security/Trivy gate where defined.
-- [ ] Require backup/rollback readiness.
-- [ ] Require human approval before deployment.
-- [ ] Upgrade only the selected service.
-- [ ] Run service/application/monitoring/logging validation.
-- [ ] Provide an explicit rollback operation.
-- [ ] Record outcome and deployed image authority.
+## Proven
+
+- [x] Reviewed Stage 6 manifests and validation.
+- [x] Fixed reviewed TestServer/ids-01 routing and host-key pinning.
+- [x] Read-only pre-approval inspector credentials.
+- [x] Human approval.
+- [x] Exact zero-drift reinspection.
+- [x] Post-approval executor credential boundary.
+- [x] Selected-service-only force recreation.
+- [x] `--pull never` deployment.
+- [x] Health/runtime/protected-container acceptance gates.
+- [x] Explicit rollback operation.
+- [x] One-shot arm/disarm model.
+- [x] Loki generic multi-host deployment proof.
+- [x] Dozzle deployment proof and final reviewed closure.
+
+## Next implementation
+
+- [ ] Add a dedicated candidate-acquisition SSH identity/forced command whose authority is limited to the reviewed image-cache acquisition helper.
+- [ ] Pull and verify the exact immutable candidate inside Jenkins before human approval.
+- [ ] Prove candidate acquisition cannot change container IDs/restarts/running state.
+- [ ] Keep the full executor credential unavailable until after approval and zero drift.
+- [ ] Add a reviewed service selector/dropdown generated from governed estate data rather than arbitrary live Docker names.
+- [ ] Add a non-mutating `VERIFY_CLOSED` / equivalent action.
+- [ ] Verify Dozzle through Jenkins without recreation and require `SUCCESS_VERIFIED_CLOSED`.
+- [ ] Automate successful candidate promotion into `docker-env` immutable Compose authority.
+- [ ] Synchronise live/root-owned authority without recreating the already-good service.
+- [ ] Generate/update and validate catalogue + steady-state data automatically.
+- [ ] Install the merged steady-state manifest automatically.
+- [ ] Run final read-only steady-state verification.
+- [ ] Archive deployment/closure evidence and return explicit result states.
+- [ ] Use Alloy as the first fresh service to prove the completed flow and require `SUCCESS_CLOSED`.
+
+Recommended result states include:
+
+```text
+SUCCESS_CLOSED
+SUCCESS_VERIFIED_CLOSED
+DEPLOYED_BUT_CLOSURE_INCOMPLETE
+ROLLED_BACK_CLOSED
+PRE_DEPLOYMENT_FAILED
+MANUAL_REVIEW_REQUIRED
+```
+
+**Exit gate:** normal operation is select reviewed service -> Jenkins acquires exact candidate -> review/approve -> Jenkins deploys/verifies/rolls back -> Jenkins closes Git authority/catalogue/steady state -> final read-only verification, with no routine SSH follow-up.
 
 ---
 
@@ -252,14 +296,17 @@ This project includes the previously separate PostgreSQL + TimescaleDB + Nginx V
 
 # 9. Proxmox host monitoring — 🟡 ACTIVE BACKLOG
 
-- [ ] Add/confirm `192.168.2.70:9100` in Prometheus.
-- [ ] Confirm persistent target `UP`.
-- [ ] Add the Proxmox host to Grafana host dashboards.
-- [ ] Add CPU/RAM/load/filesystem panels.
-- [ ] Add disk-I/O/network panels.
-- [ ] Add CPU/package, PCH and NVMe temperatures.
-- [ ] Add host-down alerting.
-- [ ] Add disk-space alerting.
+The basic Proxmox host observability baseline was substantially completed on 31 August: node-exporter is scraped by the Grafana-facing ids-01 Prometheus, Network Hosts identity is corrected to `PROXMOX`, standard CPU/memory/root-disk/host-down alert coverage is proven, and Alloy forwards the systemd journal to ids-01 Loki.
+
+Remaining enhancement work:
+
+- [x] Add/confirm `192.168.2.70:9100` in Prometheus and prove persistent target `UP`.
+- [x] Add the Proxmox host to the Network Hosts/Grafana host view.
+- [x] Prove CPU/RAM/root-filesystem metric availability.
+- [x] Prove standard host-down/disk/CPU/memory alert coverage.
+- [x] Forward the Proxmox systemd journal to Loki through Alloy.
+- [ ] Add dedicated disk-I/O/network panels where useful.
+- [ ] Add CPU/package, PCH and NVMe temperatures to the desired Grafana views.
 - [ ] Add temperature alerting.
 - [ ] Add SMART/NVMe reporting where practical.
 - [ ] Track the NVMe unsafe-shutdown baseline for increases.
@@ -425,6 +472,7 @@ Suggested early order: Homepage/Dashy-style presentation services, Dozzle and ot
 - [ ] High CPU Usage Grafana alert validates on the next real trigger.
 - [ ] Blocked-MAC monitoring validates on a real trigger.
 - [ ] Suricata 24-hour collection returns to expected operation.
+- [ ] Secondary Pi-hole boot reconciliation unit proves itself on the next normal reboot.
 
 ---
 
@@ -436,23 +484,27 @@ Finish VM 100 completely
         v
 Full new-VM build runbook
         |
-        v
-Jenkins parameterised runbook pipeline
+        +-------------------------------+
+        |                               |
+        v                               v
+Stage 6 Jenkins completion       Jenkins runbook pipeline
+(candidate acquisition +
+ VERIFY_CLOSED)
         |
         v
-Manually prove container upgrade + rollback
+Verify closed Dozzle in Jenkins
+without recreation
         |
         v
-Resolve skipped-container exceptions
+Fresh Alloy end-to-end Stage 6
+SUCCESS_CLOSED proof
         |
         v
-Automate container upgrades in Jenkins
+Requalify remaining containers
         |
         v
-Build Zabbix platform VM
-        |
-        v
-Wider Proxmox migration and remaining backlog
+Build Zabbix platform VM and
+continue wider migration/backlog
 ```
 
 # Programme-level acceptance criteria
@@ -461,7 +513,7 @@ The wider homelab programme is materially mature when:
 
 - important infrastructure is reproducible from Git/IaC;
 - Jenkins automates proven workflows without becoming a single point of recovery;
-- container image versions and upgrades are governed, tested and rollback-capable;
+- container image versions and upgrades are governed, tested, rollback-capable and durably closed into Git authority;
 - Proxmox workloads have off-host backup and tested restore paths;
 - DNS survives the loss of either physical DNS node and remains independent of Proxmox;
 - monitoring, logging, patching and security cover new infrastructure before production use;
