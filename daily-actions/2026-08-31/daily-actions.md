@@ -31,6 +31,8 @@ The active configuration passed `promtool` validation, Prometheus was reloaded w
 linux-hosts  192.168.2.70:9100  PROXMOX  proxmox-host  1
 ```
 
+Grafana Explore, using the ids-01 Prometheus datasource, also returned the live PROXMOX series with `up=1`.
+
 This proves that the Prometheus instance used by Grafana is scraping the Proxmox host successfully.
 
 ### Network discovery identity — completed
@@ -158,6 +160,71 @@ This proves the complete logging path:
 PROXMOX journal -> Alloy -> ids-01 Loki
 ```
 
+### Grafana host alert coverage — completed
+
+The live Grafana database on `ids-01` contains the four generic infrastructure alerts:
+
+```text
+High CPU Usage
+High Memory Usage
+Linux Host Down
+Low Disk Space
+```
+
+The live rules use the ids-01 Prometheus `linux-hosts` job, so the `PROXMOX` target is included automatically.
+
+PROXMOX was separately proved to expose the required node-exporter data:
+
+- `node_cpu_seconds_total`: 48 matching time series;
+- `node_memory_MemTotal_bytes`: present;
+- root filesystem metrics for `mountpoint="/"`: present.
+
+The live alert logic was inspected read-only from Grafana's SQLite database.
+
+CPU uses a three-stage Grafana expression chain:
+
+```text
+A: 100 - (avg by(host) (rate(node_cpu_seconds_total{job="linux-hosts",mode="idle"}[5m])) * 100)
+B: reduce A using last
+C: threshold B > 90
+for: 10 minutes
+```
+
+Memory uses:
+
+```promql
+100 * (1 - (node_memory_MemAvailable_bytes{job="linux-hosts"} / node_memory_MemTotal_bytes{job="linux-hosts"})) > 90
+```
+
+Disk uses the root filesystem:
+
+```promql
+100 - ((node_filesystem_avail_bytes{job="linux-hosts",fstype!="tmpfs",mountpoint="/"} / node_filesystem_size_bytes{job="linux-hosts",fstype!="tmpfs",mountpoint="/"}) * 100) > 85
+```
+
+Host down uses:
+
+```promql
+up{job="linux-hosts"} == 0
+```
+
+The live Host Down expression preserves the `host` label and therefore identifies `PROXMOX` specifically if its exporter becomes unavailable.
+
+This completes the Proxmox CPU, memory, disk and host-down alert-coverage gate.
+
+### Grafana alert Git/runtime drift — carried forward
+
+The active Grafana alert rules are stored in Grafana's SQLite database; the mounted file-provisioning directory currently contains Pi-hole alert files only.
+
+A drift was found between the live `Linux Host Down` rule and `jrwroberts1976/grafana-alerting`:
+
+```text
+live Grafana: up{job="linux-hosts"} == 0
+Git source:   min(up{job="linux-hosts"}) < 1
+```
+
+The live expression is the desired per-host behaviour. Git/runtime authority should be reconciled separately so the repository represents the deployed rule accurately.
+
 ### Documentation — completed in working branch
 
 The `home-lab-docs` branch `docs/infrastructure-topology-20260831` now contains:
@@ -169,19 +236,6 @@ The `home-lab-docs` branch `docs/infrastructure-topology-20260831` now contains:
 
 PR #53 tracks the documentation changes.
 
-## Open verification
-
-### Proxmox alert coverage
-
-The remaining Proxmox observability gate is to prove that the Grafana/Linux host alerting used by the ids-01 observability stack covers `PROXMOX` for:
-
-- host down;
-- high CPU;
-- high memory;
-- root filesystem/disk usage.
-
-The existing Linux Host Down expression also needs review because the Git source currently uses `min(up{job="linux-hosts"}) < 1`, which collapses the failing host label. The intended correction is to preserve per-host identity before relying on the rule for Proxmox alerting.
-
 ## Configuration-authority risk
 
 `/home/james/docker` on `ids-01` is runtime state and is not a Git checkout. The active Prometheus target change is therefore proven live but still has a source-of-truth gap.
@@ -192,17 +246,19 @@ This must be corrected as part of the later Prometheus consolidation work before
 
 ### Completed today
 
-- Added the physical Proxmox host to the Grafana-facing Prometheus on `ids-01` and proved `up=1`.
+- Added the physical Proxmox host to the Grafana-facing Prometheus on `ids-01` and proved `up=1` in Prometheus and Grafana Explore.
 - Corrected the Proxmox Network Hosts identity by stable MAC and generated the `proxmox-1c55d2.json` dashboard.
 - Created and proved a dedicated TestServer-to-Proxmox automation SSH identity.
 - Added a Git-controlled, physical-host-specific Ansible Alloy deployment path to `jrwroberts1976/proxmox`.
 - Installed and enabled Alloy v1.19.2 on `PROXMOX` through Ansible.
 - Proved the end-to-end `PROXMOX journal -> Alloy -> ids-01 Loki` path using marker `PROXMOX_ALLOY_TEST_1788157720`.
+- Proved the live Grafana CPU, memory, root-disk and host-down alert rules cover `PROXMOX`.
+- Confirmed the live Host Down rule already preserves per-host identity with `up{job="linux-hosts"} == 0`.
 - Added infrastructure topology and network-discovery script documentation to `home-lab-docs` PR #53.
 
 ### Carried forward
 
-- Prove and, where necessary, correct Grafana/Linux host alert coverage for `PROXMOX`.
+- Reconcile Grafana alert-rule Git/runtime drift, especially the `Linux Host Down` expression.
 - Restore `debian-iac-test-01` to the ids-01 Prometheus target set if still missing.
 - Establish Git authority for the active ids-01 Prometheus configuration.
 - After parity is proven, make ids-01 the single Prometheus authority and retire TestServer Prometheus.
