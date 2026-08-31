@@ -110,8 +110,12 @@ Linux / Proxmox hosts
 - Grafana's Prometheus datasource is `http://prometheus:9090`, resolving to the Prometheus container on the ids-01 Docker network.
 - Loki runs on `ids-01` and is exposed on port `3100`.
 - `PROXMOX` runs `prometheus-node-exporter`, enabled and active on `*:9100`.
-- `PROXMOX` is now present in the ids-01 Prometheus `linux-hosts` target set as `192.168.2.70:9100` with labels `host="PROXMOX"`, `role="proxmox-host"`, `os="proxmox"`.
-- The ids-01 Prometheus API proved `up{job="linux-hosts",host="PROXMOX"} = 1`.
+- `PROXMOX` is present in the ids-01 Prometheus `linux-hosts` target set as `192.168.2.70:9100` with labels `host="PROXMOX"`, `role="proxmox-host"`, `os="proxmox"`.
+- The ids-01 Prometheus API and Grafana Explore both proved `up{job="linux-hosts",host="PROXMOX"} = 1`.
+- PROXMOX exposes the CPU, memory and root-filesystem metrics required by the standard host alerts.
+- The live Grafana alert database contains `High CPU Usage`, `High Memory Usage`, `Low Disk Space` and `Linux Host Down`; all four operate on `job="linux-hosts"` and therefore cover PROXMOX.
+- The CPU rule calculates host CPU usage, reduces to the latest value and applies a `> 90` threshold for 10 minutes.
+- The live Host Down rule is `up{job="linux-hosts"} == 0`, preserving the failing `host` label.
 - `PROXMOX` runs Grafana Alloy v1.19.2, enabled and active, deployed through the Git-controlled Proxmox Ansible configuration.
 - Alloy forwards the Proxmox systemd journal to Loki on `ids-01` with `host="PROXMOX"`, `role="proxmox-host"`, `job="systemd-journal"`.
 - End-to-end journal ingestion was proved with marker `PROXMOX_ALLOY_TEST_1788157720`, emitted on `PROXMOX` and returned by Loki on `ids-01`.
@@ -236,6 +240,24 @@ This means the active ids-01 Docker/Prometheus runtime configuration is not curr
 
 This is a configuration-authority gap. The live PROXMOX Prometheus target is proven operational, but the ids-01 Prometheus source-of-truth must still be identified or brought under Git control before TestServer Prometheus is retired.
 
+### Grafana alert rules have Git/runtime drift
+
+The mounted Grafana provisioning alert directory currently contains Pi-hole alert files only. The generic host rules are active in Grafana's SQLite database.
+
+The live `Linux Host Down` expression is:
+
+```promql
+up{job="linux-hosts"} == 0
+```
+
+The current `jrwroberts1976/grafana-alerting` source still contains:
+
+```promql
+min(up{job="linux-hosts"}) < 1
+```
+
+The live expression has the desired per-host semantics. The repository and deployed state should be reconciled so Git accurately represents the active rule.
+
 ### TestServer Prometheus is not the intended Grafana authority
 
 A temporary branch on the TestServer Docker repository added `PROXMOX` to the TestServer Prometheus `linux-hosts.yml` and successfully proved reachability.
@@ -262,18 +284,17 @@ However, Grafana on ids-01 queries the ids-01 Prometheus container, not TestServ
 
 The remaining corrections required to make runtime match the intended topology are:
 
-1. Prove the existing generic CPU, memory, disk and host-down alerts cover `PROXMOX` through the ids-01 Prometheus datasource.
-2. Improve the Linux Host Down rule so the failing `host` label is retained.
-3. Restore `debian-iac-test-01` (`192.168.2.120:9100`) to the ids-01 Prometheus target set if it remains absent.
-4. Identify or establish Git authority for the active ids-01 Docker/Prometheus configuration.
-5. Compare TestServer and ids-01 Prometheus jobs/targets, migrate any remaining unique coverage, then retire the TestServer Prometheus instance after parity is proven.
+1. Reconcile Grafana alert-rule Git/runtime drift so `jrwroberts1976/grafana-alerting` represents the live per-host Host Down expression.
+2. Restore `debian-iac-test-01` (`192.168.2.120:9100`) to the ids-01 Prometheus target set if it remains absent.
+3. Identify or establish Git authority for the active ids-01 Docker/Prometheus configuration.
+4. Compare TestServer and ids-01 Prometheus jobs/targets, migrate any remaining unique coverage, then retire the TestServer Prometheus instance after parity is proven.
 
 ## Related repositories
 
 - `jrwroberts1976/home-lab-docs` — operational documentation and topology.
 - `jrwroberts1976/proxmox` — Proxmox/OpenTofu/Ansible authority.
 - `jrwroberts1976/docker-env` — TestServer Docker configuration authority.
-- `jrwroberts1976/grafana-alerting` — Grafana alert-rule authority.
+- `jrwroberts1976/grafana-alerting` — intended Grafana alert-rule authority; currently requires reconciliation with live Grafana database state.
 
 ## Maintenance rule
 
