@@ -1,0 +1,866 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROGRAM="${0##*/}"
+MODE="dry-run"
+
+HOST=""
+MAC=""
+IP=""
+
+EXPECTED_HOST="${HOMELAB_DECOMMISSION_CONTROL_HOST:-ids-01}"
+
+GRAFANA_ROOT="${HOMELAB_GRAFANA_PROVISIONING_ROOT:-/home/james/docker/data/monitoring/grafana/provisioning}"
+GRAFANA_DATA="${HOMELAB_GRAFANA_DATA_ROOT:-/home/james/docker/data/monitoring/grafana}"
+MONITORING_STACK="${HOMELAB_MONITORING_STACK:-/home/james/docker/stacks/monitoring}"
+
+STATE="${HOMELAB_NETWORK_STATE:-/var/lib/homelab-network-discovery/devices.json}"
+METRICS="${HOMELAB_NETWORK_METRICS:-/var/lib/node_exporter/textfile_collector/homelab_network_discovery.prom}"
+
+PROMETHEUS_URL="${HOMELAB_PROMETHEUS_URL:-http://127.0.0.1:9090}"
+GRAFANA_HEALTH_URL="${HOMELAB_GRAFANA_HEALTH_URL:-http://127.0.0.1:3001/api/health}"
+
+NETWORK_SERVICE="${HOMELAB_NETWORK_DISCOVERY_SERVICE:-homelab-network-discovery.service}"
+
+BACKUP_ROOT="${HOMELAB_DECOMMISSION_BACKUP_ROOT:-/var/tmp}"
+
+usage() {
+    cat <<EOF
+Usage:
+  $PROGRAM --hostname HOST --mac MAC [--ip IP] [--dry-run]
+  $PROGRAM --hostname HOST --mac MAC [--ip IP] --apply
+
+Purpose:
+  Safely remove a retired host from current homelab observability state:
+    - persistent network-discovery inventory
+    - generated Grafana Network Host dashboards
+    - target-exclusive Grafana alert provisioning
+    - current Prometheus network-inventory series
+
+  Historical Prometheus and Loki data are NOT deleted.
+
+Safety model:
+  --dry-run   Inspect and report only. This is the default.
+  --apply     Perform the decommission after all gates pass.
+
+Important:
+  The tool refuses to decommission a host that is currently online.
+  Grafana alert files are modified automatically only when the matching
+  provisioning file contains exactly one alert UID. Mixed/shared alert
+  files fail closed and require a separate reviewed change.
+
+Examples:
+  $PROGRAM --hostname app-platform-01 --mac BC:24:11:08:A2:33
+
+  sudo $PROGRAM \
+    --hostname app-platform-01 \
+    --mac BC:24:11:08:A2:33 \
+    --ip 192.168.2.253 \
+    --apply
+EOF
+}
+
+fail() {
+    echo
+    echo "FAIL: $*" >&2
+    exit 1
+}
+
+need_command() {
+    command -v "$1" >/dev/null 2>&1 ||
+        fail "required command not found: $1"
+}
+
+normalize_mac() {
+    printf '%s' "$1" | tr '[:lower:]' '[:upper:]'
+}
+
+wait_for_grafana() {
+    local healthy=0
+    local attempt
+
+    for attempt in $(seq 1 30); do
+        if curl -fsS "$GRAFANA_HEALTH_URL" 2>/dev/null |
+           jq -e '.database == "ok"' >/dev/null 2>&1
+        then
+            healthy=1
+            break
+        fi
+
+        sleep 2
+    done
+
+    [ "$healthy" -eq 1 ] ||
+        fail "Grafana did not return healthy"
+
+    echo "grafana_health=PASS"
+}
+
+locate_grafana_db() {
+    sudo find "$GRAFANA_DATA" \
+        -type f \
+        -name grafana.db \
+        -print \
+        -quit \
+        2>/dev/null
+}
+
+metric_line_for_mac() {
+    if sudo test -r "$METRICS"; then
+        sudo grep -F 'homelab_network_device_info{' "$METRICS" 2>/dev/null |
+            grep -F "mac=\"$MAC\"" |
+            head -1 || true
+    fi
+}
+
+metric_online_value() {
+    local line
+
+    line="$(metric_line_for_mac)"
+
+    if [ -z "$line" ]; then
+        echo "absent"
+    else
+        awk '{print $NF}' <<<"$line"
+    fi
+}
+
+prometheus_current_count() {
+    curl -fsSG \
+        --data-urlencode \
+        "query=homelab_network_device_info{mac=\"$MAC\"}" \
+        "$PROMETHEUS_URL/api/v1/query" |
+        jq -r '.data.result | length'
+}
+
+discover_dashboard_files() {
+    python3 - "$GRAFANA_ROOT/network-hosts-json/generated-hosts" "$HOST" "$MAC" "$IP" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+host = sys.argv[2]
+mac = sys.argv[3]
+ip = sys.argv[4]
+
+if not root.exists():
+    raise SystemExit(0)
+
+for path in sorted(root.glob("*.json")):
+    try:
+        data = json.loads(path.read_text())
+    except Exception:
+        continue
+
+    title = str(data.get("title", ""))
+    description = str(data.get("description", ""))
+
+    if (
+        title == host
+        or host in description
+        or mac in description
+        or (ip and ip in description)
+    ):
+        print(path)
+PY
+}
+
+dashboard_uid() {
+    jq -r '.uid // empty' "$1"
+}
+
+discover_alert_files() {
+    python3 - "$GRAFANA_ROOT/alerting" "$HOST" "$MAC" "$IP" <<'PY'
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+host = sys.argv[2]
+mac = sys.argv[3]
+ip = sys.argv[4]
+
+if not root.exists():
+    raise SystemExit(0)
+
+needles = [host, mac]
+if ip:
+    needles.append(ip)
+
+for path in sorted(root.rglob("*")):
+    if not path.is_file():
+        continue
+
+    if "backups" in path.parts:
+        continue
+
+    if path.suffix.lower() not in {".yml", ".yaml", ".json"}:
+        continue
+
+    try:
+        text = path.read_text(errors="replace")
+    except OSError:
+        continue
+
+    if any(needle and needle in text for needle in needles):
+        print(path)
+PY
+}
+
+alert_uids() {
+    grep -E '^[[:space:]]+uid:[[:space:]]*[^[:space:]]+' "$1" 2>/dev/null |
+        sed -E 's/^[[:space:]]+uid:[[:space:]]*//' |
+        sed -E 's/[[:space:]]+$//' ||
+        true
+}
+
+rewrite_alert_as_tombstone() {
+    local file="$1"
+    local uid="$2"
+
+    sudo python3 - "$file" "$uid" <<'PY'
+import os
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+uid = sys.argv[2]
+
+st = path.stat()
+tmp = path.with_name(path.name + ".decommission.tmp")
+
+tmp.write_text(
+    "apiVersion: 1\n\n"
+    "deleteRules:\n"
+    "  - orgId: 1\n"
+    f"    uid: {uid}\n"
+)
+
+os.chmod(tmp, st.st_mode & 0o7777)
+os.chown(tmp, st.st_uid, st.st_gid)
+os.replace(tmp, path)
+PY
+}
+
+remove_state_entry() {
+    sudo python3 - "$STATE" "$MAC" <<'PY'
+import json
+import os
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+mac = sys.argv[2]
+
+st = path.stat()
+data = json.loads(path.read_text())
+
+removed = data.pop(mac, None)
+if removed is None:
+    print("network_state=ALREADY_ABSENT")
+    raise SystemExit(0)
+
+tmp = path.with_name(path.name + ".decommission.tmp")
+tmp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+
+os.chmod(tmp, st.st_mode & 0o7777)
+os.chown(tmp, st.st_uid, st.st_gid)
+os.replace(tmp, path)
+
+print("network_state=REMOVED")
+print("removed_device=" + json.dumps(removed, sort_keys=True))
+PY
+}
+
+db_preflight() {
+    local db="$1"
+
+    sudo python3 - "$db" "$HOST" <<'PY'
+import sqlite3
+import sys
+
+db, host = sys.argv[1:]
+
+con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+
+tables = {
+    row[0]
+    for row in con.execute(
+        "select name from sqlite_master where type='table'"
+    )
+}
+
+dashboard_count = 0
+alert_count = 0
+
+if "dashboard" in tables:
+    dashboard_count = con.execute(
+        """
+        select count(*)
+        from dashboard
+        where title = ?
+           or uid like ?
+        """,
+        (host, f"%{host}%"),
+    ).fetchone()[0]
+
+if "alert_rule" in tables:
+    alert_count = con.execute(
+        """
+        select count(*)
+        from alert_rule
+        where title like ?
+           or uid like ?
+        """,
+        (f"%{host}%", f"%{host}%"),
+    ).fetchone()[0]
+
+print(f"grafana_db_dashboard_matches={dashboard_count}")
+print(f"grafana_db_alert_matches={alert_count}")
+PY
+}
+
+db_final_proof() {
+    local db="$1"
+    shift
+    local uids=("$@")
+    local uid_file
+
+    uid_file="$(mktemp)"
+    trap 'rm -f "$uid_file"' RETURN
+
+    printf '%s\n' "${uids[@]}" >"$uid_file"
+
+    sudo python3 - "$db" "$HOST" "$uid_file" <<'PY'
+import sqlite3
+import sys
+from pathlib import Path
+
+db, host, uid_file = sys.argv[1:]
+uids = [
+    line.strip()
+    for line in Path(uid_file).read_text().splitlines()
+    if line.strip()
+]
+
+con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+
+tables = {
+    row[0]
+    for row in con.execute(
+        "select name from sqlite_master where type='table'"
+    )
+}
+
+dashboards = []
+alerts = []
+
+if "dashboard" in tables:
+    dashboards = list(
+        con.execute(
+            """
+            select uid, title
+            from dashboard
+            where title = ?
+               or uid like ?
+            """,
+            (host, f"%{host}%"),
+        )
+    )
+
+if "alert_rule" in tables:
+    alerts.extend(
+        con.execute(
+            """
+            select uid, title
+            from alert_rule
+            where title like ?
+               or uid like ?
+            """,
+            (f"%{host}%", f"%{host}%"),
+        )
+    )
+
+    if uids:
+        placeholders = ",".join("?" for _ in uids)
+        alerts.extend(
+            con.execute(
+                f"""
+                select uid, title
+                from alert_rule
+                where uid in ({placeholders})
+                """,
+                uids,
+            )
+        )
+
+# Deduplicate possible overlapping alert matches.
+alerts = sorted(set(alerts))
+
+print(f"dashboard_rows={len(dashboards)}")
+print(f"alert_rows={len(alerts)}")
+
+for row in dashboards:
+    print("dashboard:", row)
+
+for row in alerts:
+    print("alert:", row)
+
+if dashboards:
+    raise SystemExit("retired dashboard remains in Grafana database")
+
+if alerts:
+    raise SystemExit("retired alert remains in Grafana database")
+
+print("grafana_database_proof=PASS")
+PY
+
+    rm -f "$uid_file"
+    trap - RETURN
+}
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --hostname)
+            [ "$#" -ge 2 ] || fail "--hostname requires a value"
+            HOST="$2"
+            shift 2
+            ;;
+        --mac)
+            [ "$#" -ge 2 ] || fail "--mac requires a value"
+            MAC="$2"
+            shift 2
+            ;;
+        --ip)
+            [ "$#" -ge 2 ] || fail "--ip requires a value"
+            IP="$2"
+            shift 2
+            ;;
+        --apply)
+            MODE="apply"
+            shift
+            ;;
+        --dry-run)
+            MODE="dry-run"
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            fail "unknown argument: $1"
+            ;;
+    esac
+done
+
+[ -n "$HOST" ] || fail "--hostname is required"
+[ -n "$MAC" ] || fail "--mac is required"
+
+MAC="$(normalize_mac "$MAC")"
+
+[[ "$MAC" =~ ^([0-9A-F]{2}:){5}[0-9A-F]{2}$ ]] ||
+    fail "invalid MAC address: $MAC"
+
+if [ -n "$IP" ]; then
+    python3 - "$IP" <<'PY' ||
+import ipaddress
+import sys
+ipaddress.ip_address(sys.argv[1])
+PY
+        fail "invalid IP address: $IP"
+fi
+
+for command in \
+    awk \
+    curl \
+    docker \
+    find \
+    grep \
+    jq \
+    python3 \
+    sed \
+    systemctl
+do
+    need_command "$command"
+done
+
+echo "===== HOMELAB HOST DECOMMISSION ====="
+echo "mode=$MODE"
+echo "hostname=$HOST"
+echo "mac=$MAC"
+echo "ip=${IP:-not-specified}"
+
+echo
+echo "===== CONTROL HOST GATE ====="
+
+[ "$(hostname -s)" = "$EXPECTED_HOST" ] ||
+    fail "run on $EXPECTED_HOST"
+
+docker ps --format '{{.Names}}' |
+    grep -qx grafana ||
+    fail "Grafana container is not running"
+
+[ -d "$GRAFANA_ROOT" ] ||
+    fail "Grafana provisioning root missing: $GRAFANA_ROOT"
+
+[ -r "$STATE" ] || sudo test -r "$STATE" ||
+    fail "network-discovery state unavailable: $STATE"
+
+echo "control_host_gate=PASS"
+
+if [ "$MODE" = "apply" ]; then
+    sudo -v
+fi
+
+echo
+echo "===== INVENTORY IDENTITY GATE ====="
+
+if sudo jq -e --arg mac "$MAC" 'has($mac)' "$STATE" >/dev/null; then
+    STATE_HOST="$(
+        sudo jq -r --arg mac "$MAC" '.[$mac].hostname // "Unknown"' "$STATE"
+    )"
+
+    STATE_IPS="$(
+        sudo jq -r --arg mac "$MAC" '.[$mac].ips // [] | join(",")' "$STATE"
+    )"
+
+    echo "state_hostname=$STATE_HOST"
+    echo "state_ips=${STATE_IPS:-none}"
+
+    if [ "$STATE_HOST" != "Unknown" ] &&
+       [ "$STATE_HOST" != "$HOST" ]
+    then
+        fail "MAC belongs to state hostname '$STATE_HOST', not '$HOST'"
+    fi
+
+    if [ -z "$IP" ] && [ -n "$STATE_IPS" ]; then
+        IP="${STATE_IPS%%,*}"
+        echo "derived_ip=$IP"
+    fi
+else
+    echo "network_state=ABSENT"
+fi
+
+echo "inventory_identity_gate=PASS"
+
+echo
+echo "===== CURRENT ONLINE GATE ====="
+
+if [ "$MODE" = "apply" ]; then
+    sudo systemctl start "$NETWORK_SERVICE"
+
+    systemctl is-failed "$NETWORK_SERVICE" >/dev/null 2>&1 &&
+        fail "$NETWORK_SERVICE failed"
+fi
+
+ONLINE_VALUE="$(metric_online_value)"
+echo "textfile_online_value=$ONLINE_VALUE"
+
+if [ "$ONLINE_VALUE" = "1" ] || [ "$ONLINE_VALUE" = "1.0" ]; then
+    fail "host is currently online; refusing decommission"
+fi
+
+echo "current_online_gate=PASS"
+
+echo
+echo "===== DASHBOARD DISCOVERY ====="
+
+mapfile -t DASH_FILES < <(discover_dashboard_files)
+
+if [ "${#DASH_FILES[@]}" -eq 0 ]; then
+    echo "dashboard_sources=0"
+else
+    printf 'dashboard_source=%s\n' "${DASH_FILES[@]}"
+fi
+
+DASH_UIDS=()
+for file in "${DASH_FILES[@]}"; do
+    uid="$(dashboard_uid "$file")"
+    [ -n "$uid" ] ||
+        fail "dashboard has no UID: $file"
+    DASH_UIDS+=("$uid")
+    echo "dashboard_uid=$uid"
+done
+
+PROVIDER="$GRAFANA_ROOT/dashboards/network-hosts.yml"
+
+if [ "${#DASH_FILES[@]}" -gt 0 ]; then
+    [ -f "$PROVIDER" ] ||
+        fail "network-hosts dashboard provider missing"
+
+    grep -Eq \
+        '^[[:space:]]*disableDeletion:[[:space:]]*false[[:space:]]*$' \
+        "$PROVIDER" ||
+        fail "network-hosts provider has dashboard deletion disabled"
+fi
+
+echo "dashboard_discovery_gate=PASS"
+
+echo
+echo "===== ALERT DISCOVERY ====="
+
+mapfile -t ALERT_FILES < <(discover_alert_files)
+
+ALERT_UIDS=()
+TOMBSTONE_FILES=()
+LIVE_ALERT_FILES=()
+
+if [ "${#ALERT_FILES[@]}" -eq 0 ]; then
+    echo "alert_provisioning_files=0"
+else
+    for file in "${ALERT_FILES[@]}"; do
+        echo "alert_file=$file"
+
+        mapfile -t file_uids < <(alert_uids "$file")
+
+        [ "${#file_uids[@]}" -eq 1 ] ||
+            fail "target alert file is shared/mixed or has no single UID: $file"
+
+        uid="${file_uids[0]}"
+        ALERT_UIDS+=("$uid")
+        echo "alert_uid=$uid"
+
+        if grep -q '^deleteRules:' "$file"; then
+            TOMBSTONE_FILES+=("$file")
+            echo "alert_state=DELETE_TOMBSTONE"
+        elif grep -q '^groups:' "$file"; then
+            LIVE_ALERT_FILES+=("$file")
+            echo "alert_state=LIVE_SINGLE_RULE"
+        else
+            fail "unrecognised target alert provisioning structure: $file"
+        fi
+    done
+fi
+
+echo "alert_discovery_gate=PASS"
+
+echo
+echo "===== GRAFANA DATABASE PRE-FLIGHT ====="
+
+DB="$(locate_grafana_db)"
+
+if [ -n "$DB" ]; then
+    echo "grafana_db=$DB"
+    db_preflight "$DB"
+else
+    echo "grafana_db=NOT_FOUND"
+fi
+
+echo "grafana_database_preflight=PASS"
+
+if [ "$MODE" = "dry-run" ]; then
+    echo
+    echo "===== DRY RUN RESULT ====="
+    echo "changes_applied=NO"
+    echo "historical_prometheus_data=UNCHANGED"
+    echo "historical_loki_logs=UNCHANGED"
+    echo
+    echo "PASS: DECOMMISSION PRE-FLIGHT COMPLETE"
+    echo
+    echo "Re-run with --apply to perform the decommission."
+    exit 0
+fi
+
+STAMP="$(date +%Y%m%d-%H%M%S)"
+BACKUP="$BACKUP_ROOT/homelab-decommission-${HOST}-${STAMP}"
+
+echo
+echo "===== BACKUP ====="
+
+mkdir -p "$BACKUP"
+chmod 0700 "$BACKUP"
+
+sudo cp -a "$STATE" "$BACKUP/devices.json"
+
+if sudo test -f "$METRICS"; then
+    sudo cp -a "$METRICS" "$BACKUP/homelab_network_discovery.prom"
+fi
+
+for file in "${DASH_FILES[@]}"; do
+    sudo cp -a "$file" "$BACKUP/"
+done
+
+for file in "${ALERT_FILES[@]}"; do
+    sudo cp -a "$file" "$BACKUP/"
+done
+
+if [ -f "$PROVIDER" ]; then
+    sudo cp -a "$PROVIDER" "$BACKUP/network-hosts.yml"
+fi
+
+sudo chown -R "$(id -u):$(id -g)" "$BACKUP"
+
+echo "backup=$BACKUP"
+echo "backup_gate=PASS"
+
+echo
+echo "===== RETIRE LIVE ALERT RULES ====="
+
+for file in "${LIVE_ALERT_FILES[@]}"; do
+    mapfile -t file_uids < <(alert_uids "$file")
+    uid="${file_uids[0]}"
+
+    rewrite_alert_as_tombstone "$file" "$uid"
+    TOMBSTONE_FILES+=("$file")
+
+    echo "alert_tombstone_created=$file"
+done
+
+echo "live_alert_retirement=PASS"
+
+echo
+echo "===== REMOVE NETWORK INVENTORY ====="
+
+remove_state_entry
+
+sudo jq -e \
+    --arg mac "$MAC" \
+    'has($mac) | not' \
+    "$STATE" \
+    >/dev/null ||
+    fail "retired MAC remains in discovery state"
+
+echo "network_inventory_removed=PASS"
+
+echo
+echo "===== REMOVE GENERATED DASHBOARDS ====="
+
+for file in "${DASH_FILES[@]}"; do
+    sudo rm -- "$file"
+    [ ! -e "$file" ] ||
+        fail "dashboard source still exists: $file"
+    echo "dashboard_source_removed=$file"
+done
+
+echo "dashboard_sources_removed=PASS"
+
+echo
+echo "===== REGENERATE CURRENT NETWORK STATE ====="
+
+sudo systemctl start "$NETWORK_SERVICE"
+
+systemctl is-failed "$NETWORK_SERVICE" >/dev/null 2>&1 &&
+    fail "$NETWORK_SERVICE failed after inventory removal"
+
+sudo jq -e \
+    --arg mac "$MAC" \
+    'has($mac) | not' \
+    "$STATE" \
+    >/dev/null ||
+    fail "retired MAC was rediscovered; host appears to be online"
+
+if sudo test -f "$METRICS" &&
+   sudo grep -Fq "mac=\"$MAC\"" "$METRICS"
+then
+    sudo grep -F "mac=\"$MAC\"" "$METRICS" || true
+    fail "retired MAC remains in current textfile metrics"
+fi
+
+echo "current_network_state=ABSENT"
+
+echo
+echo "===== FIRST GRAFANA RELOAD ====="
+
+cd "$MONITORING_STACK"
+docker compose restart grafana
+wait_for_grafana
+
+DB="$(locate_grafana_db)"
+[ -n "$DB" ] ||
+    fail "grafana.db not found after Grafana restart"
+
+db_final_proof "$DB" "${ALERT_UIDS[@]}"
+
+echo
+echo "===== REMOVE SPENT TARGET TOMBSTONES ====="
+
+for file in "${TOMBSTONE_FILES[@]}"; do
+    if [ -e "$file" ]; then
+        sudo rm -- "$file"
+        echo "alert_tombstone_removed=$file"
+    fi
+done
+
+echo "spent_tombstone_cleanup=PASS"
+
+echo
+echo "===== FINAL GRAFANA RELOAD ====="
+
+docker compose restart grafana
+wait_for_grafana
+
+echo
+echo "===== ACTIVE PROVISIONING REFERENCE GATE ====="
+
+REFERENCES="$(
+    sudo grep -RniE \
+        "$(printf '%s' "$HOST" | sed 's/[][\\.^$*+?{}|()]/\\&/g')|$(printf '%s' "$MAC" | sed 's/[][\\.^$*+?{}|()]/\\&/g')${IP:+|$(printf '%s' "$IP" | sed 's/[][\\.^$*+?{}|()]/\\&/g')}" \
+        "$GRAFANA_ROOT" \
+        --exclude-dir=backups \
+        2>/dev/null || true
+)"
+
+if [ -n "$REFERENCES" ]; then
+    printf '%s\n' "$REFERENCES"
+    fail "retired host remains in active Grafana provisioning"
+fi
+
+echo "grafana_active_provisioning_references=ZERO"
+
+echo
+echo "===== CURRENT PROMETHEUS INVENTORY GATE ====="
+
+PROM_ABSENT=0
+
+for attempt in $(seq 1 12); do
+    COUNT="$(prometheus_current_count)"
+    echo "attempt=$attempt current_series=$COUNT"
+
+    if [ "$COUNT" -eq 0 ]; then
+        PROM_ABSENT=1
+        break
+    fi
+
+    sleep 5
+done
+
+[ "$PROM_ABSENT" -eq 1 ] ||
+    fail "retired host remains in current Prometheus inventory"
+
+echo "prometheus_current_inventory=ABSENT"
+
+echo
+echo "===== FINAL GRAFANA DATABASE PROOF ====="
+
+DB="$(locate_grafana_db)"
+[ -n "$DB" ] ||
+    fail "grafana.db not found for final proof"
+
+db_final_proof "$DB" "${ALERT_UIDS[@]}"
+
+echo
+echo "===== WRITE RESULT RECORD ====="
+
+RESULT_FILE="$BACKUP/result.txt"
+
+cat >"$RESULT_FILE" <<EOF
+hostname=$HOST
+mac=$MAC
+ip=${IP:-}
+dashboard=REMOVED
+grafana_alert=REMOVED_OR_ABSENT
+grafana_active_provisioning_references=ZERO
+network_inventory=REMOVED
+current_prometheus_inventory=REMOVED
+historical_prometheus_data=PRESERVED
+historical_loki_logs=PRESERVED
+backup=$BACKUP
+EOF
+
+chmod 0600 "$RESULT_FILE"
+
+cat "$RESULT_FILE"
+
+echo
+echo "PASS: HOMELAB HOST DECOMMISSION COMPLETE"
