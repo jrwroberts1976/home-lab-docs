@@ -10,7 +10,7 @@ from pathlib import Path
 
 STATE = Path("/var/lib/homelab-network-discovery/devices.json")
 METRICS = Path(
-    "/var/lib/prometheus/node-exporter/"
+    "/var/lib/node_exporter/textfile_collector/"
     "homelab_network_discovery.prom"
 )
 
@@ -242,6 +242,8 @@ manual_hostnames = {
     "24:4B:FE:5E:CC:C8": "Main Router",
     "5C:34:00:50:DF:B3": "Main TV",
     "14:7F:67:6D:E5:98": "Bedroom TV",
+    "60:83:E7:F3:BF:3D": "TP-Link IoT F3-BF-3D",
+    "60:83:E7:F4:0B:2E": "TP-Link IoT F4-0B-2E",
 }
 
 for manual_mac, manual_hostname in manual_hostnames.items():
