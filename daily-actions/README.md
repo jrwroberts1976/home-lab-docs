@@ -59,14 +59,17 @@ Every `daily-actions.md` should finish with a concise end-of-day summary using t
 
 The summary should be updated during the day as work moves from carried-forward/open to completed. If an item is explicitly deferred, record why and what condition should cause it to be revisited.
 
-## Current day
+## Current / next day
 
-- **ACTIVE:** [2026-09-03 daily actions](2026-09-03/daily-actions.md)
-- **ACTIVE TODO:** [2026-09-03 task list](2026-09-03/todo.md)
+- **CLOSED:** [2026-09-03 daily actions](2026-09-03/daily-actions.md)
+- **CLOSED TODO:** [2026-09-03 task list](2026-09-03/todo.md)
+- **NEXT / PLANNED:** [2026-09-04 daily actions](2026-09-04/daily-actions.md)
+- **NEXT TODO:** [2026-09-04 task list](2026-09-04/todo.md)
 
 ## Reports
 
-- [2026-09-03](2026-09-03/daily-actions.md)
+- [2026-09-04](2026-09-04/daily-actions.md) — planned; see also [todo](2026-09-04/todo.md)
+- [2026-09-03](2026-09-03/daily-actions.md) — closed; see also [todo](2026-09-03/todo.md)
 - [2026-09-02](2026-09-02/daily-actions.md) — closed; see also [closeout](2026-09-02/closeout.md)
 - [2026-09-01](2026-09-01/daily-actions.md)
 - [2026-08-31](2026-08-31/daily-actions.md)
@@ -90,17 +93,16 @@ Current tail of the structure:
 ```text
 daily-actions/
 ├── README.md
-├── 2026-08-31/
-│   ├── daily-actions.md
-│   ├── stage6-container-update-closeout.md
-│   └── todo.md
 ├── 2026-09-01/
 │   ├── daily-actions.md
 │   └── reporting-reconciliation.md
 ├── 2026-09-02/
 │   ├── daily-actions.md
 │   └── closeout.md
-└── 2026-09-03/
+├── 2026-09-03/
+│   ├── daily-actions.md
+│   └── todo.md
+└── 2026-09-04/
     ├── daily-actions.md
     └── todo.md
 ```
