@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Greenbone security report email
+
+[Timer]
+OnCalendar=*-*-* 07:40:00
+Persistent=true
+Unit=homelab-greenbone-email.service
+
+[Install]
+WantedBy=timers.target

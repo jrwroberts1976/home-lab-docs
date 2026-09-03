@@ -1,0 +1,8 @@
+[Unit]
+Description=Email latest Greenbone security report
+Wants=network-online.target
+After=network-online.target homelab-greenbone-ai-review.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/homelab-greenbone-email
