@@ -1,0 +1,19 @@
+[Unit]
+Description=Generate Daily Homelab SecOps Management Report
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+
+EnvironmentFile=/etc/homelab-openai/api-key
+Environment=OPENAI_MANAGEMENT_MODEL=gpt-5.6-terra
+
+ExecStart=/usr/local/sbin/homelab-secops-management-report
+
+UMask=0077
+NoNewPrivileges=true
+
+TimeoutStartSec=15min

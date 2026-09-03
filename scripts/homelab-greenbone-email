@@ -1,0 +1,961 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPORT="/var/lib/homelab-secops-report/management/latest.md"
+PIHOLE_EVIDENCE="/var/lib/homelab-secops-report/state/pihole-security-events.tsv"
+SMTP_CONFIG="/etc/homelab-greenbone/msmtprc"
+SMTP_ENV="/etc/homelab-greenbone/smtp.env"
+METRIC_DIR="/var/lib/prometheus/node-exporter"
+METRIC_FILE="${METRIC_DIR}/homelab_greenbone_email.prom"
+TMP_METRIC="$(mktemp /tmp/.greenbone-email.XXXXXX)"
+TMP_HTML="$(mktemp /tmp/homelab-management-email.XXXXXX)"
+
+trap 'rm -f "$TMP_METRIC" "$TMP_HTML"' EXIT
+
+write_metric() {
+    local success="$1"
+
+    {
+        echo '# HELP homelab_greenbone_email_success Whether the latest management email was sent successfully.'
+        echo '# TYPE homelab_greenbone_email_success gauge'
+        echo "homelab_greenbone_email_success ${success}"
+        echo '# HELP homelab_greenbone_email_timestamp_seconds Unix timestamp of the latest management email attempt.'
+        echo '# TYPE homelab_greenbone_email_timestamp_seconds gauge'
+        echo "homelab_greenbone_email_timestamp_seconds $(date +%s)"
+    } > "$TMP_METRIC"
+
+    chmod 0644 "$TMP_METRIC"
+    mv -f "$TMP_METRIC" "$METRIC_FILE"
+}
+
+fail() {
+    write_metric 0
+    echo "$*" >&2
+    exit 1
+}
+
+[[ -r "$REPORT" ]] || fail "Management report is unavailable: $REPORT"
+[[ -r "$SMTP_ENV" ]] || fail "SMTP environment file is unavailable."
+[[ -r "$SMTP_CONFIG" ]] || fail "msmtp configuration is unavailable."
+
+SMTP_TO="$(sed -n 's/^SMTP_TO=//p' "$SMTP_ENV" | head -1)"
+SMTP_USER="$(sed -n 's/^SMTP_USER=//p' "$SMTP_ENV" | head -1)"
+
+[[ -n "$SMTP_TO" ]] || fail "SMTP_TO is not configured."
+[[ -n "$SMTP_USER" ]] || fail "SMTP_USER is not configured."
+
+# Refuse to send a stale report.
+REPORT_DATE="$(date -r "$REPORT" +%F)"
+TODAY="$(date +%F)"
+
+[[ "$REPORT_DATE" == "$TODAY" ]] || \
+    fail "Refusing to email stale report dated ${REPORT_DATE}."
+
+SUBJECT="Homelab Daily Security & Recovery Brief - $(date '+%d %B %Y')"
+
+python3 - "$REPORT" > "$TMP_HTML" <<'PY'
+from pathlib import Path
+import html
+import re
+import sys
+
+report = Path(sys.argv[1]).read_text()
+
+def section(name):
+    match = re.search(
+        rf"^## {re.escape(name)}\s*$\n(.*?)(?=^## |\Z)",
+        report,
+        re.S | re.M,
+    )
+    return match.group(1).strip() if match else ""
+
+executive = section("Executive Summary")
+attention = section("Management Attention Required")
+conclusion = section("Management Conclusion")
+
+if not executive:
+    raise SystemExit("Executive Summary not found")
+
+status_match = re.search(
+    r"(?:"
+    r"\*\*Overall Security Posture:\s*(GOOD|ATTENTION|ACTION REQUIRED)\.?\*\*"
+    r"|"
+    r"The overall security posture is \*\*(GOOD|ATTENTION|ACTION REQUIRED)\*\*\.?"
+    r")",
+    executive,
+    re.I,
+)
+
+source_status = (
+    next((group for group in status_match.groups() if group), "UNKNOWN").upper()
+    if status_match
+    else "UNKNOWN"
+)
+
+status = {
+    "GOOD": "GREEN",
+    "ATTENTION": "AMBER",
+    "ACTION REQUIRED": "RED",
+}.get(source_status, "UNKNOWN")
+
+status_styles = {
+    "GREEN": ("#067647", "#ecfdf3", "#abefc6"),
+    "AMBER": ("#b54708", "#fffaeb", "#fedf89"),
+    "RED": ("#b42318", "#fef3f2", "#fecdca"),
+    "UNKNOWN": ("#344054", "#f2f4f7", "#d0d5dd"),
+}
+
+status_text, status_bg, status_border = status_styles[status]
+
+main = re.sub(
+    r"(?:"
+    r"\*\*Overall Security Posture:\s*(?:GOOD|ATTENTION|ACTION REQUIRED)\.?\*\*"
+    r"|"
+    r"The overall security posture is \*\*(?:GOOD|ATTENTION|ACTION REQUIRED)\*\*\.?"
+    r")",
+    "",
+    executive,
+    count=1,
+    flags=re.I,
+).strip()
+
+paragraphs = [
+    p.strip()
+    for p in re.split(r"\n\s*\n", main)
+    if p.strip()
+]
+
+paragraph_html = "".join(
+    '<p style="margin:0 0 16px 0;">'
+    + html.escape(p)
+    + "</p>"
+    for p in paragraphs
+)
+
+attention_lines = [
+    line.strip()
+    for line in attention.splitlines()
+    if line.strip() and not line.lstrip().startswith("-")
+]
+
+management_action = (
+    attention_lines[0]
+    if attention_lines
+    else "No current security matters require management action."
+)
+
+standup = re.sub(
+    r"\*\*(.*?)\*\*",
+    r"\1",
+    conclusion,
+).strip()
+
+if not standup:
+    standup = "Security controls are operating normally."
+
+print(f"""<!doctype html>
+<html>
+<body style="margin:0;padding:0;background-color:#f5f7fa;">
+  <div style="
+      max-width:700px;
+      margin:0 auto;
+      padding:32px 20px;
+      font-family:Arial,Helvetica,sans-serif;
+      color:#101828;
+      font-size:16px;
+      line-height:1.55;">
+
+    <div style="
+        background:#ffffff;
+        border:1px solid #eaecf0;
+        border-radius:12px;
+        padding:32px;">
+
+      <div style="
+          font-size:13px;
+          color:#667085;
+          margin-bottom:6px;">
+        DAILY OPERATIONS
+      </div>
+
+      <div style="
+          font-size:26px;
+          font-weight:700;
+          margin-bottom:20px;">
+        Homelab Daily Operations Brief
+      </div>
+
+      <div style="
+          display:inline-block;
+          color:{status_text};
+          background:{status_bg};
+          border:1px solid {status_border};
+          border-radius:16px;
+          padding:5px 12px;
+          font-size:14px;
+          font-weight:700;
+          margin-bottom:24px;">
+        {html.escape(status)}
+      </div>
+
+      <div>
+        {paragraph_html}
+      </div>
+
+      <div style="
+          margin-top:22px;
+          padding-top:18px;
+          border-top:1px solid #eaecf0;">
+        <strong>Management action:</strong>
+        {html.escape(management_action)}
+      </div>
+
+      <div style="
+          margin-top:28px;
+          padding:20px;
+          background:#f9fafb;
+          border-left:4px solid {status_text};
+          border-radius:6px;">
+
+        <div style="
+            font-size:14px;
+            font-weight:700;
+            margin-bottom:8px;">
+          DAILY STAND-UP
+        </div>
+
+        <div style="
+            font-size:17px;
+            line-height:1.55;">
+          {html.escape(standup)}
+        </div>
+      </div>
+
+    </div>
+
+    <div style="
+        text-align:center;
+        color:#98a2b3;
+        font-size:12px;
+        margin-top:16px;">
+      Automated daily operations brief
+    </div>
+
+  </div>
+</body>
+</html>""")
+PY
+
+
+# Count unique IPs added to local CrowdSec decisions during the last 24 hours.
+CROWDSEC_LOCAL_BLOCKED_IPS="$(
+    cscli alerts list --since 24h -o json 2>/dev/null |
+    jq -r '
+      [
+        .[]? |
+        .decisions[]? |
+        select(
+          (.scope // "" | ascii_downcase) == "ip"
+        ) |
+        .value //
+        empty
+      ] |
+      unique |
+      length
+    ' 2>/dev/null ||
+    echo 0
+)"
+
+case "$CROWDSEC_LOCAL_BLOCKED_IPS" in
+    ""|*[!0-9]*)
+        CROWDSEC_LOCAL_BLOCKED_IPS=0
+        ;;
+esac
+
+export CROWDSEC_LOCAL_BLOCKED_IPS
+
+prometheus_scalar() {
+    local metric="$1"
+
+    curl -fsSG       --data-urlencode "query=${metric}{host=\"main\"}"       http://127.0.0.1:9090/api/v1/query 2>/dev/null |
+    jq -r '.data.result[0].value[1] // "0"' 2>/dev/null ||
+    echo 0
+}
+
+prometheus_query_scalar() {
+    local query="$1"
+
+    curl -fsSG \
+      --data-urlencode "query=${query}" \
+      http://127.0.0.1:9090/api/v1/query 2>/dev/null |
+    jq -r '.data.result[0].value[1] // "0"' 2>/dev/null ||
+    echo 0
+}
+
+CROWDSEC_MAIN_ENGINE_UP="$(
+    prometheus_query_scalar 'up{job="crowdsec",host="main"}'
+)"
+
+CROWDSEC_FIREWALL_UP="$(
+    prometheus_query_scalar 'min(up{job="crowdsec-firewall"})'
+)"
+
+CROWDSEC_MAIN_LOCAL_DECISIONS="$(
+    prometheus_scalar       homelab_crowdsec_local_decision_ips_24h
+)"
+
+CROWDSEC_MAIN_BLOCKED_IPS="$(
+    prometheus_scalar       homelab_crowdsec_blocked_source_ips_24h
+)"
+
+CROWDSEC_MAIN_BLOCKED_PACKETS="$(
+    prometheus_scalar       homelab_crowdsec_blocked_packets_24h
+)"
+
+CROWDSEC_MAIN_TIMESTAMP="$(
+    prometheus_scalar       homelab_crowdsec_activity_check_timestamp_seconds
+)"
+
+for variable in     CROWDSEC_MAIN_LOCAL_DECISIONS     CROWDSEC_MAIN_BLOCKED_IPS     CROWDSEC_MAIN_BLOCKED_PACKETS     CROWDSEC_MAIN_TIMESTAMP
+do
+    value="${!variable}"
+
+    case "$value" in
+        ""|*[!0-9]*)
+            printf -v "$variable" '%s' 0
+            ;;
+    esac
+done
+
+NOW_EPOCH="$(date +%s)"
+CROWDSEC_MAIN_FRESH=0
+
+if [ "$CROWDSEC_MAIN_TIMESTAMP" -gt 0 ] &&
+   [ $((NOW_EPOCH - CROWDSEC_MAIN_TIMESTAMP)) -le 900 ]
+then
+    CROWDSEC_MAIN_FRESH=1
+fi
+
+export     CROWDSEC_MAIN_LOCAL_DECISIONS     CROWDSEC_MAIN_BLOCKED_IPS     CROWDSEC_MAIN_BLOCKED_PACKETS     CROWDSEC_MAIN_TIMESTAMP     CROWDSEC_MAIN_FRESH
+
+export CROWDSEC_MAIN_ENGINE_UP CROWDSEC_FIREWALL_UP
+
+# Add aggregate Pi-hole Adult/Malware totals and CrowdSec activity.
+python3 - "$PIHOLE_EVIDENCE" "$TMP_HTML" <<'PYPIHOLE'
+import html
+import ipaddress
+import json
+import os
+import sys
+import time
+import urllib.parse
+import urllib.request
+from collections import defaultdict
+from pathlib import Path
+
+evidence_path = Path(sys.argv[1])
+html_path = Path(sys.argv[2])
+
+totals = defaultdict(
+    lambda: {
+        "adult": 0,
+        "threat": 0,
+    }
+)
+
+if evidence_path.is_file():
+    for line in evidence_path.read_text(
+        encoding="utf-8"
+    ).splitlines():
+        parts = line.split("\t")
+
+        if len(parts) < 7:
+            continue
+
+        client = parts[2]
+        list_id = parts[6]
+
+        # Exclude synthetic Pi-hole enforcement checks.
+        if client == "192.168.2.242":
+            continue
+
+        try:
+            attempts = int(parts[4])
+        except ValueError:
+            continue
+
+        if list_id == "-4":
+            totals[client]["adult"] += attempts
+        elif list_id == "-7":
+            totals[client]["threat"] += attempts
+
+rows = []
+
+for client, counts in totals.items():
+    combined = counts["adult"] + counts["threat"]
+
+    if combined == 0:
+        continue
+
+    try:
+        sort_address = ipaddress.ip_address(client)
+    except ValueError:
+        continue
+
+    rows.append(
+        (
+            sort_address,
+            client,
+            counts["adult"],
+            counts["threat"],
+            combined,
+        )
+    )
+
+rows.sort(key=lambda row: row[0])
+
+adult_total = sum(row[2] for row in rows)
+threat_total = sum(row[3] for row in rows)
+combined_total = adult_total + threat_total
+
+if rows:
+    body_rows = "".join(
+        "<tr>"
+        f"<td style='padding:8px;border:1px solid #ddd'>"
+        f"<code>{html.escape(client)}</code></td>"
+        f"<td style='padding:8px;border:1px solid #ddd;"
+        f"text-align:right'>{adult}</td>"
+        f"<td style='padding:8px;border:1px solid #ddd;"
+        f"text-align:right'>{threat}</td>"
+        f"<td style='padding:8px;border:1px solid #ddd;"
+        f"text-align:right'><strong>{combined}</strong></td>"
+        "</tr>"
+        for _, client, adult, threat, combined in rows
+    )
+else:
+    body_rows = (
+        "<tr><td colspan='4' "
+        "style='padding:8px;border:1px solid #ddd'>"
+        "No selected blocked requests were recorded."
+        "</td></tr>"
+    )
+
+section = f"""
+<div style="margin-top:28px">
+  <h2>Pi-hole Adult &amp; Malware Blocking — Last 24 Hours</h2>
+
+  <p>
+    Combined evidence from primary DNS
+    (<code>192.168.2.48</code>) and secondary DNS
+    (<code>192.168.2.242</code>).
+  </p>
+
+  <table style="border-collapse:collapse;width:100%">
+    <thead>
+      <tr>
+        <th style="padding:8px;border:1px solid #ddd;text-align:left">
+          Client IP
+        </th>
+        <th style="padding:8px;border:1px solid #ddd;text-align:right">
+          Adult
+        </th>
+        <th style="padding:8px;border:1px solid #ddd;text-align:right">
+          Malware/Phishing
+        </th>
+        <th style="padding:8px;border:1px solid #ddd;text-align:right">
+          Total
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {body_rows}
+      <tr style="background:#eef2f7">
+        <td style="padding:8px;border:1px solid #ddd;text-align:left">
+          <strong>Total</strong>
+        </td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">
+          <strong>{adult_total}</strong>
+        </td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">
+          <strong>{threat_total}</strong>
+        </td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">
+          <strong>{combined_total}</strong>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="padding:10px;background:#f5f7fa;border-left:4px solid #3973ac">
+    These totals combine blocked DNS requests recorded by both Pi-hole
+    servers. Every request shown was blocked; it does not confirm that the
+    destination was accessed. Requests can be generated automatically by
+    applications, operating systems or devices and should not be interpreted
+    as deliberate user activity without supporting evidence. Monitoring
+    probes generated by ids-01 (<code>192.168.2.242</code>) are excluded.
+  </p>
+</div>
+"""
+
+crowdsec_ids01_local_ips = int(
+    os.environ.get("CROWDSEC_LOCAL_BLOCKED_IPS", "0")
+)
+
+crowdsec_main_local_decisions = int(
+    os.environ.get("CROWDSEC_MAIN_LOCAL_DECISIONS", "0")
+)
+
+crowdsec_main_blocked_ips = int(
+    os.environ.get("CROWDSEC_MAIN_BLOCKED_IPS", "0")
+)
+
+crowdsec_main_blocked_packets = int(
+    os.environ.get("CROWDSEC_MAIN_BLOCKED_PACKETS", "0")
+)
+
+crowdsec_main_fresh = (
+    os.environ.get("CROWDSEC_MAIN_FRESH", "0") == "1"
+)
+
+crowdsec_main_engine_up = (
+    os.environ.get("CROWDSEC_MAIN_ENGINE_UP", "0") == "1"
+)
+
+crowdsec_firewall_up = (
+    os.environ.get("CROWDSEC_FIREWALL_UP", "0") == "1"
+)
+
+crowdsec_engine_status = (
+    "HEALTHY" if crowdsec_main_engine_up else "ATTENTION"
+)
+
+crowdsec_firewall_status = (
+    "HEALTHY" if crowdsec_firewall_up else "ATTENTION"
+)
+
+if crowdsec_main_fresh:
+    main_statement = (
+        f"TestServer created <strong>"
+        f"{crowdsec_main_local_decisions} locally generated unique "
+        f"IP-blocking decisions</strong> and blocked "
+        f"<strong>{crowdsec_main_blocked_packets} packets</strong> "
+        f"from <strong>{crowdsec_main_blocked_ips} unique source "
+        f"IP addresses</strong> during the last 24 hours."
+    )
+else:
+    main_statement = (
+        "TestServer CrowdSec activity metrics are unavailable or stale. "
+        "The current 24-hour blocking totals could not be verified."
+    )
+
+ids_statement = (
+    f"ids-01 created <strong>{crowdsec_ids01_local_ips} locally "
+    f"generated unique IP-blocking decisions</strong> during the "
+    f"same period."
+)
+
+crowdsec_section = f"""
+<div style="margin-top:28px">
+  <h2>CrowdSec Blocking — Last 24 Hours</h2>
+
+  <p>
+    TestServer CrowdSec engine:
+    <strong>{crowdsec_engine_status}</strong>;
+    firewall enforcement metrics:
+    <strong>{crowdsec_firewall_status}</strong>.
+  </p>
+
+  <p style="padding:10px;background:#f5f7fa;border-left:4px solid #3973ac">
+    {main_statement}
+  </p>
+
+  <p>
+    {ids_statement}
+  </p>
+
+  <p>
+    Locally generated decisions result from activity detected by the
+    relevant CrowdSec engine. The blocked-source and packet totals also
+    include enforcement using subscribed community threat intelligence.
+    A blocked packet confirms that the firewall control operated; it does
+    not by itself establish successful access or compromise.
+  </p>
+</div>
+"""
+
+section += crowdsec_section
+
+
+def prometheus_query(query):
+    url = (
+        "http://127.0.0.1:9090/api/v1/query?"
+        + urllib.parse.urlencode({"query": query})
+    )
+
+    try:
+        with urllib.request.urlopen(
+            url,
+            timeout=10,
+        ) as response:
+            payload = json.load(response)
+    except Exception:
+        return []
+
+    if payload.get("status") != "success":
+        return []
+
+    return payload.get(
+        "data",
+        {},
+    ).get(
+        "result",
+        [],
+    )
+
+
+def metric_by_label(metric_name, label_name):
+    values = {}
+
+    for item in prometheus_query(metric_name):
+        labels = item.get("metric", {})
+        label = labels.get(label_name)
+
+        if not label:
+            continue
+
+        try:
+            value = float(
+                item.get("value", [0, 0])[1]
+            )
+        except (TypeError, ValueError, IndexError):
+            continue
+
+        values[label] = value
+
+    return values
+
+
+def single_metric(metric_name):
+    results = prometheus_query(metric_name)
+
+    if not results:
+        return None
+
+    try:
+        return float(
+            results[0].get("value", [0, 0])[1]
+        )
+    except (TypeError, ValueError, IndexError):
+        return None
+
+
+def age_text(seconds):
+    if seconds is None:
+        return "Unknown"
+
+    if seconds < 3600:
+        return f"{int(seconds / 60)}m"
+
+    if seconds < 86400:
+        return f"{seconds / 3600:.1f}h"
+
+    return f"{seconds / 86400:.1f}d"
+
+
+now_epoch = time.time()
+backup_freshness_limit = 172800
+assurance_freshness_limit = 691200
+expected_backup_hosts = [
+    "dietpi",
+    "ids-01",
+    "k3s-node-01",
+    "main",
+]
+
+backup_success = metric_by_label(
+    "homelab_backup_success",
+    "host",
+)
+
+backup_timestamps = metric_by_label(
+    "homelab_backup_last_success_timestamp",
+    "host",
+)
+
+integrity_success = metric_by_label(
+    "homelab_backup_integrity_success",
+    "backup_host",
+)
+
+integrity_timestamps = metric_by_label(
+    "homelab_backup_integrity_timestamp_seconds",
+    "backup_host",
+)
+
+restore_success = metric_by_label(
+    "homelab_backup_restore_test_success",
+    "backup_host",
+)
+
+restore_timestamps = metric_by_label(
+    "homelab_backup_restore_test_timestamp_seconds",
+    "backup_host",
+)
+
+backup_rows = []
+backup_all_good = True
+
+for backup_host in expected_backup_hosts:
+    last_backup = backup_timestamps.get(backup_host)
+    last_integrity = integrity_timestamps.get(backup_host)
+    last_restore = restore_timestamps.get(backup_host)
+
+    backup_age = (
+        max(now_epoch - last_backup, 0)
+        if last_backup
+        else None
+    )
+
+    integrity_age = (
+        max(now_epoch - last_integrity, 0)
+        if last_integrity
+        else None
+    )
+
+    restore_age = (
+        max(now_epoch - last_restore, 0)
+        if last_restore
+        else None
+    )
+
+    if backup_success.get(backup_host) != 1:
+        backup_state = "FAILED"
+    elif backup_age is None:
+        backup_state = "NO DATA"
+    elif backup_age > backup_freshness_limit:
+        backup_state = "STALE"
+    else:
+        backup_state = "GOOD"
+
+    if integrity_success.get(backup_host) != 1:
+        integrity_state = "FAILED"
+    elif integrity_age is None:
+        integrity_state = "NO DATA"
+    elif integrity_age > assurance_freshness_limit:
+        integrity_state = "STALE"
+    else:
+        integrity_state = "PASSED"
+
+    if restore_success.get(backup_host) != 1:
+        restore_state = "FAILED"
+    elif restore_age is None:
+        restore_state = "NO DATA"
+    elif restore_age > assurance_freshness_limit:
+        restore_state = "STALE"
+    else:
+        restore_state = "PASSED"
+
+    if (
+        backup_state != "GOOD"
+        or integrity_state != "PASSED"
+        or restore_state != "PASSED"
+    ):
+        backup_all_good = False
+
+    backup_rows.append(
+        (
+            backup_host,
+            backup_state,
+            age_text(backup_age),
+            integrity_state,
+            age_text(integrity_age),
+            restore_state,
+            age_text(restore_age),
+        )
+    )
+
+storage_health = single_metric(
+    "homelab_backup_storage_health"
+)
+
+storage_used = single_metric(
+    "homelab_backup_storage_used_percent"
+)
+
+storage_free = single_metric(
+    "homelab_backup_storage_free_bytes"
+)
+
+replica_health = single_metric(
+    "homelab_backup_replica_health"
+)
+
+replica_age = single_metric(
+    "homelab_backup_replica_age_seconds"
+)
+
+replica_local = single_metric(
+    "homelab_backup_replica_local_bytes"
+)
+
+replica_remote = single_metric(
+    "homelab_backup_replica_remote_bytes"
+)
+
+if storage_health != 1 or replica_health != 1:
+    backup_all_good = False
+
+backup_status = (
+    "GOOD"
+    if backup_all_good
+    else "ATTENTION"
+)
+
+backup_body_rows = "".join(
+    (
+        "<tr>"
+        f"<td style='padding:8px;border:1px solid #ddd'>"
+        f"<code>{html.escape(host)}</code></td>"
+        f"<td style='padding:8px;border:1px solid #ddd'>"
+        f"{backup_state}</td>"
+        f"<td style='padding:8px;border:1px solid #ddd;"
+        f"text-align:right'>{backup_age}</td>"
+        f"<td style='padding:8px;border:1px solid #ddd'>"
+        f"{integrity_state}</td>"
+        f"<td style='padding:8px;border:1px solid #ddd;"
+        f"text-align:right'>{integrity_age}</td>"
+        f"<td style='padding:8px;border:1px solid #ddd'>"
+        f"{restore_state}</td>"
+        f"<td style='padding:8px;border:1px solid #ddd;"
+        f"text-align:right'>{restore_age}</td>"
+        "</tr>"
+    )
+    for (
+        host,
+        backup_state,
+        backup_age,
+        integrity_state,
+        integrity_age,
+        restore_state,
+        restore_age,
+    ) in backup_rows
+)
+
+storage_used_text = (
+    f"{storage_used:.1f}% used"
+    if storage_used is not None
+    else "Unknown"
+)
+
+storage_free_text = (
+    f"{storage_free / (1024 ** 3):.1f} GiB free"
+    if storage_free is not None
+    else "Unknown"
+)
+
+replica_age_text = age_text(replica_age)
+
+replica_total_text = (
+    f"{(replica_local + replica_remote) / (1024 ** 3):.2f} GiB"
+    if replica_local is not None
+    and replica_remote is not None
+    else "Unknown"
+)
+
+backup_section = f"""
+<div style="margin-top:28px">
+  <h2>Backup &amp; Recovery Evidence — Current State</h2>
+
+  <p>
+    Overall evidence status:
+    <strong>{backup_status}</strong>
+  </p>
+
+  <table style="border-collapse:collapse;width:100%">
+    <thead>
+      <tr>
+        <th style="padding:8px;border:1px solid #ddd;text-align:left">
+          Host
+        </th>
+        <th style="padding:8px;border:1px solid #ddd;text-align:left">
+          Backup
+        </th>
+        <th style="padding:8px;border:1px solid #ddd;text-align:right">
+          Age
+        </th>
+        <th style="padding:8px;border:1px solid #ddd;text-align:left">
+          Integrity
+        </th>
+        <th style="padding:8px;border:1px solid #ddd;text-align:right">
+          Age
+        </th>
+        <th style="padding:8px;border:1px solid #ddd;text-align:left">
+          Restore
+        </th>
+        <th style="padding:8px;border:1px solid #ddd;text-align:right">
+          Age
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {backup_body_rows}
+    </tbody>
+  </table>
+
+  <p>
+    Backup storage:
+    <strong>{"HEALTHY" if storage_health == 1 else "ATTENTION"}</strong>
+    — {storage_used_text}, {storage_free_text}.
+  </p>
+
+  <p>
+    Off-host replica:
+    <strong>{"HEALTHY" if replica_health == 1 else "ATTENTION"}</strong>
+    — weekly replication to <code>k3s-node-01</code>; latest verified age {replica_age_text};
+    {replica_total_text} of replicated backup data verified.
+  </p>
+
+  <p style="padding:10px;background:#f5f7fa;border-left:4px solid #3973ac">
+    Backup success confirms that recovery data was created. Integrity and
+    restore-test results provide separate evidence that the data remained
+    readable and could be restored. Daily backup evidence older than 48 hours
+    is reported as attention. The weekly off-host replica becomes overdue after seven days and two hours.
+  </p>
+</div>
+"""
+
+section += backup_section
+
+document = html_path.read_text(encoding="utf-8")
+
+if "</body>" in document:
+    document = document.replace(
+        "</body>",
+        section + "\n</body>",
+        1,
+    )
+else:
+    document += section
+
+html_path.write_text(
+    document,
+    encoding="utf-8",
+)
+PYPIHOLE
+
+{
+    printf 'From: Homelab Operations <%s>\n' "$SMTP_USER"
+    printf 'To: %s\n' "$SMTP_TO"
+    printf 'Subject: %s\n' "$SUBJECT"
+    printf 'MIME-Version: 1.0\n'
+    printf 'Content-Type: text/html; charset=UTF-8\n'
+    printf '\n'
+    cat "$TMP_HTML"
+} | msmtp \
+      --file="$SMTP_CONFIG" \
+      --account=gmail \
+      "$SMTP_TO"
+
+write_metric 1
+
+echo "Management report emailed successfully to ${SMTP_TO}"

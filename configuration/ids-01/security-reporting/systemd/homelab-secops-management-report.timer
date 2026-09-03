@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Homelab SecOps Management Report Timer
+
+[Timer]
+OnCalendar=*-*-* 08:30:00
+Persistent=true
+AccuracySec=1min
+Unit=homelab-secops-management-report.service
+
+[Install]
+WantedBy=timers.target
