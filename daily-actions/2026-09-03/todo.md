@@ -1,78 +1,79 @@
 # TODO — 03 September 2026
 
-> **Day status: ACTIVE.**
+> **Day status: CLOSED.**
 >
-> Dozzle `10.9.0` deployment itself is already complete and must not be carried as outstanding. The active container-update work is durable closure and BAU hardening.
+> The CT201 Zabbix platform build is complete through TimescaleDB conversion and locale correction. Only frontend/API credential closure and the BH22 8QL Geomap are carried to 04 September.
 
-## P0 — Finish Dozzle 10.9.0 closure
+## Completed today — Zabbix CT201
 
-- [ ] Promote exact successful Dozzle `10.9.0` immutable image into durable Git Compose authority.
-- [ ] Synchronize authority without recreating/restarting the healthy container.
-- [ ] Promote the estate catalogue to `10.9.0`.
-- [ ] Generate/review/install the `10.9.0` steady-state manifest.
-- [ ] Run non-mutating `VERIFY_CLOSED` and require final closed-state success.
-- [ ] Record final deployment/closure evidence.
+- [x] Provision and commission unprivileged Debian 13 LXC CT201.
+- [x] Validate nesting, systemd health and OpenTofu ownership.
+- [x] Apply Linux security hardening.
+- [x] Apply unattended upgrades.
+- [x] Deploy Alloy and prove Prometheus/Loki ingestion.
+- [x] Deploy PostgreSQL 17.
+- [x] Create Zabbix database/user under Ansible authority.
+- [x] Keep PostgreSQL listening on localhost only.
+- [x] Install and preload TimescaleDB.
+- [x] Enable TimescaleDB extension in the Zabbix database.
+- [x] Deploy Nginx baseline.
+- [x] Deploy Zabbix Server 7.0 LTS.
+- [x] Deploy Zabbix Agent 2.
+- [x] Deploy PHP 8.4 FPM frontend.
+- [x] Import the standard Zabbix PostgreSQL schema.
+- [x] Take pre-conversion database backup.
+- [x] Convert Zabbix history/trend tables using the packaged TimescaleDB schema.
+- [x] Verify all vendor-declared hypertables.
+- [x] Verify Zabbix database is marked as TimescaleDB-backed.
+- [x] Fix Zabbix locale support in Ansible.
+- [x] Generate both `en_GB.UTF-8` and `en_US.UTF-8`.
+- [x] Keep UK English as the system default.
+- [x] Prove Zabbix/Nginx/PHP/PostgreSQL/Alloy/systemd health.
+- [x] Prove relevant Ansible playbooks are idempotent with `changed=0`.
+- [x] Update CT201 README and Zabbix installation runbook.
 
-## P0 — Container-update documentation — COMPLETE
+## Deferred to 04 September — Zabbix frontend IaC
 
-- [x] Add Dozzle `10.9.0` Jenkins build #34 to the container-version-control documentation.
-- [x] Document the exact recreation boundary: only `Deploy exact candidate` recreates the target container.
-- [x] Document that preparation, candidate acquisition, inspection, approval, zero-drift inspection and closure must not recreate it.
-- [x] Document the stale installed-validator lesson and required target framework synchronization.
-- [x] Update Dozzle/service-update documentation in `home-lab-docs`.
+- [ ] Recover/rotate the Zabbix `Admin` credential without further password guessing.
+- [ ] Store the unique Admin credential in CT201 Ansible Vault.
+- [ ] Prove Zabbix API login from TestServer.
+- [ ] Apply the existing BH22 8QL Geomap/frontend IaC.
+- [ ] Require frontend-IaC second pass `changed=0`.
+- [ ] Run final service/frontend/database acceptance.
+- [ ] Run final OpenTofu zero-drift proof.
+- [ ] Merge/close `feature/zabbix-lxc-foundation` when final gates pass.
 
-Merged documentation:
+Current API-auth diagnostic:
 
 ```text
-homelab-container-version-control PR #113
-home-lab-docs PR #63
+username=Admin
+attempt_failed=4
+attempt_ip=192.168.2.220
 ```
 
-## P1 — Zabbix VM101 application acceptance
+Do not continue guessing the Admin password.
 
-- [ ] Fix PostgreSQL PHP support in the `zabbix_server` Ansible role.
-- [ ] Validate Zabbix frontend, PHP-FPM and Nginx.
-- [ ] Require Ansible idempotence after the fix.
-- [ ] Re-prove through the clean rebuild path when appropriate.
+## Other carried-forward work
 
-## P1 — VM101 inventory cleanup
+### Dozzle Stage 6 durable closure / BAU hardening
 
-- [ ] Rename Ansible alias `app-platform-01` -> `zabbix-server-01` everywhere relevant.
-- [ ] Validate all VM101 groups/references.
-- [ ] Require `unreachable=0`, `failed=0`, then a second run with `changed=0`.
+- [ ] Complete any remaining durable Dozzle `10.9.0` closure evidence.
+- [ ] Continue generic Stage 6 preparation/hardening work where still outstanding.
 
-## P1 — Stage 6 BAU hardening
-
-- [ ] Fix trimmed-manifest-name propagation into the missing-manifest preparation helper.
-- [ ] Automate/formalize reviewed target manifest synchronization.
-- [ ] Automate/formalize reviewed validator/inspector synchronization or preflight proof.
-- [ ] Move exact target candidate acquisition into the restricted Jenkins path where appropriate.
-- [ ] Add deterministic host selection/disambiguation beyond the current TestServer default.
-- [ ] Preserve separate candidate-acquisition and deployment authority boundaries.
-- [ ] Preserve `--pull never`, immutable refs, approval and zero-drift gates.
-
-## P2 — Monitoring backlog
+### Monitoring backlog
 
 - [ ] Finish Grafana Patch collector stale alert investigation.
 - [ ] Reconcile Linux Host Down live/Git rule drift.
 - [ ] Continue ids-01 single-Prometheus-authority work only after parity proof.
 - [ ] Continue Pi-hole policy-alert latency improvement when selected.
 
-## P3 — Provisioning platform
+### Provisioning platform
 
-- [ ] Continue multi-cloud/web provisioning design after Zabbix closes.
-- [ ] Retain generated stable MAC lifecycle for new Proxmox VM instances.
-- [ ] Keep provider/Vault secrets outside UI/logs/Git.
+- [ ] Continue reusable Proxmox/Azure/AWS provisioning-platform design after Zabbix closure.
 
-## Already completed today — do not reopen
+## Do not reopen
 
-- [x] Reset Dozzle Stage 6 preparation to known-good state.
-- [x] Synchronize reviewed Stage 6 validator on TestServer.
-- [x] Install/validate reviewed Dozzle `10.8.0 -> 10.9.0` transition manifest.
-- [x] Acquire exact Dozzle `10.9.0` ARM64 candidate without container mutation.
-- [x] Jenkins build #34 approval and zero-drift gates passed.
-- [x] Exact Dozzle `10.9.0` candidate deployed successfully.
-- [x] Rollback skipped because acceptance passed.
-- [x] One-shot deployment authority disarmed.
-- [x] Post-deploy exact image identity and Dozzle `v10.9.0` logs verified.
-- [x] Container-update documentation updated and merged to `main` in both documentation repositories.
+- [x] VM101 Zabbix workstream — retired/decommissioned.
+- [x] CT201 PostgreSQL/TimescaleDB construction.
+- [x] CT201 Nginx/Zabbix/PHP deployment.
+- [x] CT201 locale correction.
