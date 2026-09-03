@@ -2,7 +2,7 @@
 
 > **Day status: ACTIVE.**
 >
-> Dozzle `10.9.0` deployment itself is already complete and must not be carried as outstanding. The active container-update work is durable closure, documentation and BAU hardening.
+> Dozzle `10.9.0` deployment itself is already complete and must not be carried as outstanding. The active container-update work is durable closure and BAU hardening.
 
 ## P0 — Finish Dozzle 10.9.0 closure
 
@@ -13,13 +13,20 @@
 - [ ] Run non-mutating `VERIFY_CLOSED` and require final closed-state success.
 - [ ] Record final deployment/closure evidence.
 
-## P0 — Container-update documentation
+## P0 — Container-update documentation — COMPLETE
 
-- [ ] Add Dozzle `10.9.0` Jenkins build #34 to the container-version-control documentation.
-- [ ] Document the exact recreation boundary: only `Deploy exact candidate` recreates the target container.
-- [ ] Document that preparation, candidate acquisition, inspection, approval, zero-drift inspection and closure must not recreate it.
-- [ ] Document the stale installed-validator lesson and required target framework synchronization.
-- [ ] Update Dozzle/service-update documentation in `home-lab-docs` where appropriate.
+- [x] Add Dozzle `10.9.0` Jenkins build #34 to the container-version-control documentation.
+- [x] Document the exact recreation boundary: only `Deploy exact candidate` recreates the target container.
+- [x] Document that preparation, candidate acquisition, inspection, approval, zero-drift inspection and closure must not recreate it.
+- [x] Document the stale installed-validator lesson and required target framework synchronization.
+- [x] Update Dozzle/service-update documentation in `home-lab-docs`.
+
+Merged documentation:
+
+```text
+homelab-container-version-control PR #113
+home-lab-docs PR #63
+```
 
 ## P1 — Zabbix VM101 application acceptance
 
@@ -68,3 +75,4 @@
 - [x] Rollback skipped because acceptance passed.
 - [x] One-shot deployment authority disarmed.
 - [x] Post-deploy exact image identity and Dozzle `v10.9.0` logs verified.
+- [x] Container-update documentation updated and merged to `main` in both documentation repositories.
