@@ -10,25 +10,25 @@ It is a short-term operational view. Loki remains the central retained log platf
 
 Dozzle runs on TestServer as the `dozzle` service in the `management` Compose project.
 
-Current reviewed version:
+Current live version:
 
 ```text
-10.8.0
+10.9.0
 ```
 
-Current configured immutable image:
+Current live configured immutable image:
 
 ```text
-amir20/dozzle@sha256:243666b0593ff33ed1373901575236f0d6bed8a2d6b451cdae4345969a7b6d5c
+amir20/dozzle@sha256:7f01a2504f89788b60ad0efddd94472fd66f9a225c708356cdb815d9d8abd184
 ```
 
 Current local image/config ID:
 
 ```text
-sha256:eca1774c3ff18eb6ff177d0d557b2ff37da5df6f7c617450b4eca48327f20ce8
+sha256:88b0c06d1a3c881893d2162afa4b19d1b91262e1ae92a90e661d8ccc2a5549d9
 ```
 
-At the 31 August Stage 6 closeout the running container had restart count `0` and state `running`.
+Post-deployment verification on 03 September 2026 proved the container running, `restart=unless-stopped`, exact image identity, and Dozzle `v10.9.0` accepting connections on port `8080`.
 
 ```text
 Docker container logs
@@ -64,19 +64,11 @@ Dozzle has exactly one reviewed Docker socket bind:
 read-only
 ```
 
-The durable `docker-env` Compose default now resolves to the exact immutable 10.8.0 image. The authority promotion was merged as:
+### Current authority state
 
-```text
-ba183402d11b8a2def59bf7f50893c1667aff9ac
-```
+The live runtime is now 10.9.0, but the last fully closed durable Stage 6 authority baseline remains the previously promoted 10.8.0 state until the 10.9.0 authority/catalogue/steady-state closure is completed.
 
-Reviewed Compose SHA-256:
-
-```text
-80215935aa7815ed39853483934e834ef44c96dce8d0939f9644764c289a2485
-```
-
-Both the live and root-owned Stage 6 authority checkouts were synchronised to that exact commit without recreating Dozzle.
+The 10.9.0 update must therefore not be described as `SUCCESS_CLOSED` yet. The remaining closure work is to promote the exact successful 10.9.0 immutable image into Git Compose authority, update the estate catalogue, generate/install the new steady-state manifest, and run non-mutating `VERIFY_CLOSED`.
 
 ## Monitoring and health
 
@@ -93,62 +85,124 @@ expected status: 200
 
 The Stage 6 inspector dynamically resolves the current Dozzle container address on `homelab_apps`; the IP is not hard-coded in configuration or documentation.
 
-Final 31 August verification returned HTTP `200`.
+## Stage 6 10.9.0 deployment — 03 September 2026
 
-## Stage 6 management state
+Jenkins job `stage6-generic-service-update`, build **#34**, successfully performed the reviewed 10.8.0 -> 10.9.0 update.
 
-Dozzle is the first previously deferred service requalified against the generic Stage 6 framework using internal-container HTTP health and a read-only Docker socket.
-
-The estate catalogue now records:
+Reviewed rollback/current identity before deployment:
 
 ```text
-desired_version:       10.8.0
-current_version:       10.8.0
-coverage:              managed-tested
-class:                 readonly-docker-socket
-inspect_ready:         true
-manifest:              dozzle-10.8.0.json
-steady_state_manifest: dozzle.json
+version: 10.8.0
+configured image: amir20/dozzle@sha256:243666b0593ff33ed1373901575236f0d6bed8a2d6b451cdae4345969a7b6d5c
+image ID: sha256:eca1774c3ff18eb6ff177d0d557b2ff37da5df6f7c617450b4eca48327f20ce8
 ```
 
-The catalogue/steady-state promotion was merged in `homelab-container-version-control` as:
+Reviewed candidate:
 
 ```text
-95f4a0f32828547488370f372e314c76e263239c
+version: 10.9.0
+immutable image: amir20/dozzle@sha256:7f01a2504f89788b60ad0efddd94472fd66f9a225c708356cdb815d9d8abd184
+platform manifest: sha256:dedcf5fc948e8eb5a325182d2743a59d8540e4a6ca740e0c064826e0e86c1fa9
+image/config ID: sha256:88b0c06d1a3c881893d2162afa4b19d1b91262e1ae92a90e661d8ccc2a5549d9
+platform: linux/arm64
 ```
 
-Installed steady-state manifest:
+Jenkins proved:
+
+- reviewed manifest schema and security invariants;
+- pinned source/host route;
+- read-only pre-approval inspection;
+- exact rollback and candidate identities with `deployment=false`;
+- explicit human approval;
+- second read-only inspection with exact zero drift;
+- executor credential exposure only after approval and zero drift;
+- exact update arm;
+- exact local immutable candidate deployment with `--pull never` semantics;
+- runtime/health acceptance;
+- rollback not required;
+- one-shot execution authority disarmed.
+
+Final Jenkins result:
 
 ```text
-/etc/homelab-stage6/steady-state/dozzle.json
+STAGE 6 dozzle RESULT: DEPLOYED EXACT CANDIDATE AND DISARMED
+Finished: SUCCESS
 ```
 
-The final read-only steady-state inspection completed with:
+Independent post-deploy verification then proved:
 
 ```text
-SUCCESS_CLOSED: Dozzle 10.8.0 fully closed and steady-state verified
+running=true
+image_id=sha256:88b0c06d1a3c881893d2162afa4b19d1b91262e1ae92a90e661d8ccc2a5549d9
+configured_image=amir20/dozzle@sha256:7f01a2504f89788b60ad0efddd94472fd66f9a225c708356cdb815d9d8abd184
+restart=unless-stopped
 ```
 
-## Jenkins qualification note
-
-Dozzle was deployed by Jenkins build #13 after reviewed pre-approval inspection, human approval and zero-drift reinspection.
-
-The exact 10.8.0 deployment succeeded, but the historical Jenkins build later failed during disarm because the transition helper did not yet support `container-http` terminal health.
-
-That framework gap was subsequently fixed and the already-deployed update was disarmed without a second recreation. Git authority, catalogue and steady state were then completed through reviewed recovery steps.
-
-Therefore:
-
-- Dozzle itself is fully closed and healthy;
-- Jenkins build #13 must not be rerun merely to obtain a green historical build;
-- the consumed Dozzle update must not be redeployed;
-- the next Jenkins proof for Dozzle should be a non-mutating closed-state verification action.
-
-The desired verification result is conceptually:
+and logs reported:
 
 ```text
-SUCCESS_VERIFIED_CLOSED
+Dozzle version v10.9.0
+Connected to Docker
+Accepting connections on :8080
 ```
+
+## Container recreation boundary
+
+The Stage 6 pipeline does not recreate Dozzle during preparation, candidate cache acquisition, inspection, approval, zero-drift reinspection, executor preflight or arm.
+
+The running container is recreated only by the actual deployment stage, using the equivalent of:
+
+```text
+docker compose up -d --no-deps --no-build --pull never --force-recreate dozzle
+```
+
+Closure and `VERIFY_CLOSED` must not recreate an already-healthy candidate.
+
+## Validator synchronization lesson
+
+The first 10.9.0 attempt failed safely before approval because TestServer still had an older installed Stage 6 validator.
+
+The repository validator accepted the reviewed chained-update manifest, where the 10.8.0 rollback `configured_image` is the exact immutable rollback reference. The stale target validator still required an exact tagged rollback image and rejected it.
+
+Repository validator SHA-256 at the successful update preparation point:
+
+```text
+85aa0c1e3bfe7fa92fd2acd98195d1f96fb622f36a0d08b1a9361f74ad06cc8d
+```
+
+The reviewed validator was synchronized to:
+
+```text
+/usr/local/libexec/homelab-stage6-validate-service-manifest
+```
+
+and hash-verified before the clean retry.
+
+Operational rule: target-side Stage 6 validators/inspectors must match or be explicitly proven against reviewed repository source before deployment inspection. Framework drift must fail closed; validation must not be weakened to bypass it.
+
+## Preparation reset proof
+
+Before the successful build #34 run, the earlier 10.9.0 preparation state was reset without touching the live 10.8.0 container:
+
+- the prior installed transition manifest was restored;
+- the cached 10.9.0 candidate was removed;
+- the reviewed validator was synchronized;
+- the reviewed 10.9.0 transition manifest was reinstalled and validated;
+- the exact 10.9.0 ARM64 candidate was reacquired into the local image cache;
+- live Dozzle remained on the reviewed 10.8.0 rollback identity until the deployment stage.
+
+This proved candidate/cache preparation is separate from runtime mutation.
+
+## Remaining Stage 6 closure
+
+The 10.9.0 deployment is successful, but durable closure remains outstanding until all of the following pass:
+
+- promote the exact 10.9.0 immutable image into Git Compose authority;
+- synchronize authority without recreating/restarting Dozzle;
+- promote the estate catalogue to 10.9.0;
+- generate/review/install the 10.9.0 steady-state manifest;
+- run non-mutating `VERIFY_CLOSED`;
+- require authority, catalogue, runtime, image identity and health to agree.
 
 ## Backup and recovery
 
@@ -175,11 +229,13 @@ Although the Docker socket is mounted read-only, Docker API access remains secur
 - Preserve the read-only Docker socket policy.
 - Do not hard-code the current container IP; use the reviewed Docker network for health resolution.
 - Use immutable image authority for approved versions.
-- Do not manually recreate Dozzle to retest the already-consumed 10.8.0 Stage 6 update.
-- Future updates should use the completed Jenkins Stage 6 flow once candidate acquisition and end-to-end closure are integrated.
+- Preparation/inspection/closure must not recreate the running container.
+- Future updates must preserve reviewed manifest validation, explicit approval, zero-drift proof, separate authority levels and `--pull never` deployment.
 
 ## Related documentation
 
+- [03 September daily actions](../daily-actions/2026-09-03/daily-actions.md)
+- [03 September TODO](../daily-actions/2026-09-03/todo.md)
 - [31 August Stage 6 container-update closeout](../daily-actions/2026-08-31/stage6-container-update-closeout.md)
 - [Jenkins](jenkins.md)
 - [Loki](loki.md)
