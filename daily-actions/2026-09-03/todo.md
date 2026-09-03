@@ -44,24 +44,6 @@
 - [ ] Preserve separate candidate-acquisition and deployment authority boundaries.
 - [ ] Preserve `--pull never`, immutable refs, approval and zero-drift gates.
 
-## P2 — CentOS 7 legacy upgrade
-
-- [ ] Audit the unsupported CentOS 7 server and application dependencies.
-- [ ] Confirm backup/recovery path.
-- [ ] Validate the exact Leapp/ELevate path that satisfies the requirement to remain on CentOS before mutation.
-
-## P2 — Raspberry Pi offline root/SSH recovery
-
-- [ ] Fix the mounted-root chroot environment so `/dev/null` and required device/pseudo-filesystem dependencies exist for validation.
-- [ ] Re-run `sshd -t`.
-- [ ] Prove intended root-login/authentication settings without weakening unrelated SSH controls.
-
-## P2 — LARC service/configuration audit
-
-- [ ] Map LARC services to executables, configs, environment files, dependencies and data paths.
-- [ ] Document startup ordering and recovery implications.
-- [ ] Keep the audit read-only until the service model is understood.
-
 ## P2 — Monitoring backlog
 
 - [ ] Finish Grafana Patch collector stale alert investigation.
