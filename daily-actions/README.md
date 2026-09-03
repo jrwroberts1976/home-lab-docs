@@ -59,8 +59,16 @@ Every `daily-actions.md` should finish with a concise end-of-day summary using t
 
 The summary should be updated during the day as work moves from carried-forward/open to completed. If an item is explicitly deferred, record why and what condition should cause it to be revisited.
 
+## Current day
+
+- **ACTIVE:** [2026-09-03 daily actions](2026-09-03/daily-actions.md)
+- **ACTIVE TODO:** [2026-09-03 task list](2026-09-03/todo.md)
+
 ## Reports
 
+- [2026-09-03](2026-09-03/daily-actions.md)
+- [2026-09-02](2026-09-02/daily-actions.md) — closed; see also [closeout](2026-09-02/closeout.md)
+- [2026-09-01](2026-09-01/daily-actions.md)
 - [2026-08-31](2026-08-31/daily-actions.md)
 - [2026-08-30](2026-08-30/daily-actions.md)
 - [2026-08-29](2026-08-29/daily-actions.md)
@@ -77,38 +85,22 @@ The summary should be updated during the day as work moves from carried-forward/
 
 Each day is stored in its own date folder using `YYYY-MM-DD`.
 
-Example:
+Current tail of the structure:
 
 ```text
 daily-actions/
 ├── README.md
-├── 2026-08-21/
-│   └── daily-actions.md
-├── 2026-08-22/
-│   └── daily-actions.md
-├── 2026-08-23/
-│   └── daily-actions.md
-├── 2026-08-24/
-│   └── daily-actions.md
-├── 2026-08-25/
-│   └── daily-actions.md
-├── 2026-08-26/
-│   └── daily-actions.md
-├── 2026-08-27/
-│   ├── todo.md
-│   └── stage*.md
-├── 2026-08-28/
+├── 2026-08-31/
 │   ├── daily-actions.md
-│   ├── todo.md
-│   └── stage6-prometheus-starting-point.md
-├── 2026-08-29/
-│   ├── daily-actions.md
-│   ├── todo.md
-│   └── stage6-seven-inspect-ready-closeout.md
-├── 2026-08-30/
-│   ├── daily-actions.md
+│   ├── stage6-container-update-closeout.md
 │   └── todo.md
-└── 2026-08-31/
+├── 2026-09-01/
+│   ├── daily-actions.md
+│   └── reporting-reconciliation.md
+├── 2026-09-02/
+│   ├── daily-actions.md
+│   └── closeout.md
+└── 2026-09-03/
     ├── daily-actions.md
     └── todo.md
 ```
