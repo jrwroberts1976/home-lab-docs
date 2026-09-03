@@ -101,31 +101,101 @@ The runtime deployment is successful, but durable closure still needs to be comp
 - [ ] Record the stale target-validator lesson: repository and installed Stage 6 framework components must be synchronized before inspection.
 - [ ] Update the `home-lab-docs` Dozzle/service-update documentation where appropriate.
 
-## P1 — Zabbix application acceptance
+## P1 — Zabbix CT201 LXC build — COMPLETE
 
-- [ ] Validate the missing PHP PostgreSQL module diagnosis on `zabbix-server-01`.
-- [ ] Add the required PostgreSQL PHP support to the `zabbix_server` Ansible role rather than applying an undocumented manual fix.
-- [ ] Validate PHP-FPM and Nginx after the role change.
-- [ ] Confirm the Zabbix frontend accepts PostgreSQL and opens correctly.
-- [ ] Re-run the relevant Ansible playbook and require `changed=0`, `unreachable=0`, `failed=0`.
-- [ ] Re-run the one-button rebuild when appropriate to prove the permanent role fix survives clean reconstruction.
+The VM101 application workstream was retired and replaced by the native CT201 LXC proof-of-pattern.
 
-Tracked in:
+Completed and validated today:
 
 ```text
-jrwroberts1976/proxmox#12
-jrwroberts1976/home-lab-docs#56
+CT201 zabbix-lxc-01
+  -> Debian 13 unprivileged LXC
+  -> hardening
+  -> unattended-upgrades
+  -> Alloy
+  -> PostgreSQL 17
+  -> TimescaleDB
+  -> Nginx
+  -> Zabbix Server 7.0
+  -> Zabbix Agent 2
+  -> PHP 8.4 FPM frontend
+  -> standard Zabbix schema
+  -> vendor TimescaleDB conversion
+  -> locale correction
+  -> idempotence PASS
 ```
 
-## P1 — VM101 inventory naming cleanup
+Final validated service state:
 
-- [ ] Rename the Ansible inventory alias from `app-platform-01` to `zabbix-server-01` across all VM101 groups and references.
-- [ ] Preserve the live guest hostname/IP/MAC identity.
-- [ ] Run a full Ansible validation and require zero failures/unreachable hosts.
-- [ ] Require a second run with `changed=0`.
-- [ ] Update affected documentation.
+```text
+zabbix_server=ACTIVE
+zabbix_agent2=ACTIVE
+zabbix_frontend=ACTIVE
+nginx=ACTIVE
+php_fpm=ACTIVE
+postgresql=HEALTHY
+timescaledb_extension=ACTIVE
+zabbix_timescaledb_schema=CONVERTED
+vendor_hypertables=COMPLETE
+alloy=HEALTHY
+systemd=HEALTHY
+failed_units=ZERO
+ansible_idempotence=PASS
+```
 
-Tracked in `jrwroberts1976/proxmox#13`.
+Frontend:
+
+```text
+http://192.168.2.184:8080/
+```
+
+A pre-conversion PostgreSQL dump was retained on CT201:
+
+```text
+/var/backups/zabbix/zabbix-pre-timescaledb-20260903-230800.dump
+```
+
+### Locale correction — COMPLETE
+
+The Zabbix frontend reported that `en_US` was unavailable. The permanent Ansible fix now generates both:
+
+```text
+en_GB.UTF-8
+en_US.UTF-8
+```
+
+while keeping the server default:
+
+```text
+LANG=en_GB.UTF-8
+LANGUAGE=en_GB:en
+```
+
+The frontend is running normally after the fix.
+
+### Frontend IaC / Geomap — DEFERRED
+
+The desired Geomap state is already in Git:
+
+```text
+Location:  BH22 8QL, West Parley, Dorset, UK
+Latitude:  50.79039
+Longitude: -1.890218
+Zoom:      15
+Dashboard: Global view
+```
+
+The frontend-IaC helper could not authenticate to the Zabbix API. Read-only database inspection showed:
+
+```text
+username=Admin
+attempt_failed=4
+attempt_ip=192.168.2.220
+```
+
+No further password guesses were made.
+
+Next safe action is controlled Admin credential recovery/rotation, storage of the unique credential in Ansible Vault, API login proof, Geomap application and a second `changed=0` frontend-IaC run.
 
 ## P1 — Stage 6 BAU hardening
 
@@ -202,16 +272,27 @@ jrwroberts1976/home-lab-docs#57
 
 ### Completed today
 
-- Dozzle target-side Stage 6 preparation was reset and repeated from a known-good state.
-- The installed stale Stage 6 validator was synchronized to the reviewed repository implementation.
-- Dozzle `10.9.0` exact ARM64 candidate was acquired and identity-verified without container mutation.
-- Jenkins build #34 passed pre-approval inspection, explicit approval, post-approval zero-drift inspection, exact deployment, host-side acceptance and disarm.
-- Dozzle is live and healthy on exact immutable `10.9.0`.
+- Dozzle `10.9.0` exact candidate deployment passed the guarded Stage 6 Jenkins path and live runtime validation.
+- Container-update documentation was updated with the Dozzle deployment/recreation-boundary evidence.
+- VM101 was superseded as the active Zabbix target by native Proxmox LXC CT201.
+- CT201 infrastructure, hardening, unattended upgrades and Alloy observability were completed.
+- PostgreSQL 17 and the `zabbix` database were configured with localhost-only exposure.
+- TimescaleDB was installed, preloaded and enabled.
+- Nginx, PHP 8.4 FPM, Zabbix Server 7.0 and Zabbix Agent 2 were deployed.
+- The standard Zabbix schema was loaded.
+- The packaged Zabbix TimescaleDB conversion completed and all vendor-declared hypertables were verified.
+- Pre-conversion database backup was retained at `/var/backups/zabbix/zabbix-pre-timescaledb-20260903-230800.dump`.
+- The Zabbix locale warning was permanently fixed in Ansible by managing both `en_GB.UTF-8` and `en_US.UTF-8`.
+- Zabbix application, database, frontend, Alloy and systemd health gates passed.
+- Relevant Ansible roles passed second-run idempotence with `changed=0`.
+- Proxmox documentation/runbook authority was updated for CT201.
 
-### Carried forward / active
+### Carried forward
 
-- Complete Dozzle `10.9.0` durable Stage 6 closure and documentation.
-- Fix the Zabbix PostgreSQL PHP frontend support permanently in Ansible.
-- Complete VM101 inventory naming cleanup.
-- Harden Stage 6 target preparation into the normal generic BAU path.
-- Continue other P2/P3 work only after the active P0/P1 items are stable.
+- Recover/rotate the Zabbix `Admin` credential without further guessing and store the unique credential in Ansible Vault.
+- Prove Zabbix API login using the Vault-backed credential.
+- Apply the existing BH22 8QL frontend/Geomap IaC and require a second run with `changed=0`.
+- Run final CT201/OpenTofu zero-drift and end-to-end acceptance proof.
+- Close/merge the `feature/zabbix-lxc-foundation` branch when all final frontend/drift gates are green.
+- Complete remaining Dozzle durable Stage 6 closure/BAU hardening where still outstanding.
+- Continue other P2/P3 backlog only after the active Zabbix closure work is complete.
