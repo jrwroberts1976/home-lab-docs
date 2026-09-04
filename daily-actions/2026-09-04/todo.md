@@ -62,6 +62,27 @@ tofu_drift=ZERO
 merge_commit=ca3998d39b0cf30d04c339e03fbd121df227bebd
 ```
 
+## Overnight alert follow-up — 04 September 2026
+
+### P0 — PROXMOX hardware event
+
+- [ ] Investigate the PROXMOX hardware-fault alert that fired at approximately 04:00 BST and resolved at approximately 04:10 BST.
+- [ ] Review the Homelab Hardware Health dashboard plus PROXMOX kernel journal and SMART/NVMe health evidence.
+- [ ] Determine whether the Loki-detected hardware-related event represents a genuine disk/kernel fault or alert noise.
+
+### P1 — Linux Host Down event
+
+- [ ] Identify which Linux node exporter was unreachable during the approximately 05:21–05:26 BST outage.
+- [ ] Review the affected host/service logs around the outage and determine the cause.
+- [ ] Update the Grafana `Linux Host Down` notification so it includes both `Host` and `Instance` labels.
+
+### P2 — ids-01 overnight CPU
+
+- [ ] Review the ids-01 high-CPU event around 02:21 BST and correlate it with scheduled overnight scans, backups, reports or maintenance.
+- [ ] Confirm whether the >90% CPU condition was expected and transient; escalate only if unexplained or recurring.
+
+> k3s-node-01 security-update alert requires no task: it resolved by approximately 06:31 BST and the 04 September daily operations brief reports no outstanding security updates.
+
 ## P1 — Zabbix host onboarding
 
 - [ ] Define the first monitored Linux-host batch.
