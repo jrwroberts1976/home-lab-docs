@@ -98,14 +98,15 @@ Scope boundary: the Grafana↔Zabbix integration is complete; Proxmox VE host en
 - [ ] Monitor for recurrence; if `RxErr` continues, reseat the NVMe and inspect the M.2 connection before testing PCIe/NVMe power-management workarounds.
 - [ ] Adjust Grafana hardware alert classification so correctable PCIe AER events are not presented at the same severity as SMART/media failures, MCEs or uncorrectable PCIe errors.
 
-### P1 — Linux Host Down event — DIAGNOSED / RULE FIX PENDING
+### P1 — Linux Host Down event — INCIDENT CLOSED / GIT AUTHORITY PENDING
 
 - [x] Identify the affected target: DietPi / `192.168.2.48:9100`.
 - [x] Prove the host itself remained online; Pi-hole metrics continued through the event and no matching kernel/network outage was found.
 - [x] Identify the actual failure: one Prometheus scrape at 05:16:00 hit the 10-second timeout, produced `up=0` and scraped 0 samples; the next scrape at 05:16:15 succeeded.
-- [x] Identify the alert-rule defect: `up{job="linux-hosts"} == 0` is evaluated over a 10-minute range with a 5-minute `for`, allowing a single failed scrape to remain true long enough to fire a false `Linux Host Down` alert.
-- [ ] Correct the Grafana alert so only a sustained exporter/host outage can reach alerting state.
-- [ ] Update the Grafana `Linux Host Down` notification so it includes both `Host` and `Instance` labels.
+- [x] Identify the alert-rule defect: `up{job="linux-hosts"} == 0` was evaluated over a 10-minute range with a 5-minute `for`, allowing a single failed scrape to remain true long enough to fire a false `Linux Host Down` alert.
+- [x] Correct the live Grafana rule via API: `max_over_time(up{job="linux-hosts"}[5m]) == 0`, instant query, `for=0s`.
+- [x] Update the Grafana annotations to include both `host` and `instance`.
+- [x] Verify the saved rule and confirm current firing target set is empty.
 - [ ] Bring the live Grafana rule under Git/provisioned authority to remove live/Git drift.
 
 ### P2 — ids-01 overnight CPU
