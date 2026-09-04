@@ -148,8 +148,8 @@ Repository audit scope: all 34 repositories owned by `jrwroberts1976`, checking 
 
 ### P1 — Unmerged / orphaned branch work
 
-- [ ] Merge/close `proxmox/feature/zabbix-grafana-monitoring-iac`: functional validation is complete, including Grafana → Zabbix end-to-end proof; documentation is updated on the branch.
-- [ ] Merge/close `docker-env/feature/ids01-zabbix-grafana-monitoring`: functional validation is complete and SOPS/runtime/provisioning documentation is updated on the branch.
+- [x] Merge/close `proxmox/feature/zabbix-grafana-monitoring-iac`: merged via PR #21 to `main` (`ea9c849b73fd42b1dc678dc9ea8f0823dc8d3ae4`).
+- [x] Merge/close `docker-env/feature/ids01-zabbix-grafana-monitoring`: merged via PR #37 to `main` (`e1cf9ff6ad0527d37dfafbf91f1733fcb894805e`).
 - [ ] Reconcile `proxmox/feature/vm101-monitoring-retirement` against current `main`; it still contains one unique divergent commit affecting `scripts/vm101-decommission.sh`.
 - [ ] Reconcile `proxmox/fix/zabbix-php-postgresql-support` against current `main`; confirm its unique historical commits are fully superseded by the completed CT201/Zabbix authority before deletion.
 - [ ] Verify and remove stale branches that are behind `main` with no commits ahead: `proxmox/feature/zabbix-geomap-bh22`, `proxmox/fix/zabbix-postgresql-php-authority`, `proxmox/promote/vm101-build-authority`, and `home-lab-docs/ops/automate-host-decommission-20260903`.
