@@ -109,13 +109,14 @@ Scope boundary: the Grafana↔Zabbix integration is complete; Proxmox VE host en
 - [x] Verify the saved rule and confirm current firing target set is empty.
 - [x] Bring the live Grafana rule under Git authority to remove live/Git drift — validated `grafana_rule_drift=ZERO`, `git_live_parity=PASS`, `provenance=api`, `current_firing_targets=0`; merged via `docker-env` PR #38 (`a616e5bacce4f703729a37d145974b040926abe3`).
 
-### P2 — ids-01 overnight CPU — CAUSE IDENTIFIED / DUPLICATE-SCAN CHECK PENDING
+### P2 — ids-01 overnight CPU — DUPLICATE GREENBONE SCAN CONFIRMED
 
 - [x] Review the ids-01 high-CPU event around 02:21 BST and correlate it with scheduled overnight scans, backups, reports or maintenance.
 - [x] Identify the dominant workload: Greenbone/OpenVAS `ospd-openvas` consumed roughly 4–7 CPU cores during the event and accounts for the host saturation.
 - [x] Correlate Greenbone activity: two tasks named `Daily managed Linux hosts` started together at approximately 02:00 BST and completed at approximately 03:14 BST; OpenVAS CPU returned to effectively idle by approximately 03:20 BST.
-- [ ] Verify whether the two concurrent `Daily managed Linux hosts` task IDs are intentionally distinct scans/targets or an accidental duplicate schedule.
-- [ ] If both scans are intentional, classify the >90% CPU condition as expected/transient and close; if duplicated unintentionally, remove the duplicate schedule/task and re-baseline overnight CPU.
+- [x] Confirm the two task IDs are operational duplicates: same target, same 02:00 schedule, same OpenVAS scanner, same Full and fast config, and the same three managed Linux hosts.
+- [ ] Identify the retained task authority and remove only the redundant duplicate task while preserving the shared target, schedule, scanner and configuration.
+- [ ] Re-baseline the next overnight Greenbone run and confirm ids-01 CPU is materially reduced with one daily scan.
 
 > k3s-node-01 security-update alert requires no task: it resolved by approximately 06:31 BST and the 04 September daily operations brief reports no outstanding security updates.
 
