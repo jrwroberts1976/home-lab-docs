@@ -50,6 +50,8 @@ Dashboard: Global view
 - [x] final frontend-IaC idempotence proof.
 - [x] final OpenTofu zero-drift proof.
 - [x] update final Zabbix/CT201 documentation.
+- [x] merge Proxmox PR #20 to `main`.
+- [ ] delete the merged `feature/zabbix-lxc-foundation` branch after synchronizing the local checkout.
 
 Final proof:
 
@@ -57,6 +59,7 @@ Final proof:
 zabbix-lxc-01 : ok=7 changed=0 unreachable=0 failed=0 skipped=3
 tofu_exit_code=0
 tofu_drift=ZERO
+merge_commit=ca3998d39b0cf30d04c339e03fbd121df227bebd
 ```
 
 ## P1 — Zabbix host onboarding
