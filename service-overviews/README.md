@@ -13,6 +13,7 @@ This section explains the services that make up the homelab, how they fit togeth
 
 - [Prometheus — Metrics Collection and Time-Series Monitoring](prometheus.md) — two-instance monitoring topology, exporters, scrape health, TSDB state and change control.
 - [Grafana — Dashboards, Investigation and Alerting](grafana.md) — live `ids-01` dashboard service, datasources, alerting dependencies and recovery.
+- [Zabbix — Infrastructure Monitoring and API Integration](zabbix.md) — CT201 Zabbix platform, Grafana API integration, SOPS token authority and onboarding boundary.
 - [Grafana Alerting](grafana-alerting.md) — central alert evaluation, Git-managed rules, protected API-token use, SMTP delivery and notification validation.
 - [Grafana Alloy — Log Collection and Routing](alloy.md) — active log collection/routing, stable Loki labels, source selection, permissions and ingestion validation.
 - [Loki — Central Log Storage](loki.md) — central log storage, ingestion dependencies, retained evidence and recovery expectations.
