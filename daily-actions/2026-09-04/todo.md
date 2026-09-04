@@ -102,6 +102,16 @@ merge_commit=ca3998d39b0cf30d04c339e03fbd121df227bebd
 - [ ] ids-01 Prometheus authority parity work.
 - [ ] Pi-hole policy-alert latency improvement.
 
+## P2 — Solution and hosting review
+
+- [ ] Review the full homelab solution set for better architectural or operational choices.
+- [ ] Identify duplicated capabilities, overlapping tools and unnecessary complexity.
+- [ ] Review whether current components should be retained, consolidated, replaced or removed.
+- [ ] Review hosting placement for each major service: physical host, Proxmox VM/LXC, Docker, k3s, Raspberry Pi, or external/cloud hosting where appropriate.
+- [ ] Compare current choices against simpler, more reliable, lower-maintenance or more supportable alternatives.
+- [ ] Review observability architecture specifically, including Alloy, Prometheus, Loki, Grafana, Zabbix and exporters, and define clear ownership for metrics, logs, alerting and host monitoring.
+- [ ] Produce a recommended target architecture and migration/backlog actions before making platform-wide changes.
+
 ## P3 — Provisioning platform
 
 - [ ] Resume reusable Proxmox/Azure/AWS provisioning-platform design when selected.
