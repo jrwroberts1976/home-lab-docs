@@ -96,7 +96,7 @@ Scope boundary: the Grafana↔Zabbix integration is complete; Proxmox VE host en
 - [ ] **PENDING — weekend maintenance:** upgrade HP ProDesk 400 G4 DM BIOS Q23 from `02.07.00` (2019) to the current verified HP Q23 release after moving the host to the workshop and attaching a monitor/keyboard.
 - [ ] Reboot after BIOS update and establish a fresh PCIe AER baseline.
 - [ ] Monitor for recurrence; if `RxErr` continues, reseat the NVMe and inspect the M.2 connection before testing PCIe/NVMe power-management workarounds.
-- [x] Adjust the live Grafana hardware alert classification: critical rule now excludes correctable PCIe AER events; new `Correctable PCIe error detected` rule uses `severity=warning`. Historical Loki preflight proved the 04 September PROXMOX `RxErr` no longer matches critical and does match warning; live API verification passed. Git authority implementation is in `docker-env` PR #39; parity validation and merge pending.
+- [x] Adjust the live Grafana hardware alert classification: critical rule now excludes correctable PCIe AER events; new `Correctable PCIe error detected` rule uses `severity=warning`. Historical Loki preflight proved the 04 September PROXMOX `RxErr` no longer matches critical and does match warning; live API verification passed. Git authority validated with `tracked_rules=3`, `drifted_rules=0`, `applied_rules=0`, `git_live_parity=PASS`; merged via `docker-env` PR #39 (`489083be320d5427a1567c41a69403d8f28479d5`).
 
 ### P1 — Linux Host Down event — INCIDENT CLOSED / GIT AUTHORITY PENDING
 
