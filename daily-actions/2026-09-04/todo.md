@@ -2,7 +2,7 @@
 
 > **Day status: ACTIVE.**
 >
-> CT201 Zabbix platform closure is complete. Remaining work is post-closure onboarding/backlog only.
+> CT201 Zabbix platform closure is complete. Proxmox VE onboarding into Zabbix and Grafana visibility validation are also complete. Remaining work is post-closure onboarding/backlog and maintenance only.
 
 ## P0 — Zabbix Admin/API credential — COMPLETE
 
@@ -76,15 +76,46 @@ merge_commit=ca3998d39b0cf30d04c339e03fbd121df227bebd
 - [x] Prove Grafana health after recreation.
 - [x] Prove Grafana → Zabbix API access.
 - [x] Prove `Infrastructure/Proxmox` group visibility.
+- [x] Prove the restricted Grafana Zabbix API identity can see enrolled host `PROXMOX` in `Infrastructure/Proxmox` without widening permissions.
 
 Final proof:
 
 ```text
 grafana_to_zabbix=PASS
 proxmox_group_visibility=PASS
+grafana_proxmox_visibility=PASS
 ```
 
-Scope boundary: the Grafana↔Zabbix integration is complete; Proxmox VE host enrollment into Zabbix remains backlog.
+## P0/P1 — Proxmox VE Zabbix onboarding — COMPLETE
+
+- [x] Create dedicated Proxmox monitoring identity `zabbix@pve!monitoring` with read-only `PVEAuditor` authority.
+- [x] Validate the Proxmox API using the dedicated token without exposing the secret.
+- [x] Capture the Proxmox monitoring credential in SOPS-encrypted `docker-env/secrets/ids-01/proxmox-monitoring.sops.env`.
+- [x] Prove SOPS-backed credential authority from TestServer.
+- [x] Create dedicated Zabbix configuration automation token for controlled enrollment.
+- [x] Confirm Zabbix host group `Infrastructure/Proxmox` and official `Proxmox VE by HTTP` template.
+- [x] Enrol host `PROXMOX` as Zabbix host ID `10683` using HTTP/API monitoring; no Zabbix agent interface required.
+- [x] Validate live Proxmox node and guest collection, including PVE version, uptime, CPU/memory and LXC discovery.
+- [x] Diagnose false `Not running` alerts for Proxmox QEMU template VMs 9000/9001.
+- [x] Apply QEMU discovery exclusion `$.data[?(@.template != 1)]` to exclude Proxmox VM templates from normal VM discovery.
+- [x] Confirm false template-VM problems clear and active problem count returns to zero.
+- [x] Confirm the only remaining unsupported items are four disabled LLD-retained disk-rate items for the excluded template VMs; enabled unsupported count is zero and normal seven-day LLD cleanup is retained.
+- [x] Add the QEMU-template exclusion to existing `zabbix_frontend_iac` Ansible authority.
+- [x] Validate Python compile, Ansible syntax and Git diff checks.
+- [x] Prove live/IaC parity on first apply and full second-run idempotence: `changed=0`, `failed=0`.
+- [x] Commit and push Proxmox IaC branch `feature/zabbix-proxmox-qemu-template-exclusion`, commit `39fb187`.
+- [x] Prove restricted Grafana token visibility of host `PROXMOX` through the Zabbix API.
+
+Final proof:
+
+```text
+zabbix_proxmox_final_health=PASS
+active_unsupported_items=NONE
+active_problem_count=0
+zabbix_proxmox_iac_idempotency_run=PASS
+grafana_proxmox_visibility=PASS
+proxmox_iac_commit=39fb187
+```
 
 ## Overnight alert follow-up — 04 September 2026
 
@@ -98,7 +129,7 @@ Scope boundary: the Grafana↔Zabbix integration is complete; Proxmox VE host en
 - [ ] Monitor for recurrence; if `RxErr` continues, reseat the NVMe and inspect the M.2 connection before testing PCIe/NVMe power-management workarounds.
 - [x] Adjust the live Grafana hardware alert classification: critical rule now excludes correctable PCIe AER events; new `Correctable PCIe error detected` rule uses `severity=warning`. Historical Loki preflight proved the 04 September PROXMOX `RxErr` no longer matches critical and does match warning; live API verification passed. Git authority validated with `tracked_rules=3`, `drifted_rules=0`, `applied_rules=0`, `git_live_parity=PASS`; merged via `docker-env` PR #39 (`489083be320d5427a1567c41a69403d8f28479d5`).
 
-### P1 — Linux Host Down event — INCIDENT CLOSED / GIT AUTHORITY PENDING
+### P1 — Linux Host Down event — COMPLETE
 
 - [x] Identify the affected target: DietPi / `192.168.2.48:9100`.
 - [x] Prove the host itself remained online; Pi-hole metrics continued through the event and no matching kernel/network outage was found.
@@ -122,10 +153,10 @@ Scope boundary: the Grafana↔Zabbix integration is complete; Proxmox VE host en
 
 ## P1 — Zabbix host onboarding
 
-- [ ] Onboard the Proxmox VE host using the approved Zabbix Proxmox integration/template.
-- [ ] Define the first monitored Linux-host batch.
+- [x] Onboard the Proxmox VE host using the approved Zabbix Proxmox integration/template.
+- [x] Validate Proxmox host availability, item collection and initial triggers.
+- [ ] Define the first additional monitored Linux-host batch.
 - [ ] Decide which existing systems should receive/validate Agent 2 first.
-- [ ] Validate host availability, item collection and initial triggers.
 - [ ] Keep Zabbix complementary to existing Prometheus/Alloy observability.
 
 ## P1 — Dozzle / Stage 6
@@ -137,7 +168,6 @@ Scope boundary: the Grafana↔Zabbix integration is complete; Proxmox VE host en
 
 - [ ] Update the ids-01 Grafana-Zabbix deployment helper so token materialisation automatically preserves owner UID `472` and mode `0400` before any future Grafana recreation.
 - [ ] Grafana Patch collector stale alert.
-- [ ] Linux Host Down live/Git drift.
 - [ ] ids-01 Prometheus authority parity work.
 - [ ] Pi-hole policy-alert latency improvement.
 
@@ -159,6 +189,7 @@ Repository audit scope: all 34 repositories owned by `jrwroberts1976`, checking 
 
 - [x] Merge/close `proxmox/feature/zabbix-grafana-monitoring-iac`: merged via PR #21 to `main` (`ea9c849b73fd42b1dc678dc9ea8f0823dc8d3ae4`).
 - [x] Merge/close `docker-env/feature/ids01-zabbix-grafana-monitoring`: merged via PR #37 to `main` (`e1cf9ff6ad0527d37dfafbf91f1733fcb894805e`).
+- [ ] Merge/close `proxmox/feature/zabbix-proxmox-qemu-template-exclusion` after final review; validated commit `39fb187` is pushed and live idempotence/visibility checks pass.
 - [ ] Reconcile `proxmox/feature/vm101-monitoring-retirement` against current `main`; it still contains one unique divergent commit affecting `scripts/vm101-decommission.sh`.
 - [ ] Reconcile `proxmox/fix/zabbix-php-postgresql-support` against current `main`; confirm its unique historical commits are fully superseded by the completed CT201/Zabbix authority before deletion.
 - [ ] Verify and remove stale branches that are behind `main` with no commits ahead: `proxmox/feature/zabbix-geomap-bh22`, `proxmox/fix/zabbix-postgresql-php-authority`, `proxmox/promote/vm101-build-authority`, and `home-lab-docs/ops/automate-host-decommission-20260903`.
@@ -177,7 +208,7 @@ Repository audit scope: all 34 repositories owned by `jrwroberts1976`, checking 
 - [ ] `home-lab-docs#42` — harden the Homelab Security Posture dashboard for expected-host/control coverage and telemetry freshness.
 - [ ] Reconcile `home-lab-docs#9` with `homelab-container-version-control#1` and update the container-version-control project tracker to reflect the actual Stage 6 position, preserving any genuinely unfinished policy, secrets, validation, rollback, observability and closure work rather than tracking only Dozzle.
 
-> Audit result: no open pull requests were found. All other repositories currently show only `main` (or are empty) and no open issue/branch signal requiring addition to today's homelab backlog.
+> Audit result: no open pull requests were found at the time of the repository audit. All other repositories showed only `main` (or were empty) and no open issue/branch signal requiring addition to today's homelab backlog. The subsequently created Proxmox QEMU-template-exclusion feature branch is tracked above.
 
 ## P3 — Provisioning platform
 
@@ -204,6 +235,10 @@ Repository audit scope: all 34 repositories owned by `jrwroberts1976`, checking 
 - [x] dedicated Grafana Zabbix API identity and SOPS token authority.
 - [x] Grafana Zabbix plugin 6.6.0 and datasource provisioning.
 - [x] Grafana → Zabbix end-to-end API proof.
+- [x] Proxmox VE → Zabbix API monitoring enrollment.
+- [x] Proxmox QEMU template-VM false-alert exclusion and Ansible IaC authority.
+- [x] restricted Grafana Zabbix identity visibility of `PROXMOX`.
+- [x] Linux Host Down diagnosis, rule correction, Host/Instance annotations and Git/live parity.
 - [x] frontend IaC idempotence.
 - [x] OpenTofu zero drift.
 - [x] VM101 retirement/decommission.
