@@ -164,10 +164,10 @@ With the platform closed, the next Zabbix work is onboarding monitored systems:
 - Closed the CT201 technical build.
 - Updated the Proxmox Zabbix documentation for final closure.
 - Merged Proxmox PR #20 to `main` at `ca3998d39b0cf30d04c339e03fbd121df227bebd`.
+- Synchronized local `main` to the merge commit and deleted `feature/zabbix-lxc-foundation` locally and remotely.
 
 ### Carried forward
 
-- Delete the now-merged `feature/zabbix-lxc-foundation` branch after local/main synchronization.
 - First Zabbix monitored-host onboarding batch.
 - Remaining Dozzle/Stage 6 BAU work.
 - Existing monitoring backlog.
