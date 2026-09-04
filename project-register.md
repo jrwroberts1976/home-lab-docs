@@ -1,6 +1,6 @@
 # Homelab Master Project Register
 
-**Last reviewed:** 2026-08-31  
+**Last reviewed:** 2026-09-04  
 **Purpose:** single place to track active, parked, pending-verification and planned work across the homelab and closely related engineering projects.
 
 This is the master programme view. Daily work remains recorded under `daily-actions/`, while implementation-specific repositories remain authoritative for their own code and detailed plans.
@@ -34,7 +34,7 @@ This is the master programme view. Daily work remains recorded under `daily-acti
 4. **Use Alloy as the first fresh service to prove the complete Jenkins update -> closure workflow.**
 5. **Requalify the remaining previously deferred containers against the actual Stage 6 framework.**
 6. **Build the parameterised Jenkins runbook pipeline for broader approved operational runbooks.**
-7. **Build the Zabbix platform VM using the proven Proxmox pattern.**
+7. **Use the completed CT201 Zabbix platform for controlled host onboarding; Proxmox VE enrollment remains a monitoring-backlog item.**
 8. Continue the wider Proxmox migration, DNS resilience, Home Assistant, k3s, monitoring, security and documentation backlog.
 
 ### Immediate Stage 6 restart point
@@ -250,33 +250,65 @@ MANUAL_REVIEW_REQUIRED
 
 ---
 
-# 7. Zabbix platform on Proxmox — 🟡 PLANNED
+# 7. Zabbix platform on Proxmox — ✅ PLATFORM COMPLETE
 
-This project includes the previously separate PostgreSQL + TimescaleDB + Nginx VM idea. It is not a separate project anymore.
+The platform was implemented as native unprivileged Proxmox LXC **CT201** rather than the earlier planned VM.
 
-**Dependency:** start after the reference Proxmox VM build is 100% complete.
+Validated platform:
 
-- [ ] Define Zabbix architecture and sizing.
-- [ ] Provision the VM through OpenTofu.
-- [ ] Bootstrap through cloud-init.
-- [ ] Configure the host through Ansible.
-- [ ] Deploy PostgreSQL.
-- [ ] Deploy TimescaleDB.
-- [ ] Deploy Nginx.
-- [ ] Deploy the required Zabbix server/frontend/agent components.
-- [ ] Manage configuration and secrets through the approved Git/SOPS model.
-- [ ] Apply the standard Linux monitoring baseline.
-- [ ] Apply Alloy/Loki logging.
-- [ ] Apply CrowdSec/security controls where appropriate.
-- [ ] Apply security-only unattended upgrades and patch-status monitoring.
-- [ ] Use the controlled patch/reboot workflow.
-- [ ] Add application/database-specific monitoring and alerts.
-- [ ] Define database backup and recovery.
-- [ ] Back up the VM off-host.
-- [ ] Perform reboot/recovery testing.
-- [ ] Perform restore testing.
-- [ ] Make the complete Zabbix platform rebuildable from Git.
+```text
+CT201 zabbix-lxc-01
+192.168.2.184
+Debian 13
+PostgreSQL 17
+TimescaleDB
+Zabbix Server 7.0 LTS
+Zabbix Agent 2
+Nginx + PHP 8.4 FPM
+Alloy
+unattended-upgrades
+```
 
+Completed:
+
+- [x] Define Zabbix architecture and sizing.
+- [x] Provision CT201 through OpenTofu.
+- [x] Configure Debian and the application stack through Ansible.
+- [x] Deploy PostgreSQL 17.
+- [x] Deploy TimescaleDB and convert the Zabbix schema to vendor hypertables.
+- [x] Deploy Nginx/PHP frontend.
+- [x] Deploy Zabbix Server 7.0 LTS and Agent 2.
+- [x] Apply Linux hardening and unattended upgrades.
+- [x] Apply Alloy/Loki logging.
+- [x] Store the unique Admin credential in Ansible Vault.
+- [x] Apply BH22 8QL Geomap/frontend IaC.
+- [x] Prove Ansible idempotence.
+- [x] Prove OpenTofu zero drift.
+- [x] Create a dedicated read-only Grafana API identity.
+- [x] Store the Grafana datasource token as SOPS-encrypted authority.
+- [x] Provision Grafana Zabbix plugin 6.6.0 and datasource `uid=zabbix`.
+- [x] Prove end-to-end Grafana → Zabbix API access.
+- [x] Prove `Infrastructure/Proxmox` host-group visibility.
+
+Final integration evidence:
+
+```text
+token_generated=NO
+plaintext_staging=PASS_ABSENT
+grafana_to_zabbix=PASS
+proxmox_group_visibility=PASS
+```
+
+Follow-up onboarding / recovery backlog:
+
+- [ ] Onboard the Proxmox VE host itself using the approved Zabbix Proxmox integration/template.
+- [ ] Define the first broader Linux-host onboarding batch.
+- [ ] Add application/database-specific Zabbix monitoring only where it adds value beyond Prometheus/Alloy.
+- [ ] Define/validate off-host CT201 backup and restore.
+- [ ] Reboot/recovery test CT201 where not already covered by the platform acceptance evidence.
+- [ ] Correct the ids-01 deployment helper so future Grafana token materialisation automatically preserves owner UID `472`, mode `0400`.
+
+Zabbix remains complementary to Prometheus/Loki/Alloy; it does not replace the existing observability stack.
 ---
 
 # 8. Proxmox backup and disaster recovery — 🟡 ACTIVE BACKLOG
@@ -305,6 +337,9 @@ Remaining enhancement work:
 - [x] Prove CPU/RAM/root-filesystem metric availability.
 - [x] Prove standard host-down/disk/CPU/memory alert coverage.
 - [x] Forward the Proxmox systemd journal to Loki through Alloy.
+- [x] Provision the Grafana Zabbix plugin/datasource with a dedicated SOPS-backed read-only API identity.
+- [x] Prove Grafana can query Zabbix and see the `Infrastructure/Proxmox` host group.
+- [ ] Onboard the Proxmox VE host itself into Zabbix using the approved Proxmox integration/template.
 - [ ] Add dedicated disk-I/O/network panels where useful.
 - [ ] Add CPU/package, PCH and NVMe temperatures to the desired Grafana views.
 - [ ] Add temperature alerting.
@@ -435,6 +470,7 @@ Suggested early order: Homepage/Dashy-style presentation services, Dozzle and ot
 - [ ] Add Greenbone → Loki ingestion health checking.
 - [ ] Continue vulnerability scanning and accepted-risk handling.
 - [ ] Keep `ids-01` independent from Proxmox.
+- [ ] Update the ids-01 Grafana-Zabbix deployment helper so runtime token materialisation preserves Grafana UID `472` / mode `0400` automatically.
 
 ---
 
@@ -503,7 +539,7 @@ SUCCESS_CLOSED proof
 Requalify remaining containers
         |
         v
-Build Zabbix platform VM and
+Zabbix host onboarding and
 continue wider migration/backlog
 ```
 
