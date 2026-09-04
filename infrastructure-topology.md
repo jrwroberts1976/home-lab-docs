@@ -28,7 +28,7 @@ flowchart LR
         DOCKER[Application Docker estate]
         RESTIC[Restic backup client]
         LEGACYPROM[Prometheus runtime\nlegacy / transition]
-        ZBXBOOT[Zabbix bootstrap/admin secret authority]
+        ZBXIAC[Zabbix frontend/admin IaC]
     end
 
     subgraph PVE[PROXMOX - 192.168.2.70\nHypervisor]
@@ -71,7 +71,7 @@ flowchart LR
     LOKI --> CROWD
     GRAFANA -->|Zabbix API| ZABBIX
     ZABBIX -->|Proxmox API monitoring| PVE
-    ZBXBOOT -.->|bootstrap/configuration authority| ZABBIX
+    ZBXIAC -->|API/bootstrap authority| ZABBIX
 
     TOFU --> PVE
     ANS --> PVE
@@ -84,8 +84,8 @@ flowchart LR
 | Host | Address | Primary role | Important services / responsibilities | Data / configuration location | Authority status |
 |---|---|---|---|---|---|
 | `ids-01` | `192.168.2.242` | Central observability, security and recovery | Grafana, Prometheus, Loki, CrowdSec, network discovery, generated Network Hosts dashboards, Grafana Zabbix plugin/datasource, Restic REST repository, secondary Pi-hole services | Live monitoring runtime under `/home/james/docker`; Git authority under `jrwroberts1976/docker-env` at `hosts/ids-01/stacks/monitoring`; discovery state under `/var/lib/homelab-network-discovery`; Restic repository served from ids-01 | **Observability authority** |
-| `TestServer` | `192.168.2.220` | Automation/control node and main Docker application host | OpenTofu, Ansible, application Docker estate, Restic backup client, supporting scripts/collectors; protected Zabbix bootstrap/admin credential source | Git projects under `/home/james/projects`; Docker source checkout under `/home/james/docker`; OpenTofu state under `/home/james/projects/proxmox/tofu`; Zabbix bootstrap/admin secret remains host-local/protected | **IaC/control authority**; Prometheus here is transitional/legacy |
-| `Zabbix server` | `192.168.2.184` | Zabbix monitoring server | Zabbix 7.0 API/frontend; host/group/template authority; API endpoint on port `8080`; `Infrastructure/Proxmox` host group | Zabbix server database/configuration; Grafana uses a dedicated read-only API token materialised on ids-01 | **Zabbix monitoring authority** |
+| `TestServer` | `192.168.2.220` | Automation/control node and main Docker application host | OpenTofu, Ansible, application Docker estate, Restic backup client, supporting scripts/collectors; Zabbix frontend/admin credential and API automation from the Proxmox Ansible repo | Git projects under `/home/james/projects`; Docker source checkout under `/home/james/docker`; OpenTofu state under `/home/james/projects/proxmox/tofu`; Zabbix frontend/admin IaC under `/home/james/projects/proxmox/ansible/roles/zabbix_frontend_iac` | **IaC/control authority**; Prometheus here is transitional/legacy |
+| `Zabbix server` | `192.168.2.184` | Zabbix monitoring server | Zabbix 7.0 API/frontend; host/group/template authority; API endpoint on port `8080`; `Infrastructure/Proxmox` host group | Zabbix server database/configuration; Grafana uses a dedicated read-only API token materialised on ids-01; frontend/admin lifecycle is automated from the Proxmox Ansible authority on TestServer | **Zabbix monitoring authority** |
 | `PROXMOX` | `192.168.2.70` | Hypervisor | Proxmox VE, node_exporter, Alloy v1.19.2, VM hosting; Proxmox API monitoring identity `zabbix@pve!monitoring` | PVE local storage/LVM; `vm-ssd` secondary storage; node_exporter systemd service; Alloy managed from `jrwroberts1976/proxmox` Ansible; monitoring token has protected runtime/SOPS authority on ids-01 | **Hypervisor authority** |
 | `debian-iac-test-01` | `192.168.2.120` | Disposable reference VM | QEMU guest agent, node_exporter, Alloy, Debian security patching | Provisioned by OpenTofu and configured by Ansible from `jrwroberts1976/proxmox` | Reference IaC acceptance VM |
 | `k3s-node-01` | `192.168.2.195` | Kubernetes node | k3s workloads, node_exporter | Host-local k3s state plus Git-controlled workload sources | Kubernetes workload host |
@@ -126,6 +126,7 @@ Linux / Proxmox hosts
 - Loki runs on `ids-01` and is exposed on port `3100`.
 - The Grafana Zabbix datasource points to `http://192.168.2.184:8080/api_jsonrpc.php` and uses the dedicated `grafana-zabbix` API identity.
 - The Zabbix API reports version `7.0.30`.
+- Direct TestServer connectivity to the Zabbix server has been verified independently of credentials: ICMP reachability passed, TCP `192.168.2.184:8080` passed, and unauthenticated `apiinfo.version` returned `7.0.30`.
 - The `grafana-zabbix` API identity is deliberately restricted: it can see the `Infrastructure/Proxmox`, `Linux servers` and `Zabbix servers` host groups, but has no template-group/template visibility.
 - The Zabbix API currently exposes the `Zabbix server` host through that read-only Grafana identity. Proxmox host enrollment remains separate work.
 - `PROXMOX` runs `prometheus-node-exporter`, enabled and active on `*:9100`.
@@ -145,34 +146,41 @@ Linux / Proxmox hosts
 The Zabbix monitoring path is deliberately separated into runtime read access, configuration authority and target credentials:
 
 ```text
-TestServer protected Zabbix bootstrap/admin credential
-                    |
-                    v
-           Zabbix API configuration
-           192.168.2.184:8080
-                    |
-       +------------+------------------+
-       |                               |
-       v                               v
-Grafana read-only API             Proxmox monitoring
-identity                          configuration
-`grafana-zabbix`                        |
-       |                               v
-       v                         `zabbix@pve!monitoring`
-ids-01 Grafana                         |
-                                       v
-                                  PROXMOX API
-                                  192.168.2.70:8006
+TestServer / jrwroberts1976/proxmox Ansible
+zabbix_frontend_iac
+        |
+        | zabbix_frontend_api_username
+        | zabbix_frontend_api_password
+        v
+Zabbix frontend/admin credential lifecycle
+        |
+        v
+Zabbix API configuration
+192.168.2.184:8080
+        |
+        +--------------------------+
+        |                          |
+        v                          v
+Grafana read-only API        Proxmox monitoring
+identity                     configuration
+`grafana-zabbix`                   |
+        |                          v
+        v                    `zabbix@pve!monitoring`
+ids-01 Grafana                    |
+                                  v
+                             PROXMOX API
+                             192.168.2.70:8006
 ```
 
-Current credential rules:
+Current credential rules and authority:
 
 - The Grafana-to-Zabbix token is a dedicated read-only identity and must not be widened for configuration work.
 - The Grafana token runtime file is `/home/james/docker/secrets/zabbix-grafana-api-token` on ids-01; its encrypted recovery/authority source is in `jrwroberts1976/docker-env` under `secrets/ids-01/grafana-zabbix.sops.env`.
 - The Proxmox monitoring identity is `zabbix@pve!monitoring`; its secret must never be printed or committed in plaintext.
-- The intended encrypted Proxmox monitoring authority is `secrets/ids-01/proxmox-monitoring.sops.env` with keys `PROXMOX_ZABBIX_TOKEN_ID` and `PROXMOX_ZABBIX_TOKEN_SECRET`.
-- The Zabbix Super Admin/bootstrap credential is stored protected on TestServer and should be used only to bootstrap/configure a dedicated automation API authority, not as a Grafana runtime credential.
-- Token creation/rotation automation must be idempotent and must not regenerate a working token on every run.
+- The encrypted Proxmox monitoring authority is `secrets/ids-01/proxmox-monitoring.sops.env` with keys `PROXMOX_ZABBIX_TOKEN_ID` and `PROXMOX_ZABBIX_TOKEN_SECRET`.
+- Zabbix frontend/admin credential handling is already represented in `jrwroberts1976/proxmox` under `ansible/roles/zabbix_frontend_iac`. The role validates `zabbix_frontend_api_username` and `zabbix_frontend_api_password`, installs `/usr/local/libexec/homelab-zabbix-admin-credential-iac`, uses an `admin-bootstrap-v1` marker, performs the initial documented recovery-password bootstrap only when required, and then verifies the desired Vault-backed credential.
+- Do not invent a second manual Zabbix admin credential path before checking the existing `zabbix_frontend_iac` variable/Vault authority.
+- Token creation/rotation automation should be idempotent and must not regenerate a working token on every run.
 
 ## Network discovery and Network Hosts dashboards
 
@@ -234,6 +242,8 @@ jrwroberts1976/proxmox Git repository
              +--> TestServer Ansible
                      |
                      +--> PROXMOX host observability
+                     |
+                     +--> Zabbix frontend/admin IaC
                      |
                      v
                     VM 100
@@ -309,8 +319,9 @@ TestServer Prometheus can provide useful reachability/parity evidence, but Grafa
 | ids-01 Loki | Grafana | Docker network `loki:3100` | Log dashboards/search |
 | ids-01 Loki | CrowdSec | Loki source | Security event processing |
 | ids-01 Grafana | Zabbix server | HTTP `192.168.2.184:8080/api_jsonrpc.php` | Zabbix datasource/API queries |
+| TestServer | Zabbix server | ICMP + TCP/HTTP `192.168.2.184:8080` | Proven control-plane reachability; `apiinfo.version` returns `7.0.30` |
+| TestServer Proxmox Ansible | Zabbix server | HTTP API `192.168.2.184:8080` | Existing Zabbix frontend/admin IaC and future configuration automation |
 | Zabbix server | PROXMOX API | HTTPS `192.168.2.70:8006` | Proxmox platform monitoring after host enrollment |
-| TestServer bootstrap authority | Zabbix server | HTTP API `192.168.2.184:8080` | Zabbix automation/configuration bootstrap |
 | TestServer OpenTofu | PROXMOX API | HTTPS/API | VM provisioning |
 | TestServer Ansible | PROXMOX / managed VMs | SSH | Host/VM configuration management |
 | TestServer Restic | ids-01 Restic REST server | HTTPS `8000` | Off-host backup |
@@ -320,15 +331,15 @@ TestServer Prometheus can provide useful reachability/parity evidence, but Grafa
 The remaining corrections required to make runtime match the intended topology are:
 
 1. Complete Proxmox host enrollment into the existing Zabbix `Infrastructure/Proxmox` group using the dedicated `zabbix@pve!monitoring` target credential.
-2. Bootstrap a dedicated Zabbix configuration/automation API authority from the protected Super Admin credential on TestServer; do not widen the `grafana-zabbix` runtime identity.
-3. Ensure the new `proxmox-monitoring.sops.env` authority is committed through the normal `docker-env` Git workflow once enrollment validation is complete.
+2. Inspect and reuse the existing `zabbix_frontend_iac` Vault-backed admin authority on TestServer for Zabbix API configuration; extend it idempotently for API-token/configuration automation rather than creating a parallel manual credential path.
+3. Commit the new `proxmox-monitoring.sops.env` authority through the normal `docker-env` Git workflow once enrollment validation is complete.
 4. Restore `debian-iac-test-01` (`192.168.2.120:9100`) to the ids-01 Prometheus target set if it remains absent and the reference VM is still required.
 5. Compare TestServer and ids-01 Prometheus jobs/targets, migrate any remaining unique coverage, then retire the TestServer Prometheus instance after parity is proven.
 
 ## Related repositories
 
 - `jrwroberts1976/home-lab-docs` — operational documentation and topology.
-- `jrwroberts1976/proxmox` — Proxmox/OpenTofu/Ansible authority.
+- `jrwroberts1976/proxmox` — Proxmox/OpenTofu/Ansible authority, including `zabbix_frontend_iac` for Zabbix frontend/admin credential lifecycle.
 - `jrwroberts1976/docker-env` — TestServer Docker configuration plus ids-01 monitoring/Grafana deployment and encrypted monitoring-secret authority.
 - `jrwroberts1976/grafana-alerting` — historical/related Grafana alert-rule source; active ids-01 tracked alert deployment is now also represented under `docker-env/hosts/ids-01/stacks/monitoring`.
 
