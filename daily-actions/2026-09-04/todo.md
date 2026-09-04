@@ -107,7 +107,7 @@ Scope boundary: the Grafana↔Zabbix integration is complete; Proxmox VE host en
 - [x] Correct the live Grafana rule via API: `max_over_time(up{job="linux-hosts"}[5m]) == 0`, instant query, `for=0s`.
 - [x] Update the Grafana annotations to include both `host` and `instance`.
 - [x] Verify the saved rule and confirm current firing target set is empty.
-- [ ] Bring the live Grafana rule under Git/provisioned authority to remove live/Git drift.
+- [ ] Bring the live Grafana rule under Git authority to remove live/Git drift — implementation is in `docker-env` PR #38; live parity validation and merge pending.
 
 ### P2 — ids-01 overnight CPU
 
