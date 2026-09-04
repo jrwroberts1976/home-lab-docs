@@ -2,36 +2,45 @@
 
 ## Starting position
 
-The CT201 Zabbix platform build is complete through the application/database layer.
+CT201 entered the day with the Zabbix application/database stack already healthy. The remaining closure work was the frontend/API credential authority, BH22 8QL Geomap IaC, final idempotence and OpenTofu zero-drift proof.
 
-Validated starting state:
+## P0 — Zabbix Admin/API credential authority — COMPLETE
+
+A unique Zabbix `Admin` credential is now stored only in the encrypted CT201 Ansible Vault.
+
+The controlled bootstrap path proved:
 
 ```text
-CT201=zabbix-lxc-01
-IP=192.168.2.184
-frontend=http://192.168.2.184:8080/
-
-zabbix_server=ACTIVE
-zabbix_agent2=ACTIVE
-zabbix_frontend=ACTIVE
-nginx=ACTIVE
-php_fpm=ACTIVE
-postgresql_version=17
-postgresql=HEALTHY
-timescaledb_extension=ACTIVE
-zabbix_timescaledb_schema=CONVERTED
-vendor_hypertables=COMPLETE
-alloy=HEALTHY
-systemd=HEALTHY
-failed_units=ZERO
-ansible_idempotence=PASS
+documented Admin recovery hash
+  -> clear failed-login state
+  -> API login using temporary recovery credential
+  -> rotate Admin to unique Vault credential
+  -> verify Vault credential
+  -> create bootstrap marker
 ```
 
-The locale issue is closed. Both `en_GB.UTF-8` and `en_US.UTF-8` are managed by Ansible and the server default remains UK English.
+The factory/default credential is not retained as BAU authority.
 
-The only unfinished Zabbix configuration item is frontend/API IaC.
+Final evidence:
 
-Desired Geomap authority already exists in Git:
+```text
+Admin attempt_failed=0
+admin-bootstrap-status=result=PASS mode=verify
+admin-bootstrap-v1=PRESENT
+marker_permissions=root:root 600
+```
+
+The frontend-IaC role owns its state under:
+
+```text
+/var/lib/homelab-zabbix-frontend-iac/
+```
+
+A failed assumption that `/var/lib/zabbix` existed was corrected in IaC. The Debian/Zabbix install on CT201 does not provide that directory.
+
+## P0 — BH22 8QL frontend IaC — COMPLETE
+
+Desired and applied authority:
 
 ```text
 Dashboard: Global view
@@ -42,78 +51,84 @@ Longitude: -1.890218
 Zoom:      15
 ```
 
-Current Admin/API diagnostic carried from 3 September:
+First successful application:
 
 ```text
-username=Admin
-attempt_failed=4
-attempt_ip=192.168.2.220
+zabbix-lxc-01 : ok=10 changed=5 unreachable=0 failed=0 skipped=0
 ```
 
-Do not guess the Admin password again.
+Second-run idempotence proof:
 
-## P0 — Morning report triage
+```text
+zabbix-lxc-01 : ok=7 changed=0 unreachable=0 failed=0 skipped=3
+```
 
-When the daily/nightly report arrives:
+The frontend/Geomap authority is closed.
 
-- [ ] Review new failures, warnings, security findings, backup/patch issues and monitoring gaps.
-- [ ] Deduplicate findings against this TODO.
-- [ ] Record whether the report adds a new task, confirms an existing task or needs no action.
-- [ ] Do not allow report triage to overwrite the current Zabbix closure priority unless a genuine P0 incident is found.
+## P0 — Final CT201 closure — COMPLETE
 
-## P0 — Close Zabbix Admin/API credential authority
+Final OpenTofu drift proof:
 
-- [ ] Confirm current Zabbix frontend remains healthy before credential work.
-- [ ] Recover or reset the `Admin` credential using a controlled documented method; do not rebuild CT201.
-- [ ] Generate/establish a unique non-default Admin password.
-- [ ] Store the credential only in encrypted CT201 Ansible Vault as the frontend/API secret.
-- [ ] Ensure no plaintext Admin password remains in Git, shell history, temporary files or logs.
-- [ ] Clear/verify failed-login state where required.
-- [ ] Prove browser/API authentication with the new credential.
-- [ ] Prove the factory/default credential is not retained as BAU authority.
+```text
+No changes. Your infrastructure matches the configuration.
+tofu_exit_code=0
+tofu_drift=ZERO
+PASS: CT201 INFRASTRUCTURE AUTHORITY CLEAN
+```
 
-## P0 — Apply BH22 8QL frontend IaC
+Final platform state remains:
 
-After API authentication is green:
+```text
+CT201=zabbix-lxc-01
+IP=192.168.2.184
+frontend=http://192.168.2.184:8080/
 
-- [ ] Run `ansible/playbooks/zabbix-frontend-iac.yml`.
-- [ ] Set/verify Zabbix server inventory location as `BH22 8QL, West Parley, Dorset, UK`.
-- [ ] Set/verify latitude `50.79039`.
-- [ ] Set/verify longitude `-1.890218`.
-- [ ] Set/verify Geomap zoom `15`.
-- [ ] Confirm `Global view` centres on BH22 8QL.
-- [ ] Require first run `failed=0`, `unreachable=0`.
-- [ ] Require second run `changed=0`, `failed=0`, `unreachable=0`.
+zabbix-server=active
+zabbix-agent2=active
+nginx=active
+php8.4-fpm=active
+postgresql=active
+alloy=active
+systemd=running
+failed_units=ZERO
+postgresql_scope=LOCALHOST_ONLY
+timescaledb_extension=ACTIVE
+zabbix_timescaledb_schema=CONVERTED
+vendor_hypertables=COMPLETE
+frontend_iac_changed=0
+frontend_iac_failed=0
+frontend_iac_unreachable=0
+tofu_drift=ZERO
+```
 
-## P0 — Final CT201 closure
+The CT201 Zabbix technical build is therefore **CLOSED**.
 
-- [ ] Verify all required services remain active.
-- [ ] Verify frontend HTTP health from CT201 and TestServer.
-- [ ] Verify PostgreSQL remains localhost-only.
-- [ ] Verify TimescaleDB vendor hypertables remain complete.
-- [ ] Verify Alloy remains healthy.
-- [ ] Verify systemd state is `running` with zero failed units.
-- [ ] Run final OpenTofu `plan -detailed-exitcode` from `containers/zabbix-lxc`.
-- [ ] Require OpenTofu exit code `0`.
-- [ ] Require repository working tree clean.
-- [ ] Update final Zabbix/CT201 documentation with credential/Geomap closure.
-- [ ] Merge `feature/zabbix-lxc-foundation` only after all final acceptance gates are green.
-- [ ] Remove stale feature branch after successful merge where safe.
+## Documentation closure
+
+Updated Proxmox authority includes:
+
+- CT201 Zabbix LXC README final state;
+- Zabbix installation runbook;
+- Admin/Vault bootstrap and dedicated state directory;
+- BH22 8QL Geomap authority;
+- locale requirement;
+- TimescaleDB conversion and rollback dump;
+- Ansible idempotence evidence;
+- OpenTofu zero-drift evidence.
 
 ## P1 — Zabbix monitoring onboarding
 
-Only after CT201 platform closure:
+With the platform closed, the next Zabbix work is onboarding monitored systems:
 
-- [ ] Review which existing Linux hosts should be onboarded to Zabbix first.
-- [ ] Prefer existing Ansible-managed Agent 2 deployment rather than manual installs.
-- [ ] Avoid duplicating or disrupting the existing Prometheus/Alloy monitoring authority.
-- [ ] Define the first host/template onboarding proof and acceptance criteria.
+- [ ] Define the first Linux-host onboarding batch.
+- [ ] Prefer Ansible-managed Zabbix Agent 2 deployment rather than manual installs.
+- [ ] Validate connectivity, item collection, availability and initial triggers.
+- [ ] Keep Zabbix complementary to existing Prometheus/Alloy observability.
 
 ## P1 — Dozzle / Stage 6 durable closure
 
-- [ ] Complete any remaining Dozzle `10.9.0` durable closure evidence.
-- [ ] Continue Stage 6 BAU hardening where still genuinely outstanding.
-- [ ] Preserve the rule that a healthy target is recreated only by the reviewed deployment stage.
+- [ ] Complete any genuinely outstanding Dozzle `10.9.0` durable closure.
+- [ ] Continue Stage 6 BAU hardening where still outstanding.
 
 ## P2 — Existing monitoring backlog
 
@@ -124,37 +139,26 @@ Only after CT201 platform closure:
 
 ## P3 — Provisioning platform
 
-After Zabbix closure, continue the reusable provisioning-platform design:
-
-- Proxmox, Azure and AWS provider support;
-- reusable OpenTofu and Ansible components;
-- web/operator request flow;
-- identity/collision validation;
-- stable generated MAC lifecycle;
-- Vault/provider secret isolation;
-- audit trail without secret leakage.
-
-## Change-control rules
-
-1. Do not guess the Zabbix Admin password.
-2. Do not rebuild CT201 to solve an application credential problem.
-3. Keep secrets in Vault and out of Git/logs.
-4. Put persistent changes into Ansible/OpenTofu.
-5. Require idempotence after frontend-IaC changes.
-6. Preserve PostgreSQL localhost-only exposure.
-7. Preserve the completed TimescaleDB conversion.
-8. Require final OpenTofu zero drift before closing the feature branch.
-9. Record only evidence-backed completion in this file.
+- [ ] Resume reusable Proxmox/Azure/AWS provisioning-platform design when selected.
 
 ## Daily summary
 
 ### Completed today
 
-- None yet — planned start-of-day document.
+- Recovered the Zabbix Admin account without rebuilding CT201.
+- Generated and stored a unique Admin/API credential in encrypted Ansible Vault.
+- Proved Zabbix API authentication using the Vault-backed credential.
+- Reset the failed-login state to zero.
+- Reworked frontend-IaC state handling to use `/var/lib/homelab-zabbix-frontend-iac`.
+- Applied the BH22 8QL host inventory and Global view Geomap.
+- Proved frontend IaC idempotence with `changed=0`, `failed=0`, `unreachable=0`.
+- Proved final OpenTofu zero drift with detailed-exitcode `0`.
+- Closed the CT201 technical build.
+- Updated the Proxmox Zabbix documentation for final closure.
 
 ### Carried forward
 
-- Zabbix Admin/API credential recovery and Vault authority.
-- BH22 8QL Geomap/frontend IaC.
-- Final CT201 service/idempotence/OpenTofu closure and feature-branch merge.
-- Remaining Dozzle/monitoring/provisioning backlog after the active Zabbix closure.
+- First Zabbix monitored-host onboarding batch.
+- Remaining Dozzle/Stage 6 BAU work.
+- Existing monitoring backlog.
+- Reusable provisioning-platform design.
