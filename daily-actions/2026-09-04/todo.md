@@ -66,9 +66,13 @@ merge_commit=ca3998d39b0cf30d04c339e03fbd121df227bebd
 
 ### P0 — PROXMOX hardware event
 
-- [ ] Investigate the PROXMOX hardware-fault alert that fired at approximately 04:00 BST and resolved at approximately 04:10 BST.
-- [ ] Review the Homelab Hardware Health dashboard plus PROXMOX kernel journal and SMART/NVMe health evidence.
-- [ ] Determine whether the Loki-detected hardware-related event represents a genuine disk/kernel fault or alert noise.
+- [x] Investigate the PROXMOX hardware-fault alert that fired at approximately 04:00 BST and resolved at approximately 04:10 BST.
+- [x] Review PROXMOX kernel journal, PCIe AER counters and SMART/NVMe health evidence.
+- [x] Classify the event: recurring correctable PCIe physical-layer `RxErr` on the WDC PC SN520 NVMe link; 10 correctable events observed, with 0 non-fatal/fatal AER errors, 0 NVMe media errors and 0 NVMe error-log entries.
+- [ ] Upgrade HP ProDesk 400 G4 DM BIOS Q23 from `02.07.00` (2019) to the current verified HP Q23 release after maintenance preflight.
+- [ ] Reboot after BIOS update and establish a fresh PCIe AER baseline.
+- [ ] Monitor for recurrence; if `RxErr` continues, reseat the NVMe and inspect the M.2 connection before testing PCIe/NVMe power-management workarounds.
+- [ ] Adjust Grafana hardware alert classification so correctable PCIe AER events are not presented at the same severity as SMART/media failures, MCEs or uncorrectable PCIe errors.
 
 ### P1 — Linux Host Down event
 
