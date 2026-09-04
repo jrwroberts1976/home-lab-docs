@@ -103,7 +103,15 @@ tofu_drift=ZERO
 
 The CT201 Zabbix technical build is therefore **CLOSED**.
 
-## Documentation closure
+## Repository and documentation closure
+
+Proxmox PR #20, **Close Zabbix LXC CT201 foundation**, was merged to `main`.
+
+```text
+PR:           #20
+merge_commit: ca3998d39b0cf30d04c339e03fbd121df227bebd
+state:        MERGED
+```
 
 Updated Proxmox authority includes:
 
@@ -155,9 +163,11 @@ With the platform closed, the next Zabbix work is onboarding monitored systems:
 - Proved final OpenTofu zero drift with detailed-exitcode `0`.
 - Closed the CT201 technical build.
 - Updated the Proxmox Zabbix documentation for final closure.
+- Merged Proxmox PR #20 to `main` at `ca3998d39b0cf30d04c339e03fbd121df227bebd`.
 
 ### Carried forward
 
+- Delete the now-merged `feature/zabbix-lxc-foundation` branch after local/main synchronization.
 - First Zabbix monitored-host onboarding batch.
 - Remaining Dozzle/Stage 6 BAU work.
 - Existing monitoring backlog.
