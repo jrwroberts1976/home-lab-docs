@@ -62,6 +62,30 @@ tofu_drift=ZERO
 merge_commit=ca3998d39b0cf30d04c339e03fbd121df227bebd
 ```
 
+## P0/P1 — Grafana ↔ Zabbix integration — COMPLETE
+
+- [x] Create a dedicated read-only Zabbix role/group/user for Grafana.
+- [x] Restrict the authenticated API allow-list to `*.get`.
+- [x] Create/generate the datasource token without exposing it in output.
+- [x] Capture token authority in SOPS-encrypted `docker-env/secrets/ids-01/grafana-zabbix.sops.env`.
+- [x] Prove SOPS decrypt on TestServer and ids-01.
+- [x] Install/provision `alexanderzobnin-zabbix-app` 6.6.0.
+- [x] Provision Grafana datasource `Zabbix`, UID `zabbix`.
+- [x] Preserve the existing token on rerun: `token_generated=NO`.
+- [x] Correct the runtime Docker-secret ownership boundary for Grafana UID `472`.
+- [x] Prove Grafana health after recreation.
+- [x] Prove Grafana → Zabbix API access.
+- [x] Prove `Infrastructure/Proxmox` group visibility.
+
+Final proof:
+
+```text
+grafana_to_zabbix=PASS
+proxmox_group_visibility=PASS
+```
+
+Scope boundary: the Grafana↔Zabbix integration is complete; Proxmox VE host enrollment into Zabbix remains backlog.
+
 ## Overnight alert follow-up — 04 September 2026
 
 ### P0 — PROXMOX hardware event
@@ -89,6 +113,7 @@ merge_commit=ca3998d39b0cf30d04c339e03fbd121df227bebd
 
 ## P1 — Zabbix host onboarding
 
+- [ ] Onboard the Proxmox VE host using the approved Zabbix Proxmox integration/template.
 - [ ] Define the first monitored Linux-host batch.
 - [ ] Decide which existing systems should receive/validate Agent 2 first.
 - [ ] Validate host availability, item collection and initial triggers.
@@ -101,6 +126,7 @@ merge_commit=ca3998d39b0cf30d04c339e03fbd121df227bebd
 
 ## P2 — Monitoring backlog
 
+- [ ] Update the ids-01 Grafana-Zabbix deployment helper so token materialisation automatically preserves owner UID `472` and mode `0400` before any future Grafana recreation.
 - [ ] Grafana Patch collector stale alert.
 - [ ] Linux Host Down live/Git drift.
 - [ ] ids-01 Prometheus authority parity work.
@@ -122,8 +148,8 @@ Repository audit scope: all 34 repositories owned by `jrwroberts1976`, checking 
 
 ### P1 — Unmerged / orphaned branch work
 
-- [ ] Review `proxmox/feature/zabbix-grafana-monitoring-iac`: branch is 9 commits ahead of `main`; either validate and merge through the normal workflow or explicitly retire it.
-- [ ] Review `docker-env/feature/ids01-zabbix-grafana-monitoring`: branch is 4 commits ahead of `main`; preserve/merge the Grafana-Zabbix secret authority work or explicitly retire it.
+- [ ] Merge/close `proxmox/feature/zabbix-grafana-monitoring-iac`: functional validation is complete, including Grafana → Zabbix end-to-end proof; documentation is updated on the branch.
+- [ ] Merge/close `docker-env/feature/ids01-zabbix-grafana-monitoring`: functional validation is complete and SOPS/runtime/provisioning documentation is updated on the branch.
 - [ ] Reconcile `proxmox/feature/vm101-monitoring-retirement` against current `main`; it still contains one unique divergent commit affecting `scripts/vm101-decommission.sh`.
 - [ ] Reconcile `proxmox/fix/zabbix-php-postgresql-support` against current `main`; confirm its unique historical commits are fully superseded by the completed CT201/Zabbix authority before deletion.
 - [ ] Verify and remove stale branches that are behind `main` with no commits ahead: `proxmox/feature/zabbix-geomap-bh22`, `proxmox/fix/zabbix-postgresql-php-authority`, `proxmox/promote/vm101-build-authority`, and `home-lab-docs/ops/automate-host-decommission-20260903`.
@@ -166,6 +192,9 @@ Repository audit scope: all 34 repositories owned by `jrwroberts1976`, checking 
 - [x] Zabbix locale correction.
 - [x] Vault-backed Admin/API credential.
 - [x] BH22 8QL frontend/Geomap IaC.
+- [x] dedicated Grafana Zabbix API identity and SOPS token authority.
+- [x] Grafana Zabbix plugin 6.6.0 and datasource provisioning.
+- [x] Grafana → Zabbix end-to-end API proof.
 - [x] frontend IaC idempotence.
 - [x] OpenTofu zero drift.
 - [x] VM101 retirement/decommission.
