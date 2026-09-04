@@ -124,6 +124,62 @@ Updated Proxmox authority includes:
 - Ansible idempotence evidence;
 - OpenTofu zero-drift evidence.
 
+## P1 — Grafana ↔ Zabbix IaC integration — COMPLETE
+
+The Grafana-to-Zabbix integration was completed after CT201 closure.
+
+Final architecture:
+
+```text
+CT201 zabbix-lxc-01 (192.168.2.184)
+        |
+        | dedicated read-only Zabbix API token
+        v
+ids-01 Grafana 13.2.0
+        |
+        +-- alexanderzobnin-zabbix-app 6.6.0
+        +-- provisioned datasource uid=zabbix
+```
+
+Zabbix IaC now owns:
+
+```text
+role:       Grafana API Read Only
+user group: Grafana Read Only
+user:       grafana-zabbix
+token:      grafana-datasource
+host group: Infrastructure/Proxmox
+```
+
+The authenticated role allow-list was corrected to `*.get` only after Zabbix 7.0.30 rejected `apiinfo.version` as an authenticated role method. The user-group frontend mode was also corrected for Grafana-Zabbix compatibility without exposing or retaining a usable service-user password.
+
+Token authority is SOPS-encrypted in the `docker-env` ids-01 secret tree. Cross-host SOPS decrypt/encrypt was proven on TestServer and ids-01. The token was not regenerated after authority existed:
+
+```text
+authority_present=yes
+result=PASS
+token=PRESENT
+token_generated=NO
+plaintext_staging=PASS_ABSENT
+```
+
+Grafana runtime preparation installed the tracked plugin/datasource provisioning and protected runtime token. The first Grafana recreation exposed a Docker-secret permission boundary: the source file was `james:0600` while Grafana runs as UID `472`. Correcting the runtime source to UID `472`, mode `0400` restored normal startup.
+
+Final Grafana evidence:
+
+```text
+Grafana version=13.2.0
+database=ok
+alexanderzobnin-zabbix-app=6.6.0
+datasource name=Zabbix uid=zabbix
+grafana_to_zabbix=PASS
+proxmox_group_visibility=PASS
+```
+
+The unrelated disabled-dashboard empty-title warning remains outside this work item.
+
+**Scope boundary:** the Grafana↔Zabbix integration is complete. The Proxmox VE host itself has not yet been enrolled into Zabbix; that remains onboarding backlog.
+
 ## P1 — Zabbix monitoring onboarding
 
 With the platform closed, the next Zabbix work is onboarding monitored systems:
@@ -161,6 +217,11 @@ With the platform closed, the next Zabbix work is onboarding monitored systems:
 - Applied the BH22 8QL host inventory and Global view Geomap.
 - Proved frontend IaC idempotence with `changed=0`, `failed=0`, `unreachable=0`.
 - Proved final OpenTofu zero drift with detailed-exitcode `0`.
+- Created the dedicated read-only `grafana-zabbix` API identity and token authority through Ansible IaC.
+- Stored the Grafana Zabbix token only as SOPS-encrypted authority in `docker-env`.
+- Installed/provisioned Grafana Zabbix plugin 6.6.0 and datasource `uid=zabbix` on ids-01.
+- Corrected the Grafana runtime secret ownership boundary to UID 472 / mode 0400.
+- Proved final Grafana → Zabbix API access and `Infrastructure/Proxmox` group visibility.
 - Closed the CT201 technical build.
 - Updated the Proxmox Zabbix documentation for final closure.
 - Merged Proxmox PR #20 to `main` at `ca3998d39b0cf30d04c339e03fbd121df227bebd`.
@@ -168,7 +229,8 @@ With the platform closed, the next Zabbix work is onboarding monitored systems:
 
 ### Carried forward
 
-- First Zabbix monitored-host onboarding batch.
+- First Zabbix monitored-host onboarding batch, including Proxmox VE host enrollment.
+- Reconcile the ids-01 deployment helper so future token materialisation preserves Grafana UID 472 / mode 0400 automatically.
 - Remaining Dozzle/Stage 6 BAU work.
 - Existing monitoring backlog.
 - Reusable provisioning-platform design.
