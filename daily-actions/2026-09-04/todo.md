@@ -51,7 +51,7 @@ Dashboard: Global view
 - [x] final OpenTofu zero-drift proof.
 - [x] update final Zabbix/CT201 documentation.
 - [x] merge Proxmox PR #20 to `main`.
-- [ ] delete the merged `feature/zabbix-lxc-foundation` branch after synchronizing the local checkout.
+- [x] delete the merged `feature/zabbix-lxc-foundation` branch locally and remotely after synchronizing `main`.
 
 Final proof:
 
