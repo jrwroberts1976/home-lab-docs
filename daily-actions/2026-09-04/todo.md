@@ -1,23 +1,23 @@
 # TODO — 04 September 2026
 
-> **Day status: PLANNED.**
+> **Day status: ACTIVE.**
 >
-> Primary goal: finish CT201 Zabbix frontend/API IaC and close the Zabbix LXC feature branch.
+> CT201 Zabbix platform closure is complete. Remaining work is post-closure onboarding/backlog only.
 
-## P0 — Zabbix Admin/API credential
+## P0 — Zabbix Admin/API credential — COMPLETE
 
-- [ ] Do not make another password guess.
-- [ ] Confirm frontend health at `http://192.168.2.184:8080/`.
-- [ ] Recover/reset and rotate the `Admin` credential using a controlled method.
-- [ ] Use a unique non-default password.
-- [ ] Store the Admin/API password in encrypted CT201 Ansible Vault.
-- [ ] Prove API authentication from TestServer.
-- [ ] Verify failed-login state is cleared/normal.
-- [ ] Verify the default/factory credential is not retained.
+- [x] Confirm frontend health.
+- [x] Recover/reset and rotate the `Admin` credential using a controlled method.
+- [x] Use a unique non-default password.
+- [x] Store the Admin/API password in encrypted CT201 Ansible Vault.
+- [x] Prove API authentication from TestServer.
+- [x] Verify failed-login state is cleared.
+- [x] Verify the default/factory credential is not retained.
+- [x] Create a durable one-time bootstrap marker/state path.
 
-## P0 — BH22 8QL Geomap
+## P0 — BH22 8QL Geomap — COMPLETE
 
-Desired authority is already defined:
+Applied authority:
 
 ```text
 Location:  BH22 8QL, West Parley, Dorset, UK
@@ -27,35 +27,43 @@ Zoom:      15
 Dashboard: Global view
 ```
 
-- [ ] Run Zabbix frontend IaC.
-- [ ] Verify host inventory location.
-- [ ] Verify Geomap default view.
-- [ ] Require first run `failed=0`.
-- [ ] Require second run `changed=0`.
+- [x] Run Zabbix frontend IaC.
+- [x] Apply host inventory location.
+- [x] Apply Geomap default view.
+- [x] First run `failed=0`.
+- [x] Second run `changed=0`.
+- [x] Second run `failed=0`, `unreachable=0`.
 
-## P0 — Final CT201 acceptance
+## P0 — Final CT201 acceptance — COMPLETE
 
-- [ ] zabbix-server active.
-- [ ] zabbix-agent2 active.
-- [ ] nginx active.
-- [ ] php8.4-fpm active.
-- [ ] postgresql active.
-- [ ] alloy active.
-- [ ] systemd running.
-- [ ] failed units zero.
-- [ ] frontend HTTP healthy.
-- [ ] PostgreSQL still localhost-only.
-- [ ] TimescaleDB conversion/hypertables still complete.
-- [ ] final Ansible idempotence proof.
-- [ ] final OpenTofu zero-drift proof.
-- [ ] repository clean.
-- [ ] update final docs.
-- [ ] merge and clean up `feature/zabbix-lxc-foundation`.
+- [x] zabbix-server active.
+- [x] zabbix-agent2 active.
+- [x] nginx active.
+- [x] php8.4-fpm active.
+- [x] postgresql active.
+- [x] alloy active.
+- [x] systemd running.
+- [x] failed units zero.
+- [x] frontend HTTP healthy.
+- [x] PostgreSQL remains localhost-only.
+- [x] TimescaleDB conversion/hypertables remain complete.
+- [x] final frontend-IaC idempotence proof.
+- [x] final OpenTofu zero-drift proof.
+- [x] update final Zabbix/CT201 documentation.
 
-## P1 — After Zabbix closure
+Final proof:
 
-- [ ] Define first Zabbix host-onboarding batch.
-- [ ] Decide which existing Linux systems should receive/validate Agent 2 first.
+```text
+zabbix-lxc-01 : ok=7 changed=0 unreachable=0 failed=0 skipped=3
+tofu_exit_code=0
+tofu_drift=ZERO
+```
+
+## P1 — Zabbix host onboarding
+
+- [ ] Define the first monitored Linux-host batch.
+- [ ] Decide which existing systems should receive/validate Agent 2 first.
+- [ ] Validate host availability, item collection and initial triggers.
 - [ ] Keep Zabbix complementary to existing Prometheus/Alloy observability.
 
 ## P1 — Dozzle / Stage 6
@@ -72,7 +80,7 @@ Dashboard: Global view
 
 ## P3 — Provisioning platform
 
-- [ ] Resume reusable Proxmox/Azure/AWS provisioning-platform design after Zabbix closure.
+- [ ] Resume reusable Proxmox/Azure/AWS provisioning-platform design when selected.
 
 ## Already complete — do not reopen
 
@@ -90,4 +98,8 @@ Dashboard: Global view
 - [x] Zabbix TimescaleDB conversion.
 - [x] vendor hypertable verification.
 - [x] Zabbix locale correction.
+- [x] Vault-backed Admin/API credential.
+- [x] BH22 8QL frontend/Geomap IaC.
+- [x] frontend IaC idempotence.
+- [x] OpenTofu zero drift.
 - [x] VM101 retirement/decommission.
