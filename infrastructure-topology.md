@@ -1,6 +1,6 @@
 # Homelab Infrastructure Topology
 
-Last verified: **31 August 2026**
+Last verified: **4 September 2026**
 
 This document records where the core homelab services run, where their data is stored, and which host should be treated as the operational authority for monitoring, logging, automation and recovery.
 
@@ -19,6 +19,7 @@ flowchart LR
         DISC[Network discovery\nNmap/ARP + inventory]
         CROWD[CrowdSec]
         REST[Restic REST repository\n:8000]
+        GZBX[Grafana Zabbix datasource]
     end
 
     subgraph TEST[TestServer - 192.168.2.220\nAutomation / Docker Control]
@@ -27,6 +28,7 @@ flowchart LR
         DOCKER[Application Docker estate]
         RESTIC[Restic backup client]
         LEGACYPROM[Prometheus runtime\nlegacy / transition]
+        ZBXBOOT[Zabbix bootstrap/admin secret authority]
     end
 
     subgraph PVE[PROXMOX - 192.168.2.70\nHypervisor]
@@ -34,6 +36,8 @@ flowchart LR
         ALLOYPVE[Alloy v1.19.2]
         VM100[VM 100\ndebian-iac-test-01\n192.168.2.120]
     end
+
+    ZABBIX[Zabbix Server\n192.168.2.184:8080]
 
     subgraph K3S[k3s-node-01 - 192.168.2.195]
         NODEK3S[node_exporter\n:9100]
@@ -48,6 +52,7 @@ flowchart LR
     LAN --- IDS
     LAN --- TEST
     LAN --- PVE
+    LAN --- ZABBIX
     LAN --- K3S
     LAN --- DNS
 
@@ -64,6 +69,9 @@ flowchart LR
     PROM --> GRAFANA
     LOKI --> GRAFANA
     LOKI --> CROWD
+    GRAFANA -->|Zabbix API| ZABBIX
+    ZABBIX -->|Proxmox API monitoring| PVE
+    ZBXBOOT -.->|bootstrap/configuration authority| ZABBIX
 
     TOFU --> PVE
     ANS --> PVE
@@ -75,16 +83,17 @@ flowchart LR
 
 | Host | Address | Primary role | Important services / responsibilities | Data / configuration location | Authority status |
 |---|---|---|---|---|---|
-| `ids-01` | `192.168.2.242` | Central observability, security and recovery | Grafana, Prometheus, Loki, CrowdSec, network discovery, generated Network Hosts dashboards, Restic REST repository, secondary Pi-hole services | Grafana/Loki/Prometheus runtime under `/home/james/docker/data/monitoring`; discovery state under `/var/lib/homelab-network-discovery`; Restic repository served from ids-01 | **Intended observability authority** |
-| `TestServer` | `192.168.2.220` | Automation/control node and main Docker application host | OpenTofu, Ansible, application Docker estate, Restic backup client, supporting scripts/collectors | Git projects under `/home/james/projects`; Docker source checkout under `/home/james/docker`; OpenTofu state under `/home/james/projects/proxmox/tofu` | **IaC/control authority**; Prometheus here is transitional/legacy |
-| `PROXMOX` | `192.168.2.70` | Hypervisor | Proxmox VE, node_exporter, Alloy v1.19.2, VM hosting | PVE local storage/LVM; node_exporter systemd service; Alloy managed from `jrwroberts1976/proxmox` Ansible | **Hypervisor authority** |
+| `ids-01` | `192.168.2.242` | Central observability, security and recovery | Grafana, Prometheus, Loki, CrowdSec, network discovery, generated Network Hosts dashboards, Grafana Zabbix plugin/datasource, Restic REST repository, secondary Pi-hole services | Live monitoring runtime under `/home/james/docker`; Git authority under `jrwroberts1976/docker-env` at `hosts/ids-01/stacks/monitoring`; discovery state under `/var/lib/homelab-network-discovery`; Restic repository served from ids-01 | **Observability authority** |
+| `TestServer` | `192.168.2.220` | Automation/control node and main Docker application host | OpenTofu, Ansible, application Docker estate, Restic backup client, supporting scripts/collectors; protected Zabbix bootstrap/admin credential source | Git projects under `/home/james/projects`; Docker source checkout under `/home/james/docker`; OpenTofu state under `/home/james/projects/proxmox/tofu`; Zabbix bootstrap/admin secret remains host-local/protected | **IaC/control authority**; Prometheus here is transitional/legacy |
+| `Zabbix server` | `192.168.2.184` | Zabbix monitoring server | Zabbix 7.0 API/frontend; host/group/template authority; API endpoint on port `8080`; `Infrastructure/Proxmox` host group | Zabbix server database/configuration; Grafana uses a dedicated read-only API token materialised on ids-01 | **Zabbix monitoring authority** |
+| `PROXMOX` | `192.168.2.70` | Hypervisor | Proxmox VE, node_exporter, Alloy v1.19.2, VM hosting; Proxmox API monitoring identity `zabbix@pve!monitoring` | PVE local storage/LVM; `vm-ssd` secondary storage; node_exporter systemd service; Alloy managed from `jrwroberts1976/proxmox` Ansible; monitoring token has protected runtime/SOPS authority on ids-01 | **Hypervisor authority** |
 | `debian-iac-test-01` | `192.168.2.120` | Disposable reference VM | QEMU guest agent, node_exporter, Alloy, Debian security patching | Provisioned by OpenTofu and configured by Ansible from `jrwroberts1976/proxmox` | Reference IaC acceptance VM |
 | `k3s-node-01` | `192.168.2.195` | Kubernetes node | k3s workloads, node_exporter | Host-local k3s state plus Git-controlled workload sources | Kubernetes workload host |
 | `dietpi` | `192.168.2.48` | Primary DNS filtering/resolution | Pi-hole, Unbound, node_exporter | Pi-hole/Unbound host configuration | Primary DNS authority |
 
 ## Observability authority
 
-The desired architecture is:
+The current architecture is:
 
 ```text
 Linux / Proxmox hosts
@@ -92,34 +101,78 @@ Linux / Proxmox hosts
         +--> node_exporter metrics --> ids-01 Prometheus
         |
         +--> Alloy / journals ------> ids-01 Loki
-                                        |
-                         +--------------+-------------+
-                         |                            |
-                         v                            v
-                      Grafana                     CrowdSec
-                         |
-                         v
-                      Alerting
+        |                               |
+        |                +--------------+-------------+
+        |                |                            |
+        |                v                            v
+        |             Grafana                     CrowdSec
+        |                |
+        |                +--> Zabbix datasource --> 192.168.2.184:8080
+        |                                               |
+        +-----------------------------------------------+
+                                                        |
+                                                Zabbix monitoring
+                                                        |
+                                                        v
+                                                   PROXMOX API
 ```
 
-`ids-01` should be the single operational source for Grafana-facing metrics and logs.
+`ids-01` is the operational source for Grafana-facing Prometheus metrics and Loki logs. Zabbix remains a separate monitoring authority at `192.168.2.184`, integrated into Grafana through the Zabbix datasource.
 
 ### Verified current state
 
 - Grafana runs on `ids-01` in container `grafana` and is exposed on port `3001`.
 - Grafana's Prometheus datasource is `http://prometheus:9090`, resolving to the Prometheus container on the ids-01 Docker network.
 - Loki runs on `ids-01` and is exposed on port `3100`.
+- The Grafana Zabbix datasource points to `http://192.168.2.184:8080/api_jsonrpc.php` and uses the dedicated `grafana-zabbix` API identity.
+- The Zabbix API reports version `7.0.30`.
+- The `grafana-zabbix` API identity is deliberately restricted: it can see the `Infrastructure/Proxmox`, `Linux servers` and `Zabbix servers` host groups, but has no template-group/template visibility.
+- The Zabbix API currently exposes the `Zabbix server` host through that read-only Grafana identity. Proxmox host enrollment remains separate work.
 - `PROXMOX` runs `prometheus-node-exporter`, enabled and active on `*:9100`.
 - `PROXMOX` is present in the ids-01 Prometheus `linux-hosts` target set as `192.168.2.70:9100` with labels `host="PROXMOX"`, `role="proxmox-host"`, `os="proxmox"`.
 - The ids-01 Prometheus API and Grafana Explore both proved `up{job="linux-hosts",host="PROXMOX"} = 1`.
 - PROXMOX exposes the CPU, memory and root-filesystem metrics required by the standard host alerts.
-- The live Grafana alert database contains `High CPU Usage`, `High Memory Usage`, `Low Disk Space` and `Linux Host Down`; all four operate on `job="linux-hosts"` and therefore cover PROXMOX.
-- The CPU rule calculates host CPU usage, reduces to the latest value and applies a `> 90` threshold for 10 minutes.
-- The live Host Down rule is `up{job="linux-hosts"} == 0`, preserving the failing `host` label.
+- The live Grafana alert set includes `High CPU Usage`, `High Memory Usage`, `Low Disk Space` and `Linux Host Down`; the generic host rules operate on `job="linux-hosts"` and therefore cover PROXMOX.
 - `PROXMOX` runs Grafana Alloy v1.19.2, enabled and active, deployed through the Git-controlled Proxmox Ansible configuration.
 - Alloy forwards the Proxmox systemd journal to Loki on `ids-01` with `host="PROXMOX"`, `role="proxmox-host"`, `job="systemd-journal"`.
 - End-to-end journal ingestion was proved with marker `PROXMOX_ALLOY_TEST_1788157720`, emitted on `PROXMOX` and returned by Loki on `ids-01`.
-- TestServer also has a Prometheus runtime and was able to scrape `PROXMOX`; that path is useful as reachability evidence but is **not** the intended Grafana-facing authority and is scheduled for later retirement after parity is proven.
+- A dedicated Proxmox monitoring identity, `zabbix@pve!monitoring`, has `PVEAuditor` at `/`; API calls to `/version`, `/nodes` and `/cluster/resources` have been validated successfully from ids-01.
+- The Proxmox monitoring token has been placed into the intended protected SOPS authority structure using `PROXMOX_ZABBIX_TOKEN_ID` and `PROXMOX_ZABBIX_TOKEN_SECRET`; decrypted values are not stored in documentation or shell logs.
+- TestServer also has a Prometheus runtime and was able to scrape `PROXMOX`; that path is useful as reachability evidence but is **not** the intended Grafana-facing authority and remains scheduled for later retirement after parity is proven.
+
+## Zabbix control and credential flow
+
+The Zabbix monitoring path is deliberately separated into runtime read access, configuration authority and target credentials:
+
+```text
+TestServer protected Zabbix bootstrap/admin credential
+                    |
+                    v
+           Zabbix API configuration
+           192.168.2.184:8080
+                    |
+       +------------+------------------+
+       |                               |
+       v                               v
+Grafana read-only API             Proxmox monitoring
+identity                          configuration
+`grafana-zabbix`                        |
+       |                               v
+       v                         `zabbix@pve!monitoring`
+ids-01 Grafana                         |
+                                       v
+                                  PROXMOX API
+                                  192.168.2.70:8006
+```
+
+Current credential rules:
+
+- The Grafana-to-Zabbix token is a dedicated read-only identity and must not be widened for configuration work.
+- The Grafana token runtime file is `/home/james/docker/secrets/zabbix-grafana-api-token` on ids-01; its encrypted recovery/authority source is in `jrwroberts1976/docker-env` under `secrets/ids-01/grafana-zabbix.sops.env`.
+- The Proxmox monitoring identity is `zabbix@pve!monitoring`; its secret must never be printed or committed in plaintext.
+- The intended encrypted Proxmox monitoring authority is `secrets/ids-01/proxmox-monitoring.sops.env` with keys `PROXMOX_ZABBIX_TOKEN_ID` and `PROXMOX_ZABBIX_TOKEN_SECRET`.
+- The Zabbix Super Admin/bootstrap credential is stored protected on TestServer and should be used only to bootstrap/configure a dedicated automation API authority, not as a Grafana runtime credential.
+- Token creation/rotation automation must be idempotent and must not regenerate a working token on every run.
 
 ## Network discovery and Network Hosts dashboards
 
@@ -221,48 +274,27 @@ The current proven recovery scope includes OpenTofu state. A full VM 100 backup/
 
 ## Current authority and drift notes
 
-### ids-01 runtime configuration is not currently a Git checkout
+### ids-01 monitoring runtime now has Git authority
 
-During the 31 August 2026 review:
+The active runtime remains under `/home/james/docker` on ids-01, but that directory is a deployment/runtime location rather than the Git checkout.
 
-```text
-cd /home/james/docker
-git status
-```
-
-on ids-01 returned:
+The tracked source authority is now:
 
 ```text
-fatal: not a git repository
+/home/james/projects/docker-env/hosts/ids-01/stacks/monitoring
 ```
 
-This means the active ids-01 Docker/Prometheus runtime configuration is not currently backed by a local Git checkout at `/home/james/docker`.
+The corresponding GitHub authority is `jrwroberts1976/docker-env`. It tracks the monitoring Compose definition, Grafana Zabbix datasource/plugin provisioning, protected-secret startup wrapper and deployment helpers. The validated Grafana ↔ Zabbix deployment is therefore no longer an untracked ids-01 configuration gap.
 
-This is a configuration-authority gap. The live PROXMOX Prometheus target is proven operational, but the ids-01 Prometheus source-of-truth must still be identified or brought under Git control before TestServer Prometheus is retired.
+### Grafana alert deployment now has tracked authority
 
-### Grafana alert rules have Git/runtime drift
+The ids-01 monitoring authority now includes tracked alert payloads and `deploy-grafana-alerts.sh`. The deployment helper preserves the API-managed provenance of the live Grafana rule groups while keeping the canonical payloads in Git.
 
-The mounted Grafana provisioning alert directory currently contains Pi-hole alert files only. The generic host rules are active in Grafana's SQLite database.
-
-The live `Linux Host Down` expression is:
-
-```promql
-up{job="linux-hosts"} == 0
-```
-
-The current `jrwroberts1976/grafana-alerting` source still contains:
-
-```promql
-min(up{job="linux-hosts"}) < 1
-```
-
-The live expression has the desired per-host semantics. The repository and deployed state should be reconciled so Git accurately represents the active rule.
+This replaces the earlier state where generic host rules existed only in the Grafana SQLite database and the repository did not represent the live Host Down semantics.
 
 ### TestServer Prometheus is not the intended Grafana authority
 
-A temporary branch on the TestServer Docker repository added `PROXMOX` to the TestServer Prometheus `linux-hosts.yml` and successfully proved reachability.
-
-However, Grafana on ids-01 queries the ids-01 Prometheus container, not TestServer Prometheus. The temporary TestServer change should therefore not become the long-term monitoring design.
+TestServer Prometheus can provide useful reachability/parity evidence, but Grafana on ids-01 queries the ids-01 Prometheus container. TestServer Prometheus should therefore remain transitional and should be retired only after all unique jobs/targets have been migrated and parity is proven.
 
 ## Service flow summary
 
@@ -276,6 +308,9 @@ However, Grafana on ids-01 queries the ids-01 Prometheus container, not TestServ
 | ids-01 Prometheus | Grafana | Docker network `prometheus:9090` | Metrics dashboards/alerts |
 | ids-01 Loki | Grafana | Docker network `loki:3100` | Log dashboards/search |
 | ids-01 Loki | CrowdSec | Loki source | Security event processing |
+| ids-01 Grafana | Zabbix server | HTTP `192.168.2.184:8080/api_jsonrpc.php` | Zabbix datasource/API queries |
+| Zabbix server | PROXMOX API | HTTPS `192.168.2.70:8006` | Proxmox platform monitoring after host enrollment |
+| TestServer bootstrap authority | Zabbix server | HTTP API `192.168.2.184:8080` | Zabbix automation/configuration bootstrap |
 | TestServer OpenTofu | PROXMOX API | HTTPS/API | VM provisioning |
 | TestServer Ansible | PROXMOX / managed VMs | SSH | Host/VM configuration management |
 | TestServer Restic | ids-01 Restic REST server | HTTPS `8000` | Off-host backup |
@@ -284,17 +319,18 @@ However, Grafana on ids-01 queries the ids-01 Prometheus container, not TestServ
 
 The remaining corrections required to make runtime match the intended topology are:
 
-1. Reconcile Grafana alert-rule Git/runtime drift so `jrwroberts1976/grafana-alerting` represents the live per-host Host Down expression.
-2. Restore `debian-iac-test-01` (`192.168.2.120:9100`) to the ids-01 Prometheus target set if it remains absent.
-3. Identify or establish Git authority for the active ids-01 Docker/Prometheus configuration.
-4. Compare TestServer and ids-01 Prometheus jobs/targets, migrate any remaining unique coverage, then retire the TestServer Prometheus instance after parity is proven.
+1. Complete Proxmox host enrollment into the existing Zabbix `Infrastructure/Proxmox` group using the dedicated `zabbix@pve!monitoring` target credential.
+2. Bootstrap a dedicated Zabbix configuration/automation API authority from the protected Super Admin credential on TestServer; do not widen the `grafana-zabbix` runtime identity.
+3. Ensure the new `proxmox-monitoring.sops.env` authority is committed through the normal `docker-env` Git workflow once enrollment validation is complete.
+4. Restore `debian-iac-test-01` (`192.168.2.120:9100`) to the ids-01 Prometheus target set if it remains absent and the reference VM is still required.
+5. Compare TestServer and ids-01 Prometheus jobs/targets, migrate any remaining unique coverage, then retire the TestServer Prometheus instance after parity is proven.
 
 ## Related repositories
 
 - `jrwroberts1976/home-lab-docs` — operational documentation and topology.
 - `jrwroberts1976/proxmox` — Proxmox/OpenTofu/Ansible authority.
-- `jrwroberts1976/docker-env` — TestServer Docker configuration authority.
-- `jrwroberts1976/grafana-alerting` — intended Grafana alert-rule authority; currently requires reconciliation with live Grafana database state.
+- `jrwroberts1976/docker-env` — TestServer Docker configuration plus ids-01 monitoring/Grafana deployment and encrypted monitoring-secret authority.
+- `jrwroberts1976/grafana-alerting` — historical/related Grafana alert-rule source; active ids-01 tracked alert deployment is now also represented under `docker-env/hosts/ids-01/stacks/monitoring`.
 
 ## Maintenance rule
 
