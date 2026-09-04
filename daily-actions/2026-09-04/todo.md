@@ -88,12 +88,12 @@ Scope boundary: the Grafana↔Zabbix integration is complete; Proxmox VE host en
 
 ## Overnight alert follow-up — 04 September 2026
 
-### P0 — PROXMOX hardware event
+### P0 — PROXMOX hardware event — DIAGNOSED / WEEKEND ACTION PENDING
 
 - [x] Investigate the PROXMOX hardware-fault alert that fired at approximately 04:00 BST and resolved at approximately 04:10 BST.
 - [x] Review PROXMOX kernel journal, PCIe AER counters and SMART/NVMe health evidence.
 - [x] Classify the event: recurring correctable PCIe physical-layer `RxErr` on the WDC PC SN520 NVMe link; 10 correctable events observed, with 0 non-fatal/fatal AER errors, 0 NVMe media errors and 0 NVMe error-log entries.
-- [ ] Upgrade HP ProDesk 400 G4 DM BIOS Q23 from `02.07.00` (2019) to the current verified HP Q23 release after maintenance preflight.
+- [ ] **PENDING — weekend maintenance:** upgrade HP ProDesk 400 G4 DM BIOS Q23 from `02.07.00` (2019) to the current verified HP Q23 release after moving the host to the workshop and attaching a monitor/keyboard.
 - [ ] Reboot after BIOS update and establish a fresh PCIe AER baseline.
 - [ ] Monitor for recurrence; if `RxErr` continues, reseat the NVMe and inspect the M.2 connection before testing PCIe/NVMe power-management workarounds.
 - [ ] Adjust Grafana hardware alert classification so correctable PCIe AER events are not presented at the same severity as SMART/media failures, MCEs or uncorrectable PCIe errors.
