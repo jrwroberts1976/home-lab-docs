@@ -17,6 +17,8 @@ Loki on ids-01 --------> Grafana ---> log search / log-backed views
 
 The live Prometheus datasource uses `http://prometheus:9090` and the live Loki datasource uses `http://loki:3100` inside the monitoring Docker network.
 
+Since 4 September 2026 Grafana also has the provisioned Zabbix datasource `uid=zabbix`, using `alexanderzobnin-zabbix-app` 6.6.0 against `http://192.168.2.184:8080/api_jsonrpc.php`. Authentication uses a dedicated read-only Zabbix API token, not the Zabbix `Admin` credential.
+
 ## Responsibilities
 
 Grafana is used for:
@@ -24,6 +26,7 @@ Grafana is used for:
 - infrastructure and service dashboards;
 - Prometheus metric exploration;
 - Loki log investigation;
+- Zabbix host/item/trigger investigation through the provisioned datasource;
 - alert-rule evaluation;
 - notification routing;
 - email delivery for operational/security alerts.
@@ -35,7 +38,7 @@ Grafana is not the original source of metrics or logs; it depends on Prometheus,
 Critical dependencies include:
 
 - Docker runtime and the `ids-01` monitoring network;
-- Prometheus and Loki;
+- Prometheus, Loki and CT201 Zabbix for the Zabbix datasource;
 - DNS for SMTP and any external integrations;
 - protected SMTP credentials;
 - protected API credentials used by deployment scripts;
@@ -46,7 +49,7 @@ Critical dependencies include:
 Validate:
 
 - Grafana is reachable;
-- Prometheus and Loki datasources query successfully;
+- Prometheus, Loki and Zabbix datasources query successfully;
 - alert rules evaluate without datasource errors;
 - notification routing is healthy;
 - SMTP DNS resolution works inside the container;
@@ -69,6 +72,8 @@ Recovery must restore:
 
 Grafana has visibility into broad infrastructure and security telemetry. Administrative access, API tokens and SMTP credentials must be protected. Secrets are delivered outside Git and have SOPS/age recovery sources where documented.
 
+The Zabbix datasource token authority is SOPS-encrypted in `docker-env/secrets/ids-01/grafana-zabbix.sops.env`. The runtime source file is `/home/james/docker/secrets/zabbix-grafana-api-token`; Grafana runs as UID `472`, and the validated readable state is UID `472` with mode `0400`.
+
 ## Change and maintenance rules
 
 - Prefer Git-managed/provisioned alert definitions where available.
@@ -79,6 +84,7 @@ Grafana has visibility into broad infrastructure and security telemetry. Adminis
 ## Related documentation
 
 - [Grafana Alerting](grafana-alerting.md)
+- [Zabbix](zabbix.md)
 - [Prometheus](prometheus.md)
 - [Loki](loki.md)
 - [Grafana Alloy](alloy.md)
