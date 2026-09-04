@@ -223,12 +223,6 @@ Do not let the successful Dozzle deployment hide the manual preparation work tha
 - [ ] Re-run `sshd -t` against the mounted installation.
 - [ ] Prove the intended `PermitRootLogin`/authentication settings without weakening unrelated SSH controls.
 
-## P2 — LARC service deep dive
-
-- [ ] Continue the read-only LARC service/configuration audit from the mounted filesystem.
-- [ ] Map each LARC systemd service to its executable, environment/config files, dependencies, data paths and startup ordering.
-- [ ] Document the operational purpose and recovery considerations before making any changes.
-
 ## P2 — Existing monitoring/backlog work
 
 - [ ] Finish the Grafana Patch collector stale alert investigation without editing Grafana SQLite directly.
