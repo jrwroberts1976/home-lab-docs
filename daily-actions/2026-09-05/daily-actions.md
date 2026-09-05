@@ -84,6 +84,19 @@ The next active engineering checkpoint is therefore the remaining Jenkins BAU ha
 
 The full deployment executor must remain unavailable until human approval and exact zero-drift reinspection.
 
+### Stage 6 restricted candidate-acquirer source authority — MERGED
+
+The dedicated candidate-acquisition boundary was implemented source-first and merged through `homelab-container-version-control#115`.
+
+Merged source authority includes:
+
+- `ops/testserver/homelab-stage6-acquirer-ssh` — forced command permits only `ping` and `acquire <safe-service>`;
+- `ops/testserver/homelab-stage6-acquirer-sudoers` — exact sudo rule for the root-owned candidate-acquisition helper only;
+- restricted authorized-key template scoped to the Jenkins validation address;
+- `scripts/validate-stage6-acquirer-boundary.py` — exact regression guard for the SSH/sudo/key contract.
+
+Pre-merge validation passed for the existing candidate helper Git/live hash match, candidate-acquisition source guard, exact acquirer boundary guard, shell syntax, sudoers syntax and diff checks. The merge contains source authority only: no live acquirer account, Jenkins credential, image pull or container mutation has yet been performed.
+
 ## Daily summary
 
 ### Completed today
@@ -97,7 +110,7 @@ The full deployment executor must remain unavailable until human approval and ex
 
 ### Carried forward
 
-- Container Version Control Stage 6: implement the restricted Jenkins candidate-acquisition path.
+- Container Version Control Stage 6: source authority for the restricted candidate-acquirer is merged; install/prove the live acquirer identity and Jenkins credential next.
 - Replace free-text Stage 6 manifest selection with reviewed Git-controlled service discovery/selection.
 - Formalize target-side Stage 6 framework synchronization/hash proof.
 - Use TestServer Alloy 1.19.2 as the next fresh full Stage 6 update after those controls pass.
