@@ -20,11 +20,11 @@ Next:
 - [x] Require the acquisition wrapper to accept only a reviewed service name and derive the immutable candidate from installed reviewed authority.
 - [x] Install the live `homelab-stage6-acquirer` identity from merged authority and prove the forced-command/sudo boundary.
 - [x] Store the proven dedicated acquirer private key in Jenkins credentials, prove the stored credential over real SSH, and remove all loose temporary key material.
-- [ ] Run the first merged Jenkins-owned candidate-acquisition proof and prove it changes only the local image cache without creating, restarting, recreating or removing containers.
+- [ ] Run the first merged Jenkins-owned candidate-acquisition proof. Alloy 1.19.2 is already cached, so Alloy can prove safe/idempotent acquisition with zero container mutation; reserve the fresh absent→present cache-mutation proof for a later genuinely uncached candidate.
 - [x] Wire the proven acquirer credential into the Git-controlled Jenkins pipeline before pre-approval inspection, with raw-output preservation and exact JSON acquisition assertions.
 - [ ] Keep the full deployment executor credential unavailable until human approval and exact zero-drift reinspection.
 - [ ] Replace free-text `STAGE6_MANIFEST` entry with reviewed Git-controlled service discovery/selection.
-- [ ] Formalize target manifest/validator/inspector synchronization or exact preflight hash proof.
+- [ ] Formalize the now-manually-proven target manifest/helper/validator/inspector hash checks as a fail-closed Jenkins pre-acquisition gate.
 - [ ] Use TestServer Alloy 1.19.2 as the next fresh end-to-end Stage 6 update after those controls pass.
 - [ ] Keep normal BAU free from manual SSH/manual pull/manual Compose/catalogue closure steps.
 
