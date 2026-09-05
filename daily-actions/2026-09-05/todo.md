@@ -19,9 +19,9 @@ Next:
 - [x] Merge source authority for the dedicated restricted candidate-acquisition SSH/sudo/authorized-key boundary through `homelab-container-version-control#115`.
 - [x] Require the acquisition wrapper to accept only a reviewed service name and derive the immutable candidate from installed reviewed authority.
 - [x] Install the live `homelab-stage6-acquirer` identity from merged authority and prove the forced-command/sudo boundary.
-- [ ] Store the proven dedicated acquirer private key in Jenkins credentials and remove the loose temporary key files; real SSH forced-command transport is already proven.
+- [x] Store the proven dedicated acquirer private key in Jenkins credentials, prove the stored credential over real SSH, and remove all loose temporary key material.
 - [ ] Prove candidate acquisition changes only the local image cache and does not create, restart, recreate or remove containers.
-- [ ] Archive structured candidate-acquisition evidence in Jenkins.
+- [ ] Wire the proven acquirer credential into the Git-controlled Jenkins pipeline before pre-approval inspection and archive/assert the structured candidate-acquisition evidence.
 - [ ] Keep the full deployment executor credential unavailable until human approval and exact zero-drift reinspection.
 - [ ] Replace free-text `STAGE6_MANIFEST` entry with reviewed Git-controlled service discovery/selection.
 - [ ] Formalize target manifest/validator/inspector synchronization or exact preflight hash proof.
