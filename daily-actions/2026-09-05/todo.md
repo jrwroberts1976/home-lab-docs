@@ -16,8 +16,10 @@ Already proven:
 
 Next:
 
-- [ ] Implement a dedicated restricted candidate-acquisition SSH identity/forced-command route for Jenkins.
-- [ ] Require the acquisition wrapper to accept only a reviewed service name and derive the immutable candidate from installed reviewed authority.
+- [x] Merge source authority for the dedicated restricted candidate-acquisition SSH/sudo/authorized-key boundary through `homelab-container-version-control#115`.
+- [x] Require the acquisition wrapper to accept only a reviewed service name and derive the immutable candidate from installed reviewed authority.
+- [ ] Install the live `homelab-stage6-acquirer` identity from merged authority and prove the forced-command/sudo boundary.
+- [ ] Add the dedicated Jenkins acquirer credential and prove Jenkins can reach only the acquisition boundary.
 - [ ] Prove candidate acquisition changes only the local image cache and does not create, restart, recreate or remove containers.
 - [ ] Archive structured candidate-acquisition evidence in Jenkins.
 - [ ] Keep the full deployment executor credential unavailable until human approval and exact zero-drift reinspection.
