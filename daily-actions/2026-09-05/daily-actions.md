@@ -68,21 +68,21 @@ Zabbix is now treated as **BAU/maintenance**, not an active platform-build proje
 
 ## Next engineering work — Container Version Control Stage 6
 
-The next active engineering checkpoint is the Jenkins Stage 6 security/BAU path.
+The current repository state is ahead of the older tracker wording:
 
-Required order from the current project authority:
+- generic `VERIFY_CLOSED` is already implemented and merged;
+- Dozzle non-mutating closed-state verification is already proven;
+- Dozzle 10.9.0 was deployed by Jenkins build #34 and its durable authority/catalogue/steady-state closure is complete;
+- TestServer Alloy 1.19.2 already has a reviewed Stage 6 manifest.
 
-```text
-restricted candidate acquisition
-        |
-        v
-Dozzle VERIFY_CLOSED proof
-        |
-        v
-fresh TestServer Alloy end-to-end SUCCESS_CLOSED proof
-```
+The next active engineering checkpoint is therefore the remaining Jenkins BAU hardening:
 
-The first task is therefore to implement and validate the dedicated restricted Jenkins candidate-acquisition SSH identity/forced-command path before any fresh Alloy candidate acquisition or deployment.
+1. move exact candidate acquisition into a dedicated restricted Jenkins SSH identity/forced-command path;
+2. remove the free-text manifest-filename operator dependency by resolving reviewed service choices from Git-controlled estate data;
+3. formalize/synchronize target-side Stage 6 manifest/validator/inspector authority and prove hashes before deployment inspection;
+4. then use TestServer Alloy as the next fresh end-to-end Stage 6 service update.
+
+The full deployment executor must remain unavailable until human approval and exact zero-drift reinspection.
 
 ## Daily summary
 
@@ -98,6 +98,7 @@ The first task is therefore to implement and validate the dedicated restricted J
 ### Carried forward
 
 - Container Version Control Stage 6: implement the restricted Jenkins candidate-acquisition path.
-- Add the non-mutating Dozzle `VERIFY_CLOSED` proof after the restricted acquisition route is ready.
-- Use TestServer Alloy as the first fresh full Stage 6 `SUCCESS_CLOSED` proof after those controls pass.
+- Replace free-text Stage 6 manifest selection with reviewed Git-controlled service discovery/selection.
+- Formalize target-side Stage 6 framework synchronization/hash proof.
+- Use TestServer Alloy 1.19.2 as the next fresh full Stage 6 update after those controls pass.
 - Existing monitoring/security backlog remains separate from the Stage 6 workstream.
