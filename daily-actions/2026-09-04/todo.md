@@ -119,15 +119,13 @@ proxmox_iac_commit=39fb187
 
 ## Overnight alert follow-up — 04 September 2026
 
-### P0 — PROXMOX hardware event — DIAGNOSED / WEEKEND ACTION PENDING
+### PROXMOX hardware event — DIAGNOSED
 
 - [x] Investigate the PROXMOX hardware-fault alert that fired at approximately 04:00 BST and resolved at approximately 04:10 BST.
 - [x] Review PROXMOX kernel journal, PCIe AER counters and SMART/NVMe health evidence.
 - [x] Classify the event: recurring correctable PCIe physical-layer `RxErr` on the WDC PC SN520 NVMe link; 10 correctable events observed, with 0 non-fatal/fatal AER errors, 0 NVMe media errors and 0 NVMe error-log entries.
-- [ ] **PENDING — weekend maintenance:** upgrade HP ProDesk 400 G4 DM BIOS Q23 from `02.07.00` (2019) to the current verified HP Q23 release after moving the host to the workshop and attaching a monitor/keyboard.
-- [ ] Reboot after BIOS update and establish a fresh PCIe AER baseline.
-- [ ] Monitor for recurrence; if `RxErr` continues, reseat the NVMe and inspect the M.2 connection before testing PCIe/NVMe power-management workarounds.
 - [x] Adjust the live Grafana hardware alert classification: critical rule now excludes correctable PCIe AER events; new `Correctable PCIe error detected` rule uses `severity=warning`. Historical Loki preflight proved the 04 September PROXMOX `RxErr` no longer matches critical and does match warning; live API verification passed. Git authority validated with `tracked_rules=3`, `drifted_rules=0`, `applied_rules=0`, `git_live_parity=PASS`; merged via `docker-env` PR #39 (`489083be320d5427a1567c41a69403d8f28479d5`).
+- [x] Move BIOS/PCIe maintenance follow-up out of P0 and into the lower-priority P2 backlog.
 
 ### P1 — Linux Host Down event — COMPLETE
 
@@ -170,6 +168,12 @@ proxmox_iac_commit=39fb187
 - [ ] Grafana Patch collector stale alert.
 - [ ] ids-01 Prometheus authority parity work.
 - [ ] Pi-hole policy-alert latency improvement.
+
+## P2 — Proxmox BIOS / PCIe follow-up
+
+- [ ] Upgrade HP ProDesk 400 G4 DM BIOS Q23 from `02.07.00` (2019) to the current verified HP Q23 release when convenient, after moving the host to the workshop and attaching a monitor/keyboard.
+- [ ] Reboot after BIOS update and establish a fresh PCIe AER baseline.
+- [ ] Monitor for recurrence; if `RxErr` continues, reseat the NVMe and inspect the M.2 connection before testing PCIe/NVMe power-management workarounds.
 
 ## P2 — Solution and hosting review
 
