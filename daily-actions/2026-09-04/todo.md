@@ -149,13 +149,14 @@ proxmox_iac_commit=39fb187
 
 > k3s-node-01 security-update alert requires no task: it resolved by approximately 06:31 BST and the 04 September daily operations brief reports no outstanding security updates.
 
-## P1 — Zabbix host onboarding
+## P1 — Zabbix host onboarding — COMPLETE
 
-- [x] Onboard the Proxmox VE host using the approved Zabbix Proxmox integration/template.
+- [x] Onboard the Proxmox VE host using the approved Zabbix Proxmox integration/template as host ID `10683`.
 - [x] Validate Proxmox host availability, item collection and initial triggers.
-- [ ] Define the first additional monitored Linux-host batch.
-- [ ] Decide which existing systems should receive/validate Agent 2 first.
-- [ ] Keep Zabbix complementary to existing Prometheus/Alloy observability.
+- [x] Define and validate the first additional Linux-host batch: `ids-01` (`10684`), `TestServer` (`10685`), `DietPi` (`10686`) and `media-01` (`10687`).
+- [x] Confirm Agent 2 is already active/listening on port `10050` for all four hosts and their Zabbix agent interfaces report available.
+- [x] Confirm current item collection on all four hosts; the only enabled unsupported items are non-critical interface-speed reads on Wi-Fi/USB-style interfaces where Linux does not expose a usable `speed` value.
+- [x] Keep Zabbix complementary to existing Prometheus/Alloy observability; no duplicate deployment or broad alert expansion performed.
 
 ## P1 — Dozzle / Stage 6
 
@@ -200,8 +201,8 @@ Repository audit scope: all 34 repositories owned by `jrwroberts1976`, checking 
 
 ### P1 — Open issue reconciliation
 
-- [ ] Close or update stale completed Zabbix issues after verifying main-branch evidence: `proxmox#18` (Admin password rotation) and `home-lab-docs#56` (PostgreSQL PHP support).
-- [ ] Decide the disposition of `proxmox#13`: `ansible/inventories/vm101/hosts.yml` still uses `app-platform-01`, but VM101 is now retired. Either perform the naming cleanup for retained reusable VM101 IaC or close the issue as superseded by CT201.
+- [x] Close stale completed Zabbix issues after verifying main-branch evidence: `proxmox#18` (Admin password rotation) and `home-lab-docs#56` (PostgreSQL PHP support).
+- [x] Close `proxmox#13` as superseded/not planned: VM101 is retired, the retained historical inventory still uses `app-platform-01`, and active Zabbix authority is CT201 `zabbix-lxc-01`; no live platform rename is required.
 - [ ] Reconcile the duplicate/related provisioning-platform trackers `proxmox#11` and `home-lab-docs#57` with the existing P3 provisioning-platform backlog item.
 
 ### P2 — Started/planned work missing from today's explicit backlog
