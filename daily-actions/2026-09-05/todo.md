@@ -24,7 +24,7 @@ Next:
 - [x] Wire the proven acquirer credential into the Git-controlled Jenkins pipeline before pre-approval inspection, with raw-output preservation and exact JSON acquisition assertions.
 - [ ] Keep the full deployment executor credential unavailable until human approval and exact zero-drift reinspection.
 - [ ] Replace free-text `STAGE6_MANIFEST` entry with reviewed Git-controlled service discovery/selection.
-- [ ] Formalize the now-manually-proven target manifest/helper/validator/inspector hash checks as a fail-closed Jenkins pre-acquisition gate.
+- [ ] Formalize the now-manually-proven target manifest/helper/validator/inspector hash checks as a fail-closed Jenkins pre-acquisition gate before the first Alloy Jenkins run.
 - [ ] Use TestServer Alloy 1.19.2 as the next fresh end-to-end Stage 6 update after those controls pass.
 - [ ] Keep normal BAU free from manual SSH/manual pull/manual Compose/catalogue closure steps.
 
