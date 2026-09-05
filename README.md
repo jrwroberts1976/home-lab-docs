@@ -71,7 +71,7 @@ Existing operational documents remain valid and will be progressively classified
 ### Active — priority order
 
 - Remove synthetic Pi-hole enforcement-probe traffic from raw seven-day client/category Prometheus totals while retaining all five active DNS block tests.
-- Project: end-to-end Docker image version control — Stage 4 read-only ownership, explicit image typing, image comparison and the first candidate image planner are now validated on TestServer. The planner verifies clean authoritative Git ownership, Compose validity, runtime image ID/RepoDigest, remote OCI index digest and exact target-platform manifest, then emits a non-deploying JSON decision. Deployment remains disabled. The next engineering work is broader candidate coverage, local-build provenance, Trivy validation, secret-readiness checking and the non-secret Jenkins deployment-plan artifact. Delivery remains tracked in `jrwroberts1976/homelab-container-version-control` issue #1; the original home-lab-docs issue #9 remains the initiating record.
+- Project: end-to-end Docker image version control — Docker Stage 6 is now the active production-rollout workstream. Loki and Dozzle proved the guarded deployment/closure model, and Dozzle is fully closed. The next engineering checkpoint is the Jenkins security/BAU path: dedicated restricted candidate acquisition, then non-mutating Dozzle `VERIFY_CLOSED` / `SUCCESS_VERIFIED_CLOSED`, then TestServer Alloy as the first fresh full `SUCCESS_CLOSED` proof. Normal BAU must not require manual SSH, manual image pulls or manual authority/catalogue closure. Delivery remains tracked in `jrwroberts1976/homelab-container-version-control` issue #1; the original home-lab-docs issue #9 remains the initiating record.
 - Restore and verify Suricata 24-hour collection after the collection timeout.
 - Investigate CrowdSec reporting synchronisation / DNS resolution.
 - Add a Greenbone → Loki ingestion health check.
@@ -129,7 +129,7 @@ Existing operational documents remain valid and will be progressively classified
 
 ### Recommended next item
 
-Continue Stage 4 of the Docker image version-control project by extending the read-only candidate planner beyond the proven Dozzle path, then add local-build provenance handling, Trivy candidate scanning, secret-readiness checks and the non-secret deployment-plan artifact before Jenkins integration. Deployment must remain disabled throughout this stage. For BAU/security work, restore and verify the Suricata 24-hour collection. The Docker/WUD BAU check remains in pending verification until the next scheduled scan completes with `0 errors`.
+Continue Container Version Control Stage 6 by implementing the dedicated restricted Jenkins candidate-acquisition route. After that, add the non-mutating Dozzle `VERIFY_CLOSED` path and require `SUCCESS_VERIFIED_CLOSED` without recreation. Only then resume TestServer Alloy as the first fresh full Stage 6 `SUCCESS_CLOSED` proof. For BAU/security work, restore and verify the Suricata 24-hour collection. The Docker/WUD BAU check remains in pending verification until the next scheduled scan completes with `0 errors`.
 
 ## Documentation
 
