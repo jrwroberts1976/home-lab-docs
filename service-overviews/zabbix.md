@@ -69,7 +69,7 @@ grafana_to_zabbix=PASS
 proxmox_group_visibility=PASS
 ```
 
-This proves Grafana can query Zabbix and see the `Infrastructure/Proxmox` host group. It does not yet prove that the Proxmox VE host itself is enrolled in Zabbix.
+This proves Grafana can query Zabbix and see the `Infrastructure/Proxmox` host group. Subsequent onboarding has also enrolled the Proxmox VE host itself in Zabbix as host ID `10683` using the approved Proxmox API/template integration.
 
 ## Secret authority
 
@@ -121,12 +121,20 @@ Complete:
 - BH22 8QL Geomap authority;
 - dedicated Grafana API identity;
 - SOPS-backed Grafana token authority;
-- Grafana plugin/datasource integration.
+- Grafana plugin/datasource integration;
+- Proxmox VE host onboarding through the approved API/template integration as host ID `10683`;
+- first Linux Agent 2 batch:
+  - `ids-01` — host ID `10684`, agent interface `192.168.2.242:10050`;
+  - `TestServer` — host ID `10685`, agent interface `192.168.2.220:10050`;
+  - `DietPi` — host ID `10686`, agent interface `192.168.2.48:10050`;
+  - `media-01` — host ID `10687`, agent interface `192.168.2.195:10050`.
 
-Backlog:
+The 5 September 2026 closure audit showed all four Linux agent interfaces available and current item collection on every host. The only enabled unsupported items were interface-speed reads for Wi-Fi/USB-style interfaces where Linux returns `EINVAL` for `/sys/class/net/<iface>/speed`; these do not represent host or agent failure. The read-only Grafana API identity did not return parent-template metadata, but template-derived item IDs and live item collection were present.
 
-- onboard the first monitored Linux-host batch;
-- enroll the Proxmox VE host in Zabbix using the selected Proxmox integration/template;
+Remaining Zabbix work is BAU/maintenance only:
+
+- keep Agent 2 configuration and host enrollment under managed authority rather than manual drift;
+- review the non-critical interface-speed unsupported items only if they become operationally noisy;
 - add Zabbix-native monitoring only where it adds value beyond existing Prometheus/Alloy coverage.
 
 ## Related documentation
