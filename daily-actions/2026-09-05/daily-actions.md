@@ -115,3 +115,9 @@ Pre-merge validation passed for the existing candidate helper Git/live hash matc
 - Formalize target-side Stage 6 framework synchronization/hash proof.
 - Use TestServer Alloy 1.19.2 as the next fresh full Stage 6 update after those controls pass.
 - Existing monitoring/security backlog remains separate from the Stage 6 workstream.
+
+## Stage 6 acquirer SSH transport — AUTHENTICATION BLOCKED
+
+A dedicated temporary Jenkins acquirer key pair was generated and the public key was installed through the merged restricted authorized-key template. The first real SSH `ping` to the TestServer acquirer account failed at authentication with `Permission denied (publickey,password)`.
+
+The later forbidden-command and injection checks from the same run are not counted as boundary proofs because authentication never succeeded. No candidate acquisition was invoked, no image was pulled and no container was changed. Temporary Jenkins key files remain in place only for read-only diagnosis.
