@@ -71,7 +71,7 @@ Existing operational documents remain valid and will be progressively classified
 ### Active — priority order
 
 - Remove synthetic Pi-hole enforcement-probe traffic from raw seven-day client/category Prometheus totals while retaining all five active DNS block tests.
-- Project: end-to-end Docker image version control — Docker Stage 6 is now the active production-rollout workstream. Loki and Dozzle proved the guarded deployment/closure model, and Dozzle is fully closed. The next engineering checkpoint is the Jenkins security/BAU path: dedicated restricted candidate acquisition, then non-mutating Dozzle `VERIFY_CLOSED` / `SUCCESS_VERIFIED_CLOSED`, then TestServer Alloy as the first fresh full `SUCCESS_CLOSED` proof. Normal BAU must not require manual SSH, manual image pulls or manual authority/catalogue closure. Delivery remains tracked in `jrwroberts1976/homelab-container-version-control` issue #1; the original home-lab-docs issue #9 remains the initiating record.
+- Project: end-to-end Docker image version control — Docker Stage 6 is the active production-rollout workstream. Generic `VERIFY_CLOSED` is implemented, Dozzle closed-state verification is proven, and Dozzle 10.9.0 has completed deployment plus durable authority/catalogue/steady-state closure. The next engineering checkpoint is Jenkins BAU hardening: dedicated restricted candidate acquisition, Git-controlled service selection instead of free-text manifest entry, and formal target framework synchronization/hash proof. TestServer Alloy 1.19.2 is the next fresh update candidate after those controls pass. Delivery remains tracked in `jrwroberts1976/homelab-container-version-control` issue #1; the original home-lab-docs issue #9 remains the initiating record.
 - Restore and verify Suricata 24-hour collection after the collection timeout.
 - Investigate CrowdSec reporting synchronisation / DNS resolution.
 - Add a Greenbone → Loki ingestion health check.
@@ -129,7 +129,7 @@ Existing operational documents remain valid and will be progressively classified
 
 ### Recommended next item
 
-Continue Container Version Control Stage 6 by implementing the dedicated restricted Jenkins candidate-acquisition route. After that, add the non-mutating Dozzle `VERIFY_CLOSED` path and require `SUCCESS_VERIFIED_CLOSED` without recreation. Only then resume TestServer Alloy as the first fresh full Stage 6 `SUCCESS_CLOSED` proof. For BAU/security work, restore and verify the Suricata 24-hour collection. The Docker/WUD BAU check remains in pending verification until the next scheduled scan completes with `0 errors`.
+Continue Container Version Control Stage 6 by implementing the dedicated restricted Jenkins candidate-acquisition route, replacing free-text manifest selection with reviewed Git-controlled service selection, and formalizing target framework synchronization/hash proof. Then resume TestServer Alloy 1.19.2 as the next fresh full Stage 6 update. For BAU/security work, restore and verify the Suricata 24-hour collection. The Docker/WUD BAU check remains in pending verification until the next scheduled scan completes with `0 errors`.
 
 ## Documentation
 
