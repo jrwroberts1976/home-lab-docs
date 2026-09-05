@@ -24,7 +24,7 @@ Next:
 - [x] Wire the proven acquirer credential into the Git-controlled Jenkins pipeline before pre-approval inspection, with raw-output preservation and exact JSON acquisition assertions.
 - [ ] Keep the full deployment executor credential unavailable until human approval and exact zero-drift reinspection.
 - [ ] Replace free-text `STAGE6_MANIFEST` entry with reviewed Git-controlled service discovery/selection.
-- [ ] Complete the fail-closed Jenkins pre-acquisition live-authority gate before the first Alloy Jenkins run. PR #118 framework is now installed and source-vs-live proof PASS on TestServer with backup retained at `/var/backups/homelab-stage6/live-authority-20260905T125635Z`; next wire Jenkins comparison before acquirer credential use.
+- [x] Complete the fail-closed Jenkins pre-acquisition live-authority gate before the first Alloy Jenkins run. PR #118 installed/proved the read-only live-authority framework; PR #119 merged Jenkins ordering so inspector-only live authority comparison must pass before candidate-acquirer credential use. Next step is merged-main/Jenkins SCM authority proof before any UPDATE run.
 - [ ] Use TestServer Alloy 1.19.2 as the next fresh end-to-end Stage 6 update after those controls pass.
 - [ ] Keep normal BAU free from manual SSH/manual pull/manual Compose/catalogue closure steps.
 
