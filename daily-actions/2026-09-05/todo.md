@@ -6,14 +6,24 @@
 
 ## P1 — Container Version Control Stage 6 — ACTIVE
 
+Already proven:
+
+- [x] Generic non-mutating `VERIFY_CLOSED` path merged.
+- [x] Dozzle closed-state verification proved without recreation.
+- [x] Dozzle 10.9.0 deployed through the generic Stage 6 Jenkins path.
+- [x] Dozzle 10.9.0 durable Compose authority, estate catalogue and steady-state closure completed.
+- [x] Reviewed TestServer Alloy 1.19.2 Stage 6 manifest exists.
+
+Next:
+
 - [ ] Implement a dedicated restricted candidate-acquisition SSH identity/forced-command route for Jenkins.
 - [ ] Require the acquisition wrapper to accept only a reviewed service name and derive the immutable candidate from installed reviewed authority.
 - [ ] Prove candidate acquisition changes only the local image cache and does not create, restart, recreate or remove containers.
 - [ ] Archive structured candidate-acquisition evidence in Jenkins.
 - [ ] Keep the full deployment executor credential unavailable until human approval and exact zero-drift reinspection.
-- [ ] Add the non-mutating `VERIFY_CLOSED` action.
-- [ ] Run Dozzle through `VERIFY_CLOSED` and require `SUCCESS_VERIFIED_CLOSED` without recreation.
-- [ ] After those controls pass, use TestServer Alloy as the first fresh full Stage 6 update intended to reach `SUCCESS_CLOSED`.
+- [ ] Replace free-text `STAGE6_MANIFEST` entry with reviewed Git-controlled service discovery/selection.
+- [ ] Formalize target manifest/validator/inspector synchronization or exact preflight hash proof.
+- [ ] Use TestServer Alloy 1.19.2 as the next fresh end-to-end Stage 6 update after those controls pass.
 - [ ] Keep normal BAU free from manual SSH/manual pull/manual Compose/catalogue closure steps.
 
 ## Zabbix — CLOSED / BAU
